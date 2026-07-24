@@ -1,0 +1,121 @@
+import { useMemo } from 'react';
+import { computeStats, flatOdps, hash, BRANCH_COLORS } from '../utils';
+
+export default function Dashboard({ branches, goBranch }) {
+  const allOdps = useMemo(() => flatOdps(branches), [branches]);
+  const kpi = useMemo(() => computeStats(allOdps), [allOdps]);
+
+  const statusChips = useMemo(() => {
+    const counts = { GREEN: 0, YELLOW: 0, BLACK: 0, RED: 0 };
+    allOdps.forEach(o => { counts[o.occStatus] = (counts[o.occStatus] || 0) + 1; });
+    return [
+      { label: 'Green', count: counts.GREEN, color: '#16a34a' },
+      { label: 'Yellow', count: counts.YELLOW, color: '#d97706' },
+      { label: 'Black', count: counts.BLACK, color: '#334155' }
+    ];
+  }, [allOdps]);
+
+  const ranking = useMemo(() => {
+    return branches.map(b => {
+      const st = computeStats(flatOdps([b]));
+      const delta = (hash(b.name) % 14) - 5; // mock delta
+      return {
+        name: b.name, occRate: st.occRate, projCount: b.projects.length, actPct: st.actCompletionPct,
+        color: BRANCH_COLORS[b.name] || '#64748b', delta
+      };
+    }).sort((a, b) => a.occRate - b.occRate);
+  }, [branches]);
+
+  const mapPoints = useMemo(() => {
+    const lats = allOdps.map(o => o.lat).filter(Number.isFinite);
+    const lons = allOdps.map(o => o.lon).filter(Number.isFinite);
+    const minLat = Math.min(...lats), maxLat = Math.max(...lats);
+    const minLon = Math.min(...lons), maxLon = Math.max(...lons);
+    const W = 760, H = 300, PAD = 16;
+    
+    return allOdps.filter(o => Number.isFinite(o.lat) && Number.isFinite(o.lon)).map(o => ({
+      x: PAD + (maxLon > minLon ? (o.lon - minLon) / (maxLon - minLon) : 0.5) * (W - 2 * PAD),
+      y: PAD + (maxLat > minLat ? (maxLat - o.lat) / (maxLat - minLat) : 0.5) * (H - 2 * PAD),
+      color: BRANCH_COLORS[o.branch] || '#64748b',
+      key: o.odp
+    }));
+  }, [allOdps]);
+
+  return (
+    <div>
+      {/* KPI Row */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '28px' }}>
+        <div className="card" style={{ padding: '18px 20px' }}>
+          <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Total Occupancy Rate</div>
+          <div style={{ fontSize: '30px', fontWeight: 800, color: '#0f172a', marginTop: '6px' }}>{kpi.occRate}%</div>
+          <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '4px' }}>{kpi.totalUsed} / {kpi.totalPort} port terpakai</div>
+        </div>
+        <div className="card" style={{ padding: '18px 20px' }}>
+          <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Port Tersedia</div>
+          <div style={{ fontSize: '30px', fontWeight: 800, color: '#0f172a', marginTop: '6px' }}>{kpi.totalAvai}</div>
+          <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '4px' }}>dari total {kpi.totalPort} port di {kpi.odpCount} ODP</div>
+        </div>
+        <div className="card" style={{ padding: '18px 20px' }}>
+          <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Status ODP</div>
+          <div style={{ display: 'flex', gap: '14px', marginTop: '12px' }}>
+            {statusChips.map(s => (
+              <div key={s.label} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: s.color }} />
+                <div style={{ fontSize: '13px', color: '#334155' }}><b>{s.count}</b> {s.label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="card" style={{ padding: '18px 20px' }}>
+          <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Aktivitas GTM Terverifikasi</div>
+          <div style={{ fontSize: '30px', fontWeight: 800, color: '#0f172a', marginTop: '6px' }}>{kpi.actCompletionPct}%</div>
+          <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '4px' }}>{kpi.actVerified} verified · {kpi.actUploaded} upload · {kpi.actBelum} belum</div>
+        </div>
+      </div>
+
+      {/* Ranking */}
+      <div className="card" style={{ padding: '22px 24px', marginBottom: '20px' }}>
+        <div style={{ fontSize: '15px', fontWeight: 700, color: '#0f172a' }}>Ranking Branch — Prioritas Peningkatan Occupancy</div>
+        <div style={{ fontSize: '12.5px', color: '#94a3b8', marginTop: '2px', marginBottom: '16px' }}>Diurutkan dari occupancy terendah</div>
+        
+        {ranking.map(b => (
+          <div 
+            key={b.name} 
+            onClick={() => goBranch(b.name)}
+            style={{ display: 'grid', gridTemplateColumns: '160px 1fr 90px 90px 90px 110px', alignItems: 'center', gap: '16px', padding: '12px 8px', borderTop: '1px solid #f1f5f9', cursor: 'pointer' }}
+          >
+            <div style={{ fontWeight: 700, fontSize: '14px', color: '#0f172a' }}>{b.name}</div>
+            <div style={{ height: '8px', background: '#f1f5f9', borderRadius: '4px', overflow: 'hidden' }}>
+              <div style={{ height: '100%', width: `${b.occRate}%`, background: b.color, borderRadius: '4px' }} />
+            </div>
+            <div style={{ fontSize: '13.5px', fontWeight: 700, color: '#334155' }}>{b.occRate}%</div>
+            <div style={{ fontSize: '12.5px', fontWeight: 700, color: b.delta >= 0 ? '#16a34a' : '#dc2626' }}>
+              {b.delta >= 0 ? `▲ +${b.delta}` : `▼ ${b.delta}`}%
+            </div>
+            <div style={{ fontSize: '12.5px', color: '#64748b' }}>{b.projCount} proyek</div>
+            <div style={{ fontSize: '12.5px', color: '#64748b' }}>{b.actPct}% GTM done</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Map */}
+      <div className="card" style={{ padding: '22px 24px' }}>
+        <div style={{ fontSize: '15px', fontWeight: 700, color: '#0f172a' }}>Peta Sebaran ODP</div>
+        <div style={{ fontSize: '12.5px', color: '#94a3b8', marginTop: '2px', marginBottom: '14px' }}>Titik lokasi ODP tiap branch</div>
+        <svg viewBox="0 0 760 300" style={{ width: '100%', height: '300px', background: '#f8fafc', borderRadius: '10px' }}>
+          {mapPoints.map(pt => (
+            <circle key={pt.key} cx={pt.x} cy={pt.y} r="4" fill={pt.color} opacity="0.85" />
+          ))}
+        </svg>
+        <div style={{ display: 'flex', gap: '20px', marginTop: '12px' }}>
+          {branches.map(b => (
+            <div key={b.name} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12.5px', color: '#334155' }}>
+              <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: BRANCH_COLORS[b.name] || '#64748b' }} />
+              {b.name}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
