@@ -1,8 +1,24 @@
 import { useMemo } from 'react';
+import L from 'leaflet';
 import { MapContainer, TileLayer, CircleMarker, Popup } from 'react-leaflet';
+import MarkerClusterGroup from 'react-leaflet-cluster';
 import { computeStats, flatOdps, hash, BRANCH_COLORS } from '../utils';
 
 export default function Dashboard({ branches, goBranch }) {
+  const createClusterCustomIcon = (cluster) => {
+    const markers = cluster.getAllChildMarkers();
+    let color = '#64748b'; // default
+    if (markers.length > 0 && markers[0].options && markers[0].options.fillColor) {
+      color = markers[0].options.fillColor;
+    }
+    
+    return L.divIcon({
+      html: `<div style="background-color: ${color}; opacity: 0.95; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; border: 2.5px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.25); font-size: 13px;">${cluster.getChildCount()}</div>`,
+      className: 'custom-marker-cluster',
+      iconSize: L.point(32, 32, true),
+    });
+  };
+
   const allOdps = useMemo(() => flatOdps(branches), [branches]);
   const kpi = useMemo(() => computeStats(allOdps), [allOdps]);
 
@@ -49,7 +65,7 @@ export default function Dashboard({ branches, goBranch }) {
   return (
     <div>
       {/* KPI Row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '28px' }}>
+      <div className="kpi-grid">
         <div className="card" style={{ padding: '18px 20px' }}>
           <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Total Occupancy Rate</div>
           <div style={{ fontSize: '30px', fontWeight: 800, color: '#0f172a', marginTop: '6px' }}>{kpi.occRate}%</div>
@@ -87,7 +103,7 @@ export default function Dashboard({ branches, goBranch }) {
           <div 
             key={b.name} 
             onClick={() => goBranch(b.name)}
-            style={{ display: 'grid', gridTemplateColumns: '160px 1fr 90px 90px 90px 110px', alignItems: 'center', gap: '16px', padding: '12px 8px', borderTop: '1px solid #f1f5f9', cursor: 'pointer' }}
+            className="ranking-row"
           >
             <div style={{ fontWeight: 700, fontSize: '14px', color: '#0f172a' }}>{b.name}</div>
             <div style={{ height: '8px', background: '#f1f5f9', borderRadius: '4px', overflow: 'hidden' }}>
@@ -110,22 +126,24 @@ export default function Dashboard({ branches, goBranch }) {
         <div style={{ width: '100%', height: '300px', borderRadius: '10px', overflow: 'hidden', zIndex: 0, position: 'relative' }}>
           <MapContainer bounds={bounds} style={{ width: '100%', height: '100%', zIndex: 1 }}>
             <TileLayer
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+              url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
             />
-            {mapPoints.map(pt => (
-              <CircleMarker 
-                key={pt.key} 
-                center={[pt.lat, pt.lon]} 
-                radius={5} 
-                pathOptions={{ color: pt.color, fillColor: pt.color, fillOpacity: 0.85, weight: 1 }}
-              >
-                <Popup>
-                  <strong>{pt.key}</strong><br/>
-                  Branch: {pt.branch}
-                </Popup>
-              </CircleMarker>
-            ))}
+            <MarkerClusterGroup chunkedLoading maxClusterRadius={40} iconCreateFunction={createClusterCustomIcon}>
+              {mapPoints.map(pt => (
+                <CircleMarker 
+                  key={pt.key} 
+                  center={[pt.lat, pt.lon]} 
+                  radius={5} 
+                  pathOptions={{ color: pt.color, fillColor: pt.color, fillOpacity: 0.85, weight: 1 }}
+                >
+                  <Popup>
+                    <strong>{pt.key}</strong><br/>
+                    Branch: {pt.branch}
+                  </Popup>
+                </CircleMarker>
+              ))}
+            </MarkerClusterGroup>
           </MapContainer>
         </div>
         <div style={{ display: 'flex', gap: '20px', marginTop: '12px' }}>

@@ -78,7 +78,7 @@ function App() {
   return (
     <div>
       {/* Header */}
-      <div style={{ position: 'sticky', top: 0, zIndex: 50, background: '#fff', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 32px' }}>
+      <div className="header-container">
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: '#C8102E', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: '15px', letterSpacing: '-0.5px' }}>GTM</div>
           <div>
@@ -89,13 +89,13 @@ function App() {
         <div style={{ display: 'flex', gap: '8px' }}>
           <button 
             onClick={goDashboard} 
-            style={{ padding: '9px 16px', borderRadius: '50px', border: '1px solid #e2e8f0', background: view === 'dashboard' ? '#f8fafc' : '#fff', fontSize: '13.5px', fontWeight: 600, cursor: 'pointer', color: '#334155' }}
+            className={`btn-secondary ${view === 'dashboard' ? 'active' : ''}`}
           >
             Dashboard
           </button>
           <button 
             onClick={goUpload} 
-            style={{ padding: '9px 16px', borderRadius: '50px', border: '1px solid #C8102E', background: '#C8102E', fontSize: '13.5px', fontWeight: 600, cursor: 'pointer', color: '#fff' }}
+            className="btn-primary"
           >
             + Upload Activity (Branch)
           </button>
@@ -112,10 +112,12 @@ function App() {
       )}
 
       {/* Main Content */}
-      <div style={{ maxWidth: '1360px', margin: '0 auto', padding: '24px 32px 64px' }}>
-        {view === 'dashboard' && <Dashboard branches={branches} goBranch={goBranch} />}
-        {view === 'branch' && <BranchView branches={branches} activeBranch={activeBranch} updateActivityField={updateActivityField} verifyActivity={verifyActivity} />}
-        {view === 'upload' && <UploadView branches={branches} updateActivityField={updateActivityField} uploadActivity={uploadActivity} />}
+      <div className="main-content">
+        <div className="fade-in" key={view}>
+          {view === 'dashboard' && <Dashboard branches={branches} goBranch={goBranch} />}
+          {view === 'branch' && <BranchView branches={branches} activeBranch={activeBranch} updateActivityField={updateActivityField} verifyActivity={verifyActivity} />}
+          {view === 'upload' && <UploadView branches={branches} updateActivityField={updateActivityField} uploadActivity={uploadActivity} />}
+        </div>
       </div>
     </div>
   );
