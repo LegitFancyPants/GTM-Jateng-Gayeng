@@ -87,27 +87,25 @@ function App() {
           </div>
         </div>
         <div style={{ display: 'flex', gap: '8px' }}>
-          <button 
-            onClick={goDashboard} 
-            className={`btn-secondary ${view === 'dashboard' ? 'active' : ''}`}
-          >
-            Dashboard
-          </button>
-          <button 
-            onClick={goUpload} 
-            className="btn-primary"
-          >
-            + Upload Activity (Branch)
-          </button>
+          {view !== 'upload' && (
+            <button 
+              onClick={goUpload} 
+              className="btn-primary"
+            >
+              + Upload Activity (Branch)
+            </button>
+          )}
         </div>
       </div>
 
       {/* Breadcrumb */}
-      {view === 'branch' && (
-        <div style={{ padding: '14px 32px 0', fontSize: '13px', color: '#64748b', display: 'flex', alignItems: 'center', gap: '6px' }}>
+      {view !== 'dashboard' && (
+        <div style={{ padding: '14px 32px 0', fontSize: '13px', color: '#64748b', display: 'flex', alignItems: 'center', gap: '6px', animation: 'fadeIn 0.3s ease-in-out' }}>
           <span onClick={goDashboard} style={{ cursor: 'pointer', color: '#C8102E', fontWeight: 600 }}>Dashboard</span>
           <span>/</span>
-          <span style={{ fontWeight: 600, color: '#334155' }}>{activeBranch}</span>
+          <span style={{ fontWeight: 600, color: '#334155' }}>
+            {view === 'branch' ? activeBranch : 'Upload Activity'}
+          </span>
         </div>
       )}
 
