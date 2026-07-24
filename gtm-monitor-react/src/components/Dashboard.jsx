@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { MapContainer, TileLayer, CircleMarker, Popup } from 'react-leaflet';
 import { computeStats, flatOdps, hash, BRANCH_COLORS } from '../utils';
 
 export default function Dashboard({ branches, goBranch }) {
@@ -26,19 +27,23 @@ export default function Dashboard({ branches, goBranch }) {
     }).sort((a, b) => a.occRate - b.occRate);
   }, [branches]);
 
-  const mapPoints = useMemo(() => {
+  const { bounds, mapPoints } = useMemo(() => {
     const lats = allOdps.map(o => o.lat).filter(Number.isFinite);
     const lons = allOdps.map(o => o.lon).filter(Number.isFinite);
     const minLat = Math.min(...lats), maxLat = Math.max(...lats);
     const minLon = Math.min(...lons), maxLon = Math.max(...lons);
-    const W = 760, H = 300, PAD = 16;
+    const calculatedBounds = (lats.length > 0 && lons.length > 0)
+      ? [[minLat, minLon], [maxLat, maxLon]]
+      : [[-7.5, 109], [-6.5, 111]]; // fallback bounds
     
-    return allOdps.filter(o => Number.isFinite(o.lat) && Number.isFinite(o.lon)).map(o => ({
-      x: PAD + (maxLon > minLon ? (o.lon - minLon) / (maxLon - minLon) : 0.5) * (W - 2 * PAD),
-      y: PAD + (maxLat > minLat ? (maxLat - o.lat) / (maxLat - minLat) : 0.5) * (H - 2 * PAD),
+    const points = allOdps.filter(o => Number.isFinite(o.lat) && Number.isFinite(o.lon)).map(o => ({
+      lat: o.lat,
+      lon: o.lon,
       color: BRANCH_COLORS[o.branch] || '#64748b',
-      key: o.odp
+      key: o.odp,
+      branch: o.branch
     }));
+    return { bounds: calculatedBounds, mapPoints: points };
   }, [allOdps]);
 
   return (
@@ -102,11 +107,27 @@ export default function Dashboard({ branches, goBranch }) {
       <div className="card" style={{ padding: '22px 24px' }}>
         <div style={{ fontSize: '15px', fontWeight: 700, color: '#0f172a' }}>Peta Sebaran ODP</div>
         <div style={{ fontSize: '12.5px', color: '#94a3b8', marginTop: '2px', marginBottom: '14px' }}>Titik lokasi ODP tiap branch</div>
-        <svg viewBox="0 0 760 300" style={{ width: '100%', height: '300px', background: '#f8fafc', borderRadius: '10px' }}>
-          {mapPoints.map(pt => (
-            <circle key={pt.key} cx={pt.x} cy={pt.y} r="4" fill={pt.color} opacity="0.85" />
-          ))}
-        </svg>
+        <div style={{ width: '100%', height: '300px', borderRadius: '10px', overflow: 'hidden', zIndex: 0, position: 'relative' }}>
+          <MapContainer bounds={bounds} style={{ width: '100%', height: '100%', zIndex: 1 }}>
+            <TileLayer
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            />
+            {mapPoints.map(pt => (
+              <CircleMarker 
+                key={pt.key} 
+                center={[pt.lat, pt.lon]} 
+                radius={5} 
+                pathOptions={{ color: pt.color, fillColor: pt.color, fillOpacity: 0.85, weight: 1 }}
+              >
+                <Popup>
+                  <strong>{pt.key}</strong><br/>
+                  Branch: {pt.branch}
+                </Popup>
+              </CircleMarker>
+            ))}
+          </MapContainer>
+        </div>
         <div style={{ display: 'flex', gap: '20px', marginTop: '12px' }}>
           {branches.map(b => (
             <div key={b.name} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12.5px', color: '#334155' }}>
