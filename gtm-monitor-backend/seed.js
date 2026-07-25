@@ -20,8 +20,6 @@ async function seed() {
     // Remove the trailing semicolon if it exists
     if (content.endsWith(';')) content = content.slice(0, -1);
     
-    // Using eval or a Function is easier since the file contains JS objects with unquoted keys sometimes
-    // But since it's a known file format, we can safely use Function
     const branches = new Function(`return ${content}`)();
 
     for (const branch of branches) {
@@ -46,8 +44,9 @@ async function seed() {
           });
         }
 
+        // Create ODP records (without activities)
         for (const odp of project.odps) {
-          const oRecord = await prisma.odp.upsert({
+          await prisma.odp.upsert({
             where: { odp: odp.odp },
             update: {
               avai: odp.avai,
@@ -66,23 +65,26 @@ async function seed() {
               projectId: pRecord.id
             }
           });
+        }
 
-          for (const act of odp.activities) {
-            await prisma.activity.upsert({
+        // Create ProjectActivity records from first ODP's activities as template
+        const firstOdp = project.odps[0];
+        if (firstOdp && firstOdp.activities) {
+          for (const act of firstOdp.activities) {
+            await prisma.projectActivity.upsert({
               where: {
-                odpId_type: {
-                  odpId: oRecord.id,
+                projectId_type: {
+                  projectId: pRecord.id,
                   type: act.type
                 }
               },
               update: {}, // Don't override if already exists
               create: {
-                odpId: oRecord.id,
+                projectId: pRecord.id,
                 type: act.type,
-                status: act.status,
-                planDate: act.planDate ? new Date(act.planDate) : undefined,
-                actualDate: act.actualDate ? new Date(act.actualDate) : undefined,
-                photoUrl: act.photoUrl
+                status: act.status || 'belum',
+                planDate: act.fields?.planDate ? new Date(act.fields.planDate) : undefined,
+                photoUrl: act.photoUrl || null
               }
             });
           }

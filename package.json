@@ -1,0 +1,12 @@
+{
+  "name": "gtm-activity-monitoring",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "concurrently --names \"BACKEND,FRONTEND\" --prefix-colors \"cyan,magenta\" \"node gtm-monitor-backend/server.js\" \"npm run dev --prefix gtm-monitor-react\"",
+    "backend": "node gtm-monitor-backend/server.js",
+    "frontend": "npm run dev --prefix gtm-monitor-react"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}

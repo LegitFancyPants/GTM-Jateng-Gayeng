@@ -14,12 +14,13 @@ model Branch {
 }
 
 model Project {
-  id       String @id @default(uuid())
-  name     String
-  wok      String
-  branch   Branch @relation(fields: [branchId], references: [id])
-  branchId String
-  odps     Odp[]
+  id         String            @id @default(uuid())
+  name       String
+  wok        String
+  branch     Branch            @relation(fields: [branchId], references: [id])
+  branchId   String
+  odps       Odp[]
+  activities ProjectActivity[]
 }
 
 model Odp {
@@ -50,4 +51,21 @@ model Activity {
   updatedAt  DateTime  @updatedAt
 
   @@unique([odpId, type])
+}
+
+model ProjectActivity {
+  id         String    @id @default(uuid())
+  type       String
+  status     String    @default("belum") // "belum", "upload", "verified"
+  photoUrl   String?
+  planDate   DateTime?
+  actualDate DateTime?
+
+  project    Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId  String
+
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@unique([projectId, type])
 }

@@ -44,13 +44,27 @@ export function flatOdps(branches) {
   return out;
 }
 
-export function computeStats(odps) {
-  const totalAvai = odps.reduce((s, o) => s + o.avai, 0);
-  const totalUsed = odps.reduce((s, o) => s + o.used, 0);
-  const totalPort = odps.reduce((s, o) => s + o.total, 0);
+export function computeStats(branches) {
+  let totalAvai = 0, totalUsed = 0, totalPort = 0, odpCount = 0;
+  const allActs = [];
+
+  for (const b of (Array.isArray(branches) ? branches : [])) {
+    const projs = b.projects || [];
+    for (const p of projs) {
+      for (const o of (p.odps || [])) {
+        totalAvai += o.avai;
+        totalUsed += o.used;
+        totalPort += o.total;
+        odpCount++;
+      }
+      // Activities are now at project level
+      if (p.activities) {
+        allActs.push(...p.activities);
+      }
+    }
+  }
+
   const occRate = totalPort ? Math.round((totalUsed / totalPort) * 1000) / 10 : 0;
-  
-  const allActs = odps.flatMap(o => o.activities);
   const actVerified = allActs.filter(a => a.status === 'verified').length;
   const actUploaded = allActs.filter(a => a.status === 'upload').length;
   const actBelum = allActs.filter(a => a.status === 'belum').length;
@@ -58,6 +72,6 @@ export function computeStats(odps) {
   
   return {
     totalAvai, totalUsed, totalPort, occRate,
-    actVerified, actUploaded, actBelum, actCompletionPct, odpCount: odps.length
+    actVerified, actUploaded, actBelum, actCompletionPct, odpCount
   };
 }

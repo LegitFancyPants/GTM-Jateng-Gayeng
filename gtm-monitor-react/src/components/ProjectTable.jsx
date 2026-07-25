@@ -7,7 +7,7 @@ const FilterIcon = () => (
   </svg>
 );
 
-export default function ProjectTable({ projects, branchName, onReview, updateActivityField }) {
+export default function ProjectTable({ projects, branchName, onReview, updateActivityField, uploadPhoto, verifyActivity }) {
   const [expanded, setExpanded] = useState({});
   const [filterPopup, setFilterPopup] = useState(null);
   const [filters, setFilters] = useState({
@@ -133,6 +133,7 @@ export default function ProjectTable({ projects, branchName, onReview, updateAct
   };
 
   const tableGrid = '34px 210px 130px 80px 80px 80px 160px 160px 160px 160px 160px 70px';
+  const odpGrid = '34px 210px 130px 80px 80px 80px';
 
   return (
     <div className="card" style={{ overflow: 'hidden' }}>
@@ -165,42 +166,129 @@ export default function ProjectTable({ projects, branchName, onReview, updateAct
           </div>
 
           {/* Rows */}
-          {displayProjects.map((p, pIdx) => {
+          {displayProjects.map((p) => {
             const isExpanded = expanded[p.name];
             const pOdps = p.odps;
             const usedTotal = p.usedTotal;
             const avaiTotal = p.avaiTotal;
             const totalPort = p.totalPort;
             const bName = p.branchName || branchName;
+            // Project-level activities
+            const projectActivities = p.activities || [];
 
             return (
               <div key={p.name}>
+                {/* PROJECT ROW — with activity inputs */}
                 <div
                   className="table-row"
-                  style={{ gridTemplateColumns: tableGrid, cursor: 'pointer' }}
-                  onClick={() => toggleProject(p.name)}
+                  style={{ gridTemplateColumns: tableGrid }}
                 >
-                  <div style={{ fontSize: '15px', color: '#94a3b8', fontWeight: 700, textAlign: 'center' }}>
+                  <div 
+                    style={{ fontSize: '15px', color: '#94a3b8', fontWeight: 700, textAlign: 'center', cursor: 'pointer' }}
+                    onClick={() => toggleProject(p.name)}
+                  >
                     {isExpanded ? '−' : '+'}
                   </div>
-                  <div style={{ fontSize: '13.5px', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</div>
-                  <div style={{ fontSize: '12px', color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis' }}>{bName} · {p.wok}</div>
+                  <div 
+                    style={{ fontSize: '13.5px', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', cursor: 'pointer' }}
+                    onClick={() => toggleProject(p.name)}
+                  >
+                    {p.name}
+                  </div>
+                  <div 
+                    style={{ fontSize: '12px', color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', cursor: 'pointer' }}
+                    onClick={() => toggleProject(p.name)}
+                  >
+                    {bName} · {p.wok}
+                  </div>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', height: '100%' }}>{usedTotal}</div>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', height: '100%' }}>{avaiTotal}</div>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', height: '100%' }}>{totalPort}</div>
-                  <div style={{ color: '#cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>–</div>
-                  <div style={{ color: '#cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>–</div>
-                  <div style={{ color: '#cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>–</div>
-                  <div style={{ color: '#cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>–</div>
-                  <div style={{ color: '#cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>–</div>
-                  <div></div>
+
+                  {/* Activity inputs at project level */}
+                  {ACT_TYPES.map(actType => {
+                    const a = projectActivities.find(x => x.type === actType.key);
+                    const status = a?.status || 'belum';
+                    const meta = actMeta(status);
+
+                    return (
+                      <div key={actType.key} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', gap: '10px', alignSelf: 'flex-start' }}>
+                        <div style={{ fontSize: '11px', fontWeight: 700, padding: '3px 10px', borderRadius: '6px', backgroundColor: meta.bg, color: meta.color, height: '15px', display: 'flex', alignItems: 'center' }}>
+                          {meta.label}
+                        </div>
+
+                        {/* Photo Input */}
+                        {actType.kind === 'photo' && (
+                          <label style={{ width: '64px', height: '64px', borderRadius: '8px', border: a?.photoUrl ? '2px solid #22c55e' : '1px dashed #cbd5e1', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: a?.photoUrl ? '#f0fdf4' : '#f8fafc', fontSize: '10px', color: a?.photoUrl ? '#16a34a' : '#64748b', cursor: uploadPhoto ? 'pointer' : 'default', overflow: 'hidden', textAlign: 'center', padding: '4px', boxSizing: 'border-box' }}>
+                            {a?.photoUrl && a.photoUrl !== 'uploading...' ? (
+                              <>
+                                <span style={{ fontSize: '16px' }}>📸</span>
+                                <span style={{ fontWeight: 700, marginTop: '2px' }}>Terisi</span>
+                              </>
+                            ) : a?.photoUrl === 'uploading...' ? (
+                              <span>⏳ Upload...</span>
+                            ) : (
+                              <>
+                                <span style={{ fontSize: '16px' }}>➕</span>
+                                <span style={{ marginTop: '2px' }}>Foto</span>
+                              </>
+                            )}
+                            {uploadPhoto && (
+                              <input 
+                                type="file" 
+                                accept="image/*" 
+                                style={{ display: 'none' }}
+                                onChange={(e) => {
+                                  if (e.target.files && e.target.files[0]) {
+                                    uploadPhoto(bName, p.name, actType.key, e.target.files[0]);
+                                  }
+                                }}
+                              />
+                            )}
+                          </label>
+                        )}
+
+                        {/* Date Input */}
+                        {actType.kind === 'date' && (
+                          <input
+                            type="date"
+                            value={a?.planDate ? new Date(a.planDate).toISOString().split('T')[0] : ''}
+                            onChange={(e) => updateActivityField ? updateActivityField(bName, p.name, actType.key, 'planDate', e.target.value) : undefined}
+                            style={{ width: '120px', fontSize: '12px', padding: '4px 8px', border: '1px solid #e2e8f0', borderRadius: '5px' }}
+                            readOnly={!updateActivityField}
+                          />
+                        )}
+
+                        {/* Text Input */}
+                        {actType.kind === 'text' && (
+                          <input
+                            type="text"
+                            placeholder={actType.placeholder}
+                            value={a?.fields?.[actType.fieldKey] || ''}
+                            onChange={(e) => updateActivityField ? updateActivityField(bName, p.name, actType.key, actType.fieldKey, e.target.value) : undefined}
+                            style={{ width: '120px', fontSize: '12px', padding: '4px 8px', border: '1px solid #e2e8f0', borderRadius: '5px' }}
+                            readOnly={!updateActivityField}
+                          />
+                        )}
+                      </div>
+                    );
+                  })}
+
+                  <div style={{ textAlign: 'center' }}>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); onReview && onReview(bName, p.name); }}
+                      style={{ background: 'none', border: 'none', fontSize: '12px', fontWeight: 700, color: '#C8102E', cursor: 'pointer' }}>
+                      Review
+                    </button>
+                  </div>
                 </div>
 
-                {isExpanded && pOdps.map((o, oIdx) => (
+                {/* ODP ROWS — only capacity data, no activity inputs */}
+                {isExpanded && pOdps.map((o) => (
                   <div
                     key={o.odp}
                     className="table-row"
-                    style={{ gridTemplateColumns: tableGrid, backgroundColor: '#fafbfc', borderTop: '1px solid #f8fafc' }}
+                    style={{ gridTemplateColumns: odpGrid, backgroundColor: '#fafbfc', borderTop: '1px solid #f8fafc' }}
                   >
                     <div></div>
                     <div style={{ fontSize: '13px', fontWeight: 600, paddingLeft: '14px' }}>{o.odp}</div>
@@ -209,73 +297,15 @@ export default function ProjectTable({ projects, branchName, onReview, updateAct
                     <div style={{
                       fontSize: '11.5px', fontWeight: 700, padding: '3px 9px', borderRadius: '6px',
                       display: 'inline-block',
-                      backgroundColor: o.occStatus === 'GREEN' ? '#dcfce7' : o.occStatus === 'YELLOW' ? '#fef3c7' : o.occStatus === 'BLACK' ? '#e2e8f0' : '#fee2e2',
-                      color: o.occStatus === 'GREEN' ? '#16a34a' : o.occStatus === 'YELLOW' ? '#d97706' : o.occStatus === 'BLACK' ? '#334155' : '#dc2626'
+                      backgroundColor: o.used === 0 ? '#e2e8f0' : (o.used / o.total) < 0.5 ? '#dcfce7' : (o.used / o.total) < 0.75 ? '#fef3c7' : '#fee2e2',
+                      color: o.used === 0 ? '#334155' : (o.used / o.total) < 0.5 ? '#16a34a' : (o.used / o.total) < 0.75 ? '#d97706' : '#dc2626'
                     }}>
-                      {o.occPct} · {o.occStatus}
+                      {o.total > 0 ? `${Math.round((o.used / o.total) * 100)}%` : '-'}
                     </div>
 
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', height: '100%' }}>{o.used}</div>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', height: '100%' }}>{o.avai}</div>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', height: '100%' }}>{o.total}</div>
-
-                    {/* Activity Cells */}
-                    {o.activities.map((a) => {
-                      const meta = actMeta(a.status);
-                      const actTypeMeta = ACT_TYPES.find(t => t.key === a.type);
-
-                      return (
-                        <div key={a.type} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', gap: '10px', alignSelf: 'flex-start' }}>
-                          <div style={{ fontSize: '11px', fontWeight: 700, padding: '3px 10px', borderRadius: '6px', backgroundColor: meta.bg, color: meta.color, height: '15px', display: 'flex', alignItems: 'center' }}>
-                            {meta.label}
-                          </div>
-
-                          {/* Photo Input */}
-                          {actTypeMeta.kind === 'photo' && (
-                            <div style={{ width: '60px', height: '60px', borderRadius: '6px', border: '1px dashed #cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fafc', fontSize: '11px', color: '#94a3b8', cursor: 'pointer' }}
-                              onClick={() => {
-                                if (updateActivityField) {
-                                  updateActivityField(bName, p.name, oIdx, a.type, 'photoUploaded', true);
-                                }
-                              }}
-                            >
-                              Foto
-                            </div>
-                          )}
-
-                          {/* Date Input */}
-                          {actTypeMeta.kind === 'date' && (
-                            <input
-                              type="date"
-                              value={a.fields?.planDate || ''}
-                              onChange={(e) => updateActivityField ? updateActivityField(bName, p.name, oIdx, a.type, 'planDate', e.target.value) : undefined}
-                              style={{ width: '120px', fontSize: '12px', padding: '4px 8px', border: '1px solid #e2e8f0', borderRadius: '5px' }}
-                              readOnly={!updateActivityField}
-                            />
-                          )}
-
-                          {/* Text Input */}
-                          {actTypeMeta.kind === 'text' && (
-                            <input
-                              type="text"
-                              placeholder={actTypeMeta.placeholder}
-                              value={a.fields?.[actTypeMeta.fieldKey] || ''}
-                              onChange={(e) => updateActivityField ? updateActivityField(bName, p.name, oIdx, a.type, actTypeMeta.fieldKey, e.target.value) : undefined}
-                              style={{ width: '120px', fontSize: '12px', padding: '4px 8px', border: '1px solid #e2e8f0', borderRadius: '5px' }}
-                              readOnly={!updateActivityField}
-                            />
-                          )}
-                        </div>
-                      );
-                    })}
-
-                    <div style={{ textAlign: 'center' }}>
-                      <button
-                        onClick={() => onReview && onReview(bName, p.name, oIdx)}
-                        style={{ background: 'none', border: 'none', fontSize: '12px', fontWeight: 700, color: '#C8102E', cursor: 'pointer' }}>
-                        Review
-                      </button>
-                    </div>
                   </div>
                 ))}
               </div>

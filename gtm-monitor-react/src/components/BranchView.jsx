@@ -1,37 +1,41 @@
 import { useState } from 'react';
 import ProjectTable from './ProjectTable';
 import ReviewModal from './ReviewModal';
-import { computeStats, flatOdps } from '../utils';
+import { computeStats } from '../utils';
 
-export default function BranchView({ branches, activeBranch, verifyActivity }) {
+export default function BranchView({ branches, activeBranch, verifyActivity, updateActivityField, uploadPhoto }) {
   const [search, setSearch] = useState('');
-  const [modalKey, setModalKey] = useState(null); // format: branchName||projectName||odpIndex
+  const [modalKey, setModalKey] = useState(null); // format: branchName||projectName
 
   const branch = branches.find(b => b.name === activeBranch);
   if (!branch) return null;
 
-  const allOdps = flatOdps([branch]);
-  const stats = computeStats(allOdps);
+  const stats = computeStats([branch]);
 
   // Filter projects by search
   const s = search.toLowerCase();
   const filteredProjects = branch.projects.filter(p => !s || p.name.toLowerCase().includes(s) || p.wok.toLowerCase().includes(s));
 
-  const openModal = (bName, pName, idx) => setModalKey(`${bName}||${pName}||${idx}`);
+  const openModal = (bName, pName) => setModalKey(`${bName}||${pName}`);
   const closeModal = () => setModalKey(null);
 
   let modalData = null;
   if (modalKey) {
-    const [bName, pName, idxStr] = modalKey.split('||');
+    const [bName, pName] = modalKey.split('||');
     const b = branches.find(x => x.name === bName);
     const p = b?.projects.find(x => x.name === pName);
-    const o = p?.odps[parseInt(idxStr)];
-    if (o) {
+    if (p) {
+      // Aggregate ODP data for project summary
+      const totalAvai = p.odps.reduce((s, o) => s + o.avai, 0);
+      const totalUsed = p.odps.reduce((s, o) => s + o.used, 0);
+      const totalPort = p.odps.reduce((s, o) => s + o.total, 0);
+
       modalData = {
-        bName, pName, odpIndex: parseInt(idxStr),
-        odp: o.odp, wok: p.wok, occPct: o.occPct, occStatus: o.occStatus,
-        avai: o.avai, used: o.used, total: o.total,
-        activities: o.activities
+        bName, pName, wok: p.wok,
+        odps: p.odps,
+        totalAvai, totalUsed, totalPort,
+        odpCount: p.odps.length,
+        activities: p.activities || []
       };
     }
   }
@@ -65,7 +69,14 @@ export default function BranchView({ branches, activeBranch, verifyActivity }) {
         style={{ width: '100%', boxSizing: 'border-box', padding: '10px 18px', borderRadius: '50px', border: '1px solid #e2e8f0', fontSize: '13.5px', marginBottom: '14px', background: '#fff' }}
       />
 
-      <ProjectTable projects={filteredProjects} branchName={branch.name} onReview={openModal} />
+      <ProjectTable 
+        projects={filteredProjects} 
+        branchName={branch.name} 
+        onReview={openModal} 
+        updateActivityField={updateActivityField} 
+        uploadPhoto={uploadPhoto}
+        verifyActivity={verifyActivity}
+      />
 
       <ReviewModal modalData={modalData} closeModal={closeModal} verifyActivity={verifyActivity} />
     </div>

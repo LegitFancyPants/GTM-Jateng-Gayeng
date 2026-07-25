@@ -54,18 +54,15 @@ const requireAdmin = (req, res, next) => {
   }
 };
 
-// 2. Get All Data (Hierarchical)
+// 2. Get All Data (Hierarchical) — now includes project-level activities
 app.get('/api/data', async (req, res) => {
   try {
     const branches = await prisma.branch.findMany({
       include: {
         projects: {
           include: {
-            odps: {
-              include: {
-                activities: true
-              }
-            }
+            odps: true,
+            activities: true // ProjectActivity
           }
         }
       }
@@ -83,15 +80,16 @@ app.get('/api/data', async (req, res) => {
           used: o.used,
           total: o.total,
           lat: o.lat,
-          lon: o.lon,
-          activities: o.activities.map(a => ({
-            id: a.id,
-            type: a.type,
-            status: a.status,
-            photoUrl: a.photoUrl,
-            planDate: a.planDate,
-            actualDate: a.actualDate
-          }))
+          lon: o.lon
+        })),
+        // Project-level activities
+        activities: p.activities.map(a => ({
+          id: a.id,
+          type: a.type,
+          status: a.status,
+          photoUrl: a.photoUrl,
+          planDate: a.planDate,
+          actualDate: a.actualDate
         }))
       }))
     }));
@@ -103,26 +101,31 @@ app.get('/api/data', async (req, res) => {
   }
 });
 
-// 3. Upload/Update Activity
+// 3. Upload/Update Project Activity (now at project level)
 app.post('/api/activities', upload.single('photo'), async (req, res) => {
   try {
-    const { odp, type, status, planDate, actualDate } = req.body;
+    const { projectName, branchName, type, status, planDate, actualDate } = req.body;
     let photoUrl = req.file ? `/uploads/${req.file.filename}` : undefined;
 
-    // Find the ODP
-    const odpRecord = await prisma.odp.findUnique({
-      where: { odp: odp }
-    });
-
-    if (!odpRecord) {
-      return res.status(404).json({ error: 'ODP not found' });
+    // Find the Project by name + branch
+    const branch = await prisma.branch.findUnique({ where: { name: branchName } });
+    if (!branch) {
+      return res.status(404).json({ error: 'Branch not found' });
     }
 
-    // Upsert activity
-    const activity = await prisma.activity.upsert({
+    const project = await prisma.project.findFirst({
+      where: { name: projectName, branchId: branch.id }
+    });
+
+    if (!project) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+
+    // Upsert project activity
+    const activity = await prisma.projectActivity.upsert({
       where: {
-        odpId_type: {
-          odpId: odpRecord.id,
+        projectId_type: {
+          projectId: project.id,
           type: type
         }
       },
@@ -133,7 +136,7 @@ app.post('/api/activities', upload.single('photo'), async (req, res) => {
         ...(photoUrl && { photoUrl })
       },
       create: {
-        odpId: odpRecord.id,
+        projectId: project.id,
         type: type,
         status: status || 'belum',
         planDate: planDate ? new Date(planDate) : undefined,
@@ -149,23 +152,28 @@ app.post('/api/activities', upload.single('photo'), async (req, res) => {
   }
 });
 
-// 4. Verify Activity (Admin only)
+// 4. Verify Project Activity (Admin only)
 app.post('/api/verify', requireAdmin, async (req, res) => {
   try {
-    const { odp, type } = req.body;
+    const { projectName, branchName, type } = req.body;
 
-    const odpRecord = await prisma.odp.findUnique({
-      where: { odp: odp }
-    });
-
-    if (!odpRecord) {
-      return res.status(404).json({ error: 'ODP not found' });
+    const branch = await prisma.branch.findUnique({ where: { name: branchName } });
+    if (!branch) {
+      return res.status(404).json({ error: 'Branch not found' });
     }
 
-    const activity = await prisma.activity.update({
+    const project = await prisma.project.findFirst({
+      where: { name: projectName, branchId: branch.id }
+    });
+
+    if (!project) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+
+    const activity = await prisma.projectActivity.update({
       where: {
-        odpId_type: {
-          odpId: odpRecord.id,
+        projectId_type: {
+          projectId: project.id,
           type: type
         }
       },
@@ -181,7 +189,7 @@ app.post('/api/verify', requireAdmin, async (req, res) => {
   }
 });
 
-// 5. Import Excel (Admin only)
+// 5. Import Excel (Admin only) — updates ODP data only
 app.post('/api/admin/import-excel', requireAdmin, excelUpload.single('file'), async (req, res) => {
   try {
     if (!req.file) {
@@ -212,7 +220,7 @@ app.post('/api/admin/import-excel', requireAdmin, excelUpload.single('file'), as
         create: { name: branchName }
       });
 
-      // Find or create Project (since Project name might not be globally unique, we search by name and branchId)
+      // Find or create Project
       let project = await prisma.project.findFirst({
         where: { name: projectName, branchId: branch.id }
       });

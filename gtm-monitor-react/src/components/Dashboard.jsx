@@ -20,11 +20,15 @@ export default function Dashboard({ branches, goBranch }) {
   };
 
   const allOdps = useMemo(() => flatOdps(branches), [branches]);
-  const kpi = useMemo(() => computeStats(allOdps), [allOdps]);
+  const kpi = useMemo(() => computeStats(branches), [branches]);
 
   const statusChips = useMemo(() => {
     const counts = { GREEN: 0, YELLOW: 0, BLACK: 0, RED: 0 };
-    allOdps.forEach(o => { counts[o.occStatus] = (counts[o.occStatus] || 0) + 1; });
+    allOdps.forEach(o => {
+      const pct = o.total > 0 ? o.used / o.total : 0;
+      const status = o.used === 0 ? 'BLACK' : pct < 0.5 ? 'GREEN' : pct < 0.75 ? 'YELLOW' : 'RED';
+      counts[status] = (counts[status] || 0) + 1;
+    });
     return [
       { label: 'Green', count: counts.GREEN, color: '#16a34a' },
       { label: 'Yellow', count: counts.YELLOW, color: '#d97706' },
@@ -34,7 +38,7 @@ export default function Dashboard({ branches, goBranch }) {
 
   const ranking = useMemo(() => {
     return branches.map(b => {
-      const st = computeStats(flatOdps([b]));
+      const st = computeStats([b]);
       const delta = (hash(b.name) % 14) - 5; // mock delta
       return {
         name: b.name, occRate: st.occRate, projCount: b.projects.length, actPct: st.actCompletionPct,

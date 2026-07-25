@@ -2,11 +2,11 @@ import { useState, useMemo } from 'react';
 import ProjectTable from './ProjectTable';
 import ReviewModal from './ReviewModal';
 
-export default function UploadView({ branches, updateActivityField, uploadActivity }) {
+export default function UploadView({ branches, updateActivityField, verifyActivity, uploadPhoto }) {
   const [selectedBranch, setSelectedBranch] = useState('Semua Branch');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [search, setSearch] = useState('');
-  const [modalKey, setModalKey] = useState(null); // format: branchName||projectName||odpIndex
+  const [modalKey, setModalKey] = useState(null); // format: branchName||projectName
 
   // 1. Filter Branches based on dropdown
   const filteredBranches = useMemo(() => {
@@ -23,21 +23,25 @@ export default function UploadView({ branches, updateActivityField, uploadActivi
     }).filter(b => b.projects.length > 0); // Hide branches that have 0 matching projects
   }, [filteredBranches, search]);
 
-  const openModal = (bName, pName, idx) => setModalKey(`${bName}||${pName}||${idx}`);
+  const openModal = (bName, pName) => setModalKey(`${bName}||${pName}`);
   const closeModal = () => setModalKey(null);
 
   let modalData = null;
   if (modalKey) {
-    const [bName, pName, idxStr] = modalKey.split('||');
+    const [bName, pName] = modalKey.split('||');
     const b = branches.find(x => x.name === bName);
     const p = b?.projects.find(x => x.name === pName);
-    const o = p?.odps[parseInt(idxStr)];
-    if (o) {
+    if (p) {
+      const totalAvai = p.odps.reduce((s, o) => s + o.avai, 0);
+      const totalUsed = p.odps.reduce((s, o) => s + o.used, 0);
+      const totalPort = p.odps.reduce((s, o) => s + o.total, 0);
+
       modalData = {
-        bName, pName, odpIndex: parseInt(idxStr),
-        odp: o.odp, wok: p.wok, occPct: o.occPct, occStatus: o.occStatus,
-        avai: o.avai, used: o.used, total: o.total,
-        activities: o.activities
+        bName, pName, wok: p.wok,
+        odps: p.odps,
+        totalAvai, totalUsed, totalPort,
+        odpCount: p.odps.length,
+        activities: p.activities || []
       };
     }
   }
@@ -77,7 +81,7 @@ export default function UploadView({ branches, updateActivityField, uploadActivi
           )}
         </div>
         
-        {/* Search Input replacing the old text */}
+        {/* Search Input */}
         <div style={{ flex: 1 }}>
           <input 
             type="text" 
@@ -96,7 +100,9 @@ export default function UploadView({ branches, updateActivityField, uploadActivi
               projects={branchesWithFilteredProjects.flatMap(b => b.projects.map(p => ({ ...p, branchName: b.name })))} 
               branchName="Multi Branch" 
               updateActivityField={updateActivityField}
+              uploadPhoto={uploadPhoto}
               onReview={openModal}
+              verifyActivity={verifyActivity}
             />
           </div>
         )
@@ -107,7 +113,9 @@ export default function UploadView({ branches, updateActivityField, uploadActivi
               projects={b.projects} 
               branchName={b.name} 
               updateActivityField={updateActivityField}
+              uploadPhoto={uploadPhoto}
               onReview={openModal}
+              verifyActivity={verifyActivity}
             />
           </div>
         ))
@@ -119,8 +127,8 @@ export default function UploadView({ branches, updateActivityField, uploadActivi
         </div>
       )}
 
-      {/* Reusing the Review Modal but without verification capability for UploadView */}
-      <ReviewModal modalData={modalData} closeModal={closeModal} />
+      {/* Reusing the Review Modal and passing verifyActivity */}
+      <ReviewModal modalData={modalData} closeModal={closeModal} verifyActivity={verifyActivity} />
     </div>
   );
 }
