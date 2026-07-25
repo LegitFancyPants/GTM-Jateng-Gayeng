@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { ACT_TYPES, actMeta } from '../utils';
+import { ACT_TYPES, actMeta, formatBranch } from '../utils';
 
 const FilterIcon = () => (
   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -199,7 +199,7 @@ export default function ProjectTable({ projects, branchName, onReview, updateAct
                     style={{ fontSize: '12px', color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', cursor: 'pointer' }}
                     onClick={() => toggleProject(p.name)}
                   >
-                    {bName} · {p.wok}
+                    {formatBranch(bName)} · {p.wok}
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', height: '100%' }}>{usedTotal}</div>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', height: '100%' }}>{avaiTotal}</div>

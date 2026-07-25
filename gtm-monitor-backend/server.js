@@ -5,13 +5,15 @@ const { PrismaClient } = require('@prisma/client');
 const xlsx = require('xlsx');
 const path = require('path');
 const fs = require('fs');
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
 
 const app = express();
 const prisma = new PrismaClient();
 
 // Configuration
 const PORT = process.env.PORT || 3001;
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
+const JWT_SECRET = process.env.JWT_SECRET || 'gtm-super-secret-key-2026';
 
 app.use(cors());
 app.use(express.json());
@@ -32,32 +34,136 @@ const upload = multer({ storage: storage });
 // Multer storage for Excel files
 const excelUpload = multer({ dest: 'temp/' });
 
-// --- Endpoints ---
+// --- Authentication Middlewares ---
 
-// 1. Auth Endpoint
-app.post('/api/auth', (req, res) => {
-  const { password } = req.body;
-  if (password === ADMIN_PASSWORD) {
-    res.json({ success: true, token: 'fake-jwt-token-for-admin' });
-  } else {
-    res.status(401).json({ success: false, message: 'Invalid password' });
+const authenticateToken = (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  const token = authHeader && authHeader.split(' ')[1];
+  if (!token) return res.status(401).json({ success: false, message: 'Akses ditolak. Sesi tidak ditemukan.' });
+
+  jwt.verify(token, JWT_SECRET, (err, user) => {
+    if (err) return res.status(401).json({ success: false, message: 'Sesi telah berakhir (15 menit tidak aktif). Silakan login kembali.' });
+    req.user = user;
+    next();
+  });
+};
+
+const requireAdmin = (req, res, next) => {
+  authenticateToken(req, res, () => {
+    if (req.user && req.user.role === 'ADMIN') {
+      next();
+    } else {
+      res.status(403).json({ success: false, message: 'Akses ditolak. Hanya Administrator yang dapat melakukan tindakan ini.' });
+    }
+  });
+};
+
+// --- Auth Endpoints ---
+
+// Register / Sign Up (User Baru)
+app.post('/api/auth/register', async (req, res) => {
+  try {
+    const { username, password, fullName, branchName } = req.body;
+    if (!username || !password || !fullName || !branchName) {
+      return res.status(400).json({ success: false, message: 'Semua kolom (username, password, nama, dan branch) wajib diisi.' });
+    }
+
+    const existingUser = await prisma.user.findUnique({ where: { username } });
+    if (existingUser) {
+      return res.status(400).json({ success: false, message: 'Username sudah digunakan oleh akun lain.' });
+    }
+
+    const branch = await prisma.branch.findUnique({ where: { name: branchName } });
+    if (!branch) {
+      return res.status(400).json({ success: false, message: 'Branch yang dipilih tidak ditemukan dalam sistem.' });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const user = await prisma.user.create({
+      data: {
+        username,
+        password: hashedPassword,
+        fullName,
+        role: 'USER',
+        branchId: branch.id
+      },
+      include: { branch: true }
+    });
+
+    const token = jwt.sign(
+      { id: user.id, username: user.username, role: user.role, branchName: branch.name, fullName: user.fullName },
+      JWT_SECRET,
+      { expiresIn: '15m' }
+    );
+
+    res.json({
+      success: true,
+      token,
+      user: { id: user.id, username: user.username, role: user.role, branchName: branch.name, fullName: user.fullName }
+    });
+  } catch (error) {
+    console.error('Error in /api/auth/register:', error);
+    res.status(500).json({ success: false, message: 'Terjadi kesalahan internal pada server saat registrasi.' });
   }
 });
 
-// Middleware to check fake token
-const requireAdmin = (req, res, next) => {
-  const authHeader = req.headers.authorization;
-  if (authHeader === 'Bearer fake-jwt-token-for-admin') {
-    next();
-  } else {
-    res.status(403).json({ success: false, message: 'Forbidden' });
-  }
-};
-
-// 2. Get All Data (Hierarchical) — now includes project-level activities
-app.get('/api/data', async (req, res) => {
+// Login User / Admin
+app.post('/api/auth/login', async (req, res) => {
   try {
+    const { username, password } = req.body;
+    if (!username || !password) {
+      return res.status(400).json({ success: false, message: 'Username dan password wajib diisi.' });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { username },
+      include: { branch: true }
+    });
+
+    if (!user) {
+      return res.status(401).json({ success: false, message: 'Username atau password salah.' });
+    }
+
+    const validPassword = await bcrypt.compare(password, user.password);
+    if (!validPassword && password !== user.password) {
+      return res.status(401).json({ success: false, message: 'Username atau password salah.' });
+    }
+
+    const branchName = user.branch ? user.branch.name : null;
+    const token = jwt.sign(
+      { id: user.id, username: user.username, role: user.role, branchName, fullName: user.fullName },
+      JWT_SECRET,
+      { expiresIn: '15m' }
+    );
+
+    res.json({
+      success: true,
+      token,
+      user: { id: user.id, username: user.username, role: user.role, branchName, fullName: user.fullName }
+    });
+  } catch (error) {
+    console.error('Error in /api/auth/login:', error);
+    res.status(500).json({ success: false, message: 'Terjadi kesalahan internal saat login.' });
+  }
+});
+
+// Verify session & get current user profile
+app.get('/api/auth/me', authenticateToken, (req, res) => {
+  res.json({ success: true, user: req.user });
+});
+
+// --- Data Endpoints (Protected & Branch-Scoped) ---
+
+// 1. Get All Data (Filtered by user branch if role === 'USER')
+app.get('/api/data', authenticateToken, async (req, res) => {
+  try {
+    // Branch query filter based on role
+    const branchFilter = (req.user && req.user.role === 'USER' && req.user.branchName)
+      ? { name: req.user.branchName }
+      : {}; // ADMIN gets all branches
+
     const branches = await prisma.branch.findMany({
+      where: branchFilter,
       include: {
         projects: {
           include: {
@@ -101,15 +207,22 @@ app.get('/api/data', async (req, res) => {
   }
 });
 
-// 3. Upload/Update Project Activity (now at project level)
-app.post('/api/activities', upload.single('photo'), async (req, res) => {
+// 2. Upload/Update Project Activity (Protected & Branch-Scoped)
+app.post('/api/activities', authenticateToken, upload.single('photo'), async (req, res) => {
   try {
     const { projectName, branchName, type, status, planDate, actualDate } = req.body;
     let photoUrl = req.file ? `/uploads/${req.file.filename}` : undefined;
 
+    // Security Check: USER can only update their assigned branch
+    if (req.user && req.user.role === 'USER' && req.user.branchName !== branchName) {
+      if (req.file) fs.unlinkSync(req.file.path);
+      return res.status(403).json({ error: `Akses ditolak. Anda hanya berhak memodifikasi data di branch ${req.user.branchName}.` });
+    }
+
     // Find the Project by name + branch
     const branch = await prisma.branch.findUnique({ where: { name: branchName } });
     if (!branch) {
+      if (req.file) fs.unlinkSync(req.file.path);
       return res.status(404).json({ error: 'Branch not found' });
     }
 
@@ -118,6 +231,7 @@ app.post('/api/activities', upload.single('photo'), async (req, res) => {
     });
 
     if (!project) {
+      if (req.file) fs.unlinkSync(req.file.path);
       return res.status(404).json({ error: 'Project not found' });
     }
 
@@ -148,11 +262,12 @@ app.post('/api/activities', upload.single('photo'), async (req, res) => {
     res.json({ success: true, activity });
   } catch (error) {
     console.error(error);
+    if (req.file) fs.unlinkSync(req.file.path);
     res.status(500).json({ error: 'Failed to save activity' });
   }
 });
 
-// 4. Verify Project Activity (Admin only)
+// 3. Verify Project Activity (Admin only)
 app.post('/api/verify', requireAdmin, async (req, res) => {
   try {
     const { projectName, branchName, type } = req.body;
@@ -189,7 +304,7 @@ app.post('/api/verify', requireAdmin, async (req, res) => {
   }
 });
 
-// 5. Import Excel (Admin only) — updates ODP data only
+// 4. Import Excel (Admin only) — updates ODP data only
 app.post('/api/admin/import-excel', requireAdmin, excelUpload.single('file'), async (req, res) => {
   try {
     if (!req.file) {

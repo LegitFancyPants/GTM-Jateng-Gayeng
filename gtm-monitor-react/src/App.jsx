@@ -3,6 +3,9 @@ import Dashboard from './components/Dashboard';
 import BranchView from './components/BranchView';
 import UploadView from './components/UploadView';
 import AdminPanel from './components/AdminPanel';
+import LoginPage from './components/Auth/LoginPage';
+import SignUpPage from './components/Auth/SignUpPage';
+import { formatBranch } from './utils';
 import './index.css';
 
 function App() {
@@ -11,20 +14,33 @@ function App() {
   const [activeBranch, setActiveBranch] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Admin Auth State
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [adminToken, setAdminToken] = useState(null);
-  const [showLoginModal, setShowLoginModal] = useState(false);
-  const [passwordInput, setPasswordInput] = useState('');
-  const [loginError, setLoginError] = useState(null);
+  // Universal Auth State
+  const [user, setUser] = useState(() => {
+    const saved = localStorage.getItem('gtm_user');
+    return saved ? JSON.parse(saved) : null;
+  });
+  const [token, setToken] = useState(() => localStorage.getItem('gtm_token') || null);
+  const [authView, setAuthView] = useState('login'); // 'login' | 'signup'
+  const [showProfileModal, setShowProfileModal] = useState(false);
+
+  const isAdmin = user && user.role === 'ADMIN';
 
   const fetchData = async () => {
+    if (!token) {
+      setLoading(false);
+      return;
+    }
     try {
       setLoading(true);
-      const res = await fetch('http://localhost:3001/api/data');
+      const res = await fetch('http://localhost:3001/api/data', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       if (res.ok) {
         const data = await res.json();
         setBranches(data);
+      } else if (res.status === 401) {
+        // Token expired or invalid
+        handleLogout(false);
       }
     } catch (err) {
       console.error('Failed to fetch data from backend:', err);
@@ -35,7 +51,65 @@ function App() {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [token]);
+
+  // 15-Minute Inactivity Auto-Logout Timer
+  useEffect(() => {
+    if (!user || !token) return;
+
+    let timeoutId;
+    const INACTIVITY_TIME = 15 * 60 * 1000; // 15 menit
+
+    const handleTimeout = () => {
+      alert('⏰ Sesi Anda telah berakhir karena tidak ada aktivitas selama 15 menit. Silakan login kembali.');
+      handleLogout(false);
+    };
+
+    const resetTimer = () => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(handleTimeout, INACTIVITY_TIME);
+    };
+
+    // Set initial timer
+    resetTimer();
+
+    // Event listeners for activity
+    const events = ['mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart'];
+    events.forEach(e => window.addEventListener(e, resetTimer, { passive: true }));
+
+    return () => {
+      clearTimeout(timeoutId);
+      events.forEach(e => window.removeEventListener(e, resetTimer));
+    };
+  }, [user, token]);
+
+  const handleLoginSuccess = (newToken, newUser) => {
+    setToken(newToken);
+    setUser(newUser);
+    localStorage.setItem('gtm_token', newToken);
+    localStorage.setItem('gtm_user', JSON.stringify(newUser));
+    
+    if (newUser.role === 'USER' && newUser.branchName) {
+      setView('branch');
+      setActiveBranch(newUser.branchName);
+    } else {
+      setView('dashboard');
+    }
+  };
+
+  const handleLogout = (showAlert = true) => {
+    if (showAlert) {
+      const confirmLogout = window.confirm('Apakah Anda yakin ingin keluar dari portal?');
+      if (!confirmLogout) return;
+    }
+    setUser(null);
+    setToken(null);
+    localStorage.removeItem('gtm_user');
+    localStorage.removeItem('gtm_token');
+    setView('dashboard');
+    setAuthView('login');
+    setShowProfileModal(false);
+  };
 
   const goDashboard = () => {
     setView('dashboard');
@@ -52,33 +126,11 @@ function App() {
   };
 
   const goAdmin = () => {
-    setView('admin');
-  };
-
-  // Admin Login Handler
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    setLoginError(null);
-    try {
-      const res = await fetch('http://localhost:3001/api/auth', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password: passwordInput })
-      });
-      const result = await res.json();
-      if (res.ok && result.success) {
-        setIsAdmin(true);
-        setAdminToken(result.token);
-        setShowLoginModal(false);
-        setPasswordInput('');
-        goAdmin(); // Masuk ke tampilan admin
-      } else {
-        setLoginError('Password salah!');
-      }
-    } catch (err) {
-      setLoginError('Gagal terhubung ke server.');
-      console.error(err);
+    if (!isAdmin) {
+      alert('Akses ditolak. Hanya Administrator yang dapat membuka Admin Panel.');
+      return;
     }
+    setView('admin');
   };
 
   // Update activity field at PROJECT level
@@ -102,9 +154,12 @@ function App() {
     });
 
     try {
-      await fetch('http://localhost:3001/api/activities', {
+      const res = await fetch('http://localhost:3001/api/activities', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({
           branchName,
           projectName,
@@ -113,7 +168,13 @@ function App() {
           [fieldKey === 'planDate' ? 'planDate' : 'actualDate']: value
         })
       });
-      fetchData();
+      if (res.ok) {
+        fetchData();
+      } else if (res.status === 403 || res.status === 401) {
+        const errData = await res.json();
+        alert(`❌ ${errData.error || errData.message}`);
+        fetchData(); // revert optimistic update
+      }
     } catch (err) {
       console.error('Error saving activity:', err);
     }
@@ -149,9 +210,16 @@ function App() {
     try {
       const res = await fetch('http://localhost:3001/api/activities', {
         method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
         body: formData
       });
       if (res.ok) {
+        fetchData();
+      } else if (res.status === 403 || res.status === 401) {
+        const errData = await res.json();
+        alert(`❌ ${errData.error || errData.message}`);
         fetchData();
       }
     } catch (err) {
@@ -159,7 +227,7 @@ function App() {
     }
   };
 
-  // Verify activity at PROJECT level
+  // Verify activity at PROJECT level (Admin only)
   const verifyActivity = async (branchName, projectName, actType) => {
     if (!isAdmin) return;
 
@@ -168,7 +236,7 @@ function App() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${adminToken}`
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
           branchName,
@@ -195,54 +263,79 @@ function App() {
     }
   };
 
+  // 1. Auth Gate / Routing
+  if (!user || !token) {
+    if (authView === 'signup') {
+      return <SignUpPage branches={branches} onLoginSuccess={handleLoginSuccess} goLogin={() => setAuthView('login')} />;
+    }
+    return <LoginPage onLoginSuccess={handleLoginSuccess} goSignUp={() => setAuthView('signup')} />;
+  }
+
+  // 2. Loading screen when logged in
   if (loading && branches.length === 0) {
-    return <div style={{ padding: '80px 0', textAlign: 'center', color: '#94a3b8' }}>⏳ Memuat data dari server...</div>;
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#f8fafc', color: '#64748b', gap: '16px' }}>
+        <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: '#C8102E', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '20px', animation: 'pulse 1.5s infinite' }}>GTM</div>
+        <div style={{ fontWeight: 600, fontSize: '15px' }}>⏳ Memuat data dari server...</div>
+      </div>
+    );
   }
 
   return (
     <div>
-      {/* Header */}
+      {/* Top Bar Header */}
       <div className="header-container">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: '#C8102E', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: '15px', letterSpacing: '-0.5px' }}>GTM</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <div style={{ width: '42px', height: '42px', borderRadius: '12px', background: '#C8102E', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: '16px', letterSpacing: '-0.5px', boxShadow: '0 4px 10px rgba(200,16,46,0.3)' }}>GTM</div>
           <div>
-            <div style={{ fontSize: '16px', fontWeight: 700, color: '#0f172a' }}>GTM Activity Monitor</div>
-            <div style={{ fontSize: '12px', color: '#64748b' }}>Region Control Panel — Occupancy ODP per Proyek</div>
+            <div style={{ fontSize: '16px', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.3px' }}>GTM Activity Monitor</div>
+            <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 500 }}>
+              {isAdmin ? '🛡️ Administrator Control Panel' : `Branch: ${formatBranch(user.branchName)}`}
+            </div>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
           {view !== 'upload' && view !== 'admin' && (
             <button 
               onClick={goUpload} 
               className="btn-primary"
+              style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
             >
-              + Upload Activity (Branch)
+              <span>+</span> Upload Activity
             </button>
           )}
 
-          {/* Admin Icon Button */}
+          {isAdmin && view !== 'admin' && (
+            <button
+              onClick={goAdmin}
+              className="btn-primary"
+              style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+            >
+              <span>⚙️</span> Admin Panel
+            </button>
+          )}
+
+          {/* Profile Icon Button */}
           <button
-            onClick={() => {
-              if (isAdmin) {
-                goAdmin();
-              } else {
-                setShowLoginModal(true);
-              }
-            }}
-            title={isAdmin ? "Masuk ke Admin Panel" : "Login Admin"}
+            onClick={() => setShowProfileModal(true)}
+            title="Informasi Akun & Logout"
             style={{
-              background: isAdmin ? '#dcfce7' : '#f1f5f9',
-              border: '1px solid #cbd5e1',
+              width: '42px',
+              height: '42px',
               borderRadius: '50%',
-              width: '40px',
-              height: '40px',
+              border: '1.5px solid #cbd5e1',
+              background: '#f8fafc',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              cursor: 'pointer',
               fontSize: '18px',
-              transition: 'all 0.2s'
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
             }}
+            onMouseOver={e => { e.currentTarget.style.borderColor = '#C8102E'; e.currentTarget.style.background = '#fff'; }}
+            onMouseOut={e => { e.currentTarget.style.borderColor = '#cbd5e1'; e.currentTarget.style.background = '#f8fafc'; }}
           >
             {isAdmin ? '🛡️' : '👤'}
           </button>
@@ -255,7 +348,7 @@ function App() {
           <span onClick={goDashboard} style={{ cursor: 'pointer', color: '#C8102E', fontWeight: 600 }}>Dashboard</span>
           <span>/</span>
           <span style={{ fontWeight: 600, color: '#334155' }}>
-            {view === 'branch' ? activeBranch : view === 'upload' ? 'Upload Activity' : 'Admin Panel'}
+            {view === 'branch' ? activeBranch : view === 'upload' ? 'Upload Activity' : 'Admin Control Center'}
           </span>
         </div>
       )}
@@ -283,53 +376,64 @@ function App() {
           )}
           {view === 'admin' && (
             <AdminPanel 
-              token={adminToken} 
+              token={token} 
+              branches={branches}
               onUpdate={fetchData} 
               goDashboard={goDashboard} 
+              onLogout={() => handleLogout(true)}
+              verifyActivity={verifyActivity}
+              updateActivityField={updateActivityField}
+              uploadPhoto={uploadPhoto}
             />
           )}
         </div>
       </div>
 
-      {/* Admin Login Modal */}
-      {showLoginModal && (
-        <div onClick={() => setShowLoginModal(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200, padding: '24px' }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: '14px', width: '100%', maxWidth: '380px', padding: '24px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}>
-            <h3 style={{ fontSize: '18px', fontWeight: 700, color: '#0f172a', marginTop: 0, marginBottom: '8px' }}>🔐 Login Admin Pusat</h3>
-            <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '16px' }}>Masukkan master password untuk mengakses fitur verifikasi dan update database Excel.</p>
+      {/* User Profile Modal / Popup */}
+      {showProfileModal && (
+        <div onClick={() => setShowProfileModal(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300, padding: '20px', animation: 'fadeIn 0.2s' }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: '16px', width: '100%', maxWidth: '300px', padding: '20px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.15)', border: '1px solid #e2e8f0', textAlign: 'center', animation: 'fadeIn 0.2s' }}>
+            <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: isAdmin ? '#fee2e2' : '#f1f5f9', color: isAdmin ? '#C8102E' : '#334155', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '26px', margin: '0 auto 12px', border: '1px solid #cbd5e1' }}>
+              {isAdmin ? '🛡️' : '👤'}
+            </div>
             
-            <form onSubmit={handleLogin}>
-              <input 
-                type="password" 
-                placeholder="Master Password (cth: admin123)" 
-                value={passwordInput}
-                onChange={e => setPasswordInput(e.target.value)}
-                autoFocus
-                style={{ width: '100%', boxSizing: 'border-box', padding: '10px 14px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '14px', marginBottom: '12px' }}
-              />
-              
-              {loginError && (
-                <div style={{ color: '#dc2626', fontSize: '13px', marginBottom: '12px' }}>
-                  ❌ {loginError}
-                </div>
-              )}
+            <h3 style={{ fontSize: '16px', fontWeight: 800, color: '#0f172a', margin: '0 0 4px' }}>{user.fullName}</h3>
+            <div style={{ fontSize: '12.5px', color: '#64748b', marginBottom: '14px', fontWeight: 500 }}>@{user.username}</div>
 
-              <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                <button 
-                  type="button" 
-                  onClick={() => setShowLoginModal(false)}
-                  style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #cbd5e1', background: 'transparent', cursor: 'pointer', fontSize: '13px', fontWeight: 600 }}
-                >
-                  Batal
-                </button>
-                <button 
-                  type="submit"
-                  style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', background: '#C8102E', color: '#fff', cursor: 'pointer', fontSize: '13px', fontWeight: 700 }}
-                >
-                  Masuk
-                </button>
+            <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '10px', border: '1px solid #e2e8f0', marginBottom: '6px', textAlign: 'left', fontSize: '12.5px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                <span style={{ color: '#64748b' }}>Hak Akses:</span>
+                <span style={{ fontWeight: 700, color: isAdmin ? '#C8102E' : '#0f172a' }}>{isAdmin ? 'Master Admin' : 'Tim Daerah'}</span>
               </div>
-            </form>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: '#64748b' }}>Branch:</span>
+                <span style={{ fontWeight: 700, color: '#059669' }}>{isAdmin ? 'Semua Branch' : formatBranch(user.branchName)}</span>
+              </div>
+            </div>
+
+            {/* Small Log out button at bottom left */}
+            <div style={{ display: 'flex', justifyContent: 'flex-start', marginTop: '12px', borderTop: '1px solid #f1f5f9', paddingTop: '10px' }}>
+              <button
+                onClick={() => {
+                  setShowProfileModal(false);
+                  handleLogout(true);
+                }}
+                style={{
+                  padding: '2px 4px',
+                  border: 'none',
+                  background: 'transparent',
+                  color: '#64748b',
+                  fontWeight: 600,
+                  fontSize: '12px',
+                  cursor: 'pointer',
+                  transition: 'color 0.2s'
+                }}
+                onMouseOver={e => { e.currentTarget.style.color = '#dc2626'; e.currentTarget.style.textDecoration = 'underline'; }}
+                onMouseOut={e => { e.currentTarget.style.color = '#64748b'; e.currentTarget.style.textDecoration = 'none'; }}
+              >
+                Log out
+              </button>
+            </div>
           </div>
         </div>
       )}

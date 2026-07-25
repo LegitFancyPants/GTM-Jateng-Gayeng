@@ -75,3 +75,8 @@ export function computeStats(branches) {
     actVerified, actUploaded, actBelum, actCompletionPct, odpCount
   };
 }
+
+export function formatBranch(name) {
+  if (!name || name === 'Semua Branch' || name === 'Multi Branch') return name;
+  return name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
+}

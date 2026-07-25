@@ -92,6 +92,22 @@ async function seed() {
       }
     }
     
+    // Seed default Admin User
+    const bcrypt = require('bcryptjs');
+    const adminPassword = await bcrypt.hash('admin123', 10);
+    await prisma.user.upsert({
+      where: { username: 'admin' },
+      update: {},
+      create: {
+        username: 'admin',
+        password: adminPassword,
+        fullName: 'Administrator Pusat GTM',
+        role: 'ADMIN',
+        branchId: null
+      }
+    });
+    console.log('Default admin account seeded (username: admin, password: admin123)');
+
     console.log('Seeding completed successfully!');
   } catch (error) {
     console.error('Error during seeding:', error);

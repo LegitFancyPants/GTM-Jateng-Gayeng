@@ -11,6 +11,7 @@ model Branch {
   id       String    @id @default(uuid())
   name     String    @unique
   projects Project[]
+  users    User[]
 }
 
 model Project {
@@ -68,4 +69,15 @@ model ProjectActivity {
   updatedAt  DateTime  @updatedAt
 
   @@unique([projectId, type])
+}
+
+model User {
+  id        String   @id @default(uuid())
+  username  String   @unique
+  password  String   // Hashed password
+  fullName  String
+  role      String   @default("USER") // "USER" | "ADMIN"
+  branch    Branch?  @relation(fields: [branchId], references: [id])
+  branchId  String?  // Null jika ADMIN
+  createdAt DateTime @default(now())
 }
