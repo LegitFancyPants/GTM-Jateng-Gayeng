@@ -123,6 +123,35 @@ button {
   background: #f8fafc;
 }
 
+.nav-btn {
+  padding: 8px 16px;
+  border-radius: 50px;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  color: #475569;
+}
+
+.nav-btn:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+  border-color: #94a3b8;
+}
+
+.nav-btn.active {
+  background: #C8102E;
+  color: #ffffff;
+  border-color: #C8102E;
+  box-shadow: 0 4px 12px rgba(200, 16, 46, 0.25);
+  font-weight: 700;
+}
+
 .header-container {
   position: sticky; 
   top: 0; 
@@ -183,4 +212,94 @@ button {
   background: #f8fafc;
   font-weight: 600;
   color: #0f172a;
+}
+
+/* Profile Flyout Dropdown Card */
+.profile-dropdown-card {
+  position: absolute;
+  top: 64px;
+  right: 32px;
+  width: 290px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  box-shadow: 0 20px 25px -5px rgba(15, 23, 42, 0.12), 0 8px 10px -6px rgba(15, 23, 42, 0.08);
+  z-index: 100;
+  padding: 16px;
+  animation: flyoutSlideDown 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  transform-origin: top right;
+}
+
+@keyframes flyoutSlideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.profile-avatar-circle {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: #f8fafc;
+  border: 1.5px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.role-badge {
+  display: inline-block;
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+.role-badge.admin {
+  background: transparent;
+  color: #C8102E;
+  border: none;
+  padding: 0;
+}
+
+.role-badge.user {
+  background: transparent;
+  color: #0f172a;
+  border: none;
+  padding: 0;
+}
+
+.profile-menu-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #334155;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: left;
+}
+
+.profile-menu-item:hover {
+  background: #f8fafc;
+  color: #0f172a;
+}
+
+.profile-menu-item.logout {
+  color: #dc2626;
+}
+
+.profile-menu-item.logout:hover {
+  background: #fef2f2;
+  color: #b91c1c;
 }

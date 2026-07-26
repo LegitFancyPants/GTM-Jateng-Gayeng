@@ -27,9 +27,9 @@ export function occBg(status) {
 }
 
 export function actMeta(status) {
-  if (status === 'verified') return { label: 'Terverifikasi', bg: '#dcfce7', color: '#15803d' };
-  if (status === 'upload') return { label: 'Sudah Upload', bg: '#dbeafe', color: '#1d4ed8' };
-  return { label: 'Belum Dikerjakan', bg: '#f1f5f9', color: '#64748b' };
+  if (status === 'verified') return { label: 'Terverifikasi', bg: '#dcfce7', color: '#15803d', border: '1px solid #bbf7d0' };
+  if (status === 'upload') return { label: 'Menunggu Verifikasi', bg: '#fef3c7', color: '#b45309', border: '1px solid #fde68a' };
+  return { label: 'Belum Dikerjakan', bg: '#fee2e2', color: '#dc2626', border: '1px solid #fecaca' };
 }
 
 export function flatOdps(branches) {

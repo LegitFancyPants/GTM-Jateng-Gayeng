@@ -82,11 +82,14 @@ export default function Dashboard({ branches, goBranch }) {
         </div>
         <div className="card" style={{ padding: '18px 20px' }}>
           <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Status ODP</div>
-          <div style={{ display: 'flex', gap: '14px', marginTop: '12px' }}>
+          <div style={{ fontSize: '30px', fontWeight: 800, color: '#0f172a', marginTop: '6px' }}>
+            {kpi.odpCount} <span style={{ fontSize: '16px', fontWeight: 600, color: '#64748b' }}>ODP</span>
+          </div>
+          <div style={{ display: 'flex', gap: '12px', marginTop: '4px', alignItems: 'center' }}>
             {statusChips.map(s => (
-              <div key={s.label} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: s.color }} />
-                <div style={{ fontSize: '13px', color: '#334155' }}><b>{s.count}</b> {s.label}</div>
+              <div key={s.label} style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px', color: '#64748b' }}>
+                <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: s.color }} />
+                <span><strong style={{ color: '#334155' }}>{s.count}</strong> {s.label}</span>
               </div>
             ))}
           </div>
@@ -100,7 +103,7 @@ export default function Dashboard({ branches, goBranch }) {
 
       {/* Ranking */}
       <div className="card" style={{ padding: '22px 24px', marginBottom: '20px' }}>
-        <div style={{ fontSize: '15px', fontWeight: 700, color: '#0f172a' }}>Ranking Branch — Prioritas Peningkatan Occupancy</div>
+        <div style={{ fontSize: '15px', fontWeight: 700, color: '#0f172a' }}>Ranking Branch Prioritas Peningkatan Occupancy</div>
         <div style={{ fontSize: '12.5px', color: '#94a3b8', marginTop: '2px', marginBottom: '16px' }}>Diurutkan dari occupancy terendah</div>
         
         {ranking.map(b => (

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Dashboard from './components/Dashboard';
 import BranchView from './components/BranchView';
 import UploadView from './components/UploadView';
@@ -22,6 +22,43 @@ function App() {
   const [token, setToken] = useState(() => localStorage.getItem('gtm_token') || null);
   const [authView, setAuthView] = useState('login'); // 'login' | 'signup'
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showLogoutConfirmModal, setShowLogoutConfirmModal] = useState(false);
+
+  const dashboardTabRef = useRef(null);
+  const uploadTabRef = useRef(null);
+  const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0, opacity: 0 });
+
+  const updateIndicator = () => {
+    let target = null;
+    if (view === 'dashboard' || view === 'branch') {
+      target = dashboardTabRef.current;
+    } else if (view === 'upload') {
+      target = uploadTabRef.current;
+    }
+
+    if (target && target.offsetWidth > 0) {
+      setIndicatorStyle({
+        left: target.offsetLeft,
+        width: target.offsetWidth,
+        opacity: 1
+      });
+    } else {
+      setIndicatorStyle(prev => ({ ...prev, opacity: 0 }));
+    }
+  };
+
+  useEffect(() => {
+    updateIndicator();
+    const timer = setTimeout(updateIndicator, 50);
+    const timer2 = setTimeout(updateIndicator, 200);
+    window.addEventListener('resize', updateIndicator);
+
+    return () => {
+      clearTimeout(timer);
+      clearTimeout(timer2);
+      window.removeEventListener('resize', updateIndicator);
+    };
+  }, [view, loading, token, branches]);
 
   const isAdmin = user && user.role === 'ADMIN';
 
@@ -83,6 +120,40 @@ function App() {
     };
   }, [user, token]);
 
+  // Browser Back/Forward (popstate) Navigation Handler
+  useEffect(() => {
+    if (!user || !token) return;
+
+    // Initial state setup for browser history
+    if (!window.history.state) {
+      window.history.replaceState({ view, activeBranch }, '');
+    }
+
+    const handlePopState = (event) => {
+      if (event.state && event.state.view) {
+        setView(event.state.view);
+        setActiveBranch(event.state.activeBranch || null);
+      } else {
+        setView('dashboard');
+        setActiveBranch(null);
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [user, token, view, activeBranch]);
+
+  const navigateTo = (newView, newBranch = null, replace = false) => {
+    setView(newView);
+    setActiveBranch(newBranch);
+    const stateObj = { view: newView, activeBranch: newBranch };
+    if (replace) {
+      window.history.replaceState(stateObj, '');
+    } else {
+      window.history.pushState(stateObj, '');
+    }
+  };
+
   const handleLoginSuccess = (newToken, newUser) => {
     setToken(newToken);
     setUser(newUser);
@@ -90,39 +161,43 @@ function App() {
     localStorage.setItem('gtm_user', JSON.stringify(newUser));
     
     if (newUser.role === 'USER' && newUser.branchName) {
-      setView('branch');
-      setActiveBranch(newUser.branchName);
+      navigateTo('branch', newUser.branchName, true);
     } else {
-      setView('dashboard');
+      navigateTo('dashboard', null, true);
     }
   };
 
-  const handleLogout = (showAlert = true) => {
-    if (showAlert) {
-      const confirmLogout = window.confirm('Apakah Anda yakin ingin keluar dari portal?');
-      if (!confirmLogout) return;
-    }
+  const executeLogout = () => {
     setUser(null);
     setToken(null);
     localStorage.removeItem('gtm_user');
     localStorage.removeItem('gtm_token');
     setView('dashboard');
+    setActiveBranch(null);
     setAuthView('login');
     setShowProfileModal(false);
+    setShowLogoutConfirmModal(false);
+    window.history.replaceState(null, '');
+  };
+
+  const handleLogout = (showAlert = true) => {
+    if (showAlert) {
+      setShowLogoutConfirmModal(true);
+      return;
+    }
+    executeLogout();
   };
 
   const goDashboard = () => {
-    setView('dashboard');
-    setActiveBranch(null);
+    navigateTo('dashboard', null);
   };
 
   const goBranch = (name) => {
-    setView('branch');
-    setActiveBranch(name);
+    navigateTo('branch', name);
   };
 
   const goUpload = () => {
-    setView('upload');
+    navigateTo('upload', null);
   };
 
   const goAdmin = () => {
@@ -130,7 +205,7 @@ function App() {
       alert('Akses ditolak. Hanya Administrator yang dapat membuka Admin Panel.');
       return;
     }
-    setView('admin');
+    navigateTo('admin', null);
   };
 
   // Update activity field at PROJECT level
@@ -268,7 +343,7 @@ function App() {
     if (authView === 'signup') {
       return <SignUpPage branches={branches} onLoginSuccess={handleLoginSuccess} goLogin={() => setAuthView('login')} />;
     }
-    return <LoginPage onLoginSuccess={handleLoginSuccess} goSignUp={() => setAuthView('signup')} />;
+    return <LoginPage branches={branches} onLoginSuccess={handleLoginSuccess} goSignUp={() => setAuthView('signup')} />;
   }
 
   // 2. Loading screen when logged in
@@ -284,39 +359,101 @@ function App() {
   return (
     <div>
       {/* Top Bar Header */}
-      <div className="header-container">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+      <div className="header-container" style={{ position: 'relative' }}>
+        {/* Left: Brand Logo & Title */}
+        <div 
+          onClick={goDashboard} 
+          title="Klik untuk kembali ke Halaman Awal (Dashboard)"
+          style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '14px', 
+            cursor: 'pointer',
+            userSelect: 'none',
+            transition: 'opacity 0.15s ease'
+          }}
+          onMouseOver={e => e.currentTarget.style.opacity = '0.8'}
+          onMouseOut={e => e.currentTarget.style.opacity = '1'}
+        >
           <div style={{ width: '42px', height: '42px', borderRadius: '12px', background: '#C8102E', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: '16px', letterSpacing: '-0.5px', boxShadow: '0 4px 10px rgba(200,16,46,0.3)' }}>GTM</div>
           <div>
             <div style={{ fontSize: '16px', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.3px' }}>GTM Activity Monitor</div>
             <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 500 }}>
-              {isAdmin ? '🛡️ Administrator Control Panel' : `Branch: ${formatBranch(user.branchName)}`}
+              {isAdmin ? 'Administrator Control Panel' : `Branch: ${formatBranch(user.branchName)}`}
             </div>
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
-          {view !== 'upload' && view !== 'admin' && (
-            <button 
-              onClick={goUpload} 
-              className="btn-primary"
-              style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
-            >
-              <span>+</span> Upload Activity
-            </button>
-          )}
+        {/* Center: Symmetrically Centered Navigation Tabs */}
+        <div 
+          style={{ 
+            position: 'absolute', 
+            left: '50%', 
+            transform: 'translateX(-50%)', 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '32px',
+            height: '100%'
+          }}
+        >
+          <button 
+            ref={dashboardTabRef}
+            onClick={goDashboard} 
+            style={{
+              background: 'none',
+              border: 'none',
+              padding: '8px 4px',
+              fontSize: '14.5px',
+              fontWeight: (view === 'dashboard' || view === 'branch') ? 700 : 500,
+              color: (view === 'dashboard' || view === 'branch') ? '#C8102E' : '#64748b',
+              cursor: 'pointer',
+              transition: 'color 0.2s ease',
+              outline: 'none'
+            }}
+            onMouseOver={e => { if (view !== 'dashboard' && view !== 'branch') e.currentTarget.style.color = '#0f172a'; }}
+            onMouseOut={e => { if (view !== 'dashboard' && view !== 'branch') e.currentTarget.style.color = '#64748b'; }}
+          >
+            Dashboard
+          </button>
 
-          {isAdmin && view !== 'admin' && (
-            <button
-              onClick={goAdmin}
-              className="btn-primary"
-              style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
-            >
-              <span>⚙️</span> Admin Panel
-            </button>
-          )}
+          <button 
+            ref={uploadTabRef}
+            onClick={goUpload} 
+            style={{
+              background: 'none',
+              border: 'none',
+              padding: '8px 4px',
+              fontSize: '14.5px',
+              fontWeight: view === 'upload' ? 700 : 500,
+              color: view === 'upload' ? '#C8102E' : '#64748b',
+              cursor: 'pointer',
+              transition: 'color 0.2s ease',
+              outline: 'none'
+            }}
+            onMouseOver={e => { if (view !== 'upload') e.currentTarget.style.color = '#0f172a'; }}
+            onMouseOut={e => { if (view !== 'upload') e.currentTarget.style.color = '#64748b'; }}
+          >
+            Upload Activity
+          </button>
 
-          {/* Profile Icon Button */}
+          {/* Sliding underline highlight line */}
+          <div 
+            style={{
+              position: 'absolute',
+              bottom: 0,
+              height: '3px',
+              backgroundColor: '#C8102E',
+              borderRadius: '3px 3px 0 0',
+              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              left: `${indicatorStyle.left}px`,
+              width: `${indicatorStyle.width}px`,
+              opacity: indicatorStyle.opacity
+            }}
+          />
+        </div>
+
+        {/* Right: Profile Button */}
+        <div style={{ display: 'flex', alignItems: 'center' }}>
           <button
             onClick={() => setShowProfileModal(true)}
             title="Informasi Akun & Logout"
@@ -329,7 +466,6 @@ function App() {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: '18px',
               cursor: 'pointer',
               transition: 'all 0.2s',
               boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
@@ -337,7 +473,10 @@ function App() {
             onMouseOver={e => { e.currentTarget.style.borderColor = '#C8102E'; e.currentTarget.style.background = '#fff'; }}
             onMouseOut={e => { e.currentTarget.style.borderColor = '#cbd5e1'; e.currentTarget.style.background = '#f8fafc'; }}
           >
-            {isAdmin ? '🛡️' : '👤'}
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+              <circle cx="12" cy="7" r="4" />
+            </svg>
           </button>
         </div>
       </div>
@@ -389,49 +528,195 @@ function App() {
         </div>
       </div>
 
-      {/* User Profile Modal / Popup */}
+      {/* User Profile Flyout Dropdown */}
       {showProfileModal && (
-        <div onClick={() => setShowProfileModal(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300, padding: '20px', animation: 'fadeIn 0.2s' }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: '16px', width: '100%', maxWidth: '300px', padding: '20px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.15)', border: '1px solid #e2e8f0', textAlign: 'center', animation: 'fadeIn 0.2s' }}>
-            <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: isAdmin ? '#fee2e2' : '#f1f5f9', color: isAdmin ? '#C8102E' : '#334155', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '26px', margin: '0 auto 12px', border: '1px solid #cbd5e1' }}>
-              {isAdmin ? '🛡️' : '👤'}
-            </div>
-            
-            <h3 style={{ fontSize: '16px', fontWeight: 800, color: '#0f172a', margin: '0 0 4px' }}>{user.fullName}</h3>
-            <div style={{ fontSize: '12.5px', color: '#64748b', marginBottom: '14px', fontWeight: 500 }}>@{user.username}</div>
-
-            <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '10px', border: '1px solid #e2e8f0', marginBottom: '6px', textAlign: 'left', fontSize: '12.5px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                <span style={{ color: '#64748b' }}>Hak Akses:</span>
-                <span style={{ fontWeight: 700, color: isAdmin ? '#C8102E' : '#0f172a' }}>{isAdmin ? 'Master Admin' : 'Tim Daerah'}</span>
+        <>
+          {/* Transparent Backdrop Overlay to close on outside click */}
+          <div 
+            onClick={() => setShowProfileModal(false)} 
+            style={{ position: 'fixed', inset: 0, zIndex: 90 }}
+          />
+          
+          <div className="profile-dropdown-card">
+            {/* Header info */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '0 12px 14px 12px', borderBottom: '1px solid #f1f5f9' }}>
+              <div className="profile-avatar-circle">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                  <circle cx="12" cy="7" r="4" />
+                </svg>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: '#64748b' }}>Branch:</span>
-                <span style={{ fontWeight: 700, color: '#059669' }}>{isAdmin ? 'Semua Branch' : formatBranch(user.branchName)}</span>
+
+              <div style={{ overflow: 'hidden', textAlign: 'left' }}>
+                <div style={{ fontSize: '14.5px', fontWeight: 800, color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {user.fullName}
+                </div>
+                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 500, marginTop: '1px' }}>
+                  @{user.username}
+                </div>
               </div>
             </div>
 
-            {/* Small Log out button at bottom left */}
-            <div style={{ display: 'flex', justifyContent: 'flex-start', marginTop: '12px', borderTop: '1px solid #f1f5f9', paddingTop: '10px' }}>
+            {/* Account Details */}
+            <div style={{ padding: '12px 12px', borderBottom: '1px solid #f1f5f9', fontSize: '12.5px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <span style={{ color: '#64748b', fontWeight: 500 }}>Hak Akses</span>
+                <span className={`role-badge ${isAdmin ? 'admin' : 'user'}`}>
+                  {isAdmin ? 'Master Admin' : 'Tim Daerah'}
+                </span>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ color: '#64748b', fontWeight: 500 }}>Branch</span>
+                <span style={{ fontWeight: 700, color: '#0f172a' }}>
+                  {isAdmin ? 'Semua Branch' : formatBranch(user.branchName)}
+                </span>
+              </div>
+            </div>
+
+            {/* Action Items List */}
+            <div style={{ paddingTop: '8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              {isAdmin && (
+                <button
+                  onClick={() => {
+                    setShowProfileModal(false);
+                    goAdmin();
+                  }}
+                  className="profile-menu-item"
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="3" />
+                      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                    </svg>
+                    <span>Admin Panel</span>
+                  </div>
+                  <span style={{ color: '#94a3b8', fontSize: '12px' }}>→</span>
+                </button>
+              )}
+
+              {/* Log Out Item with Red Door Icon */}
               <button
                 onClick={() => {
                   setShowProfileModal(false);
                   handleLogout(true);
                 }}
-                style={{
-                  padding: '2px 4px',
-                  border: 'none',
-                  background: 'transparent',
-                  color: '#64748b',
-                  fontWeight: 600,
-                  fontSize: '12px',
-                  cursor: 'pointer',
-                  transition: 'color 0.2s'
-                }}
-                onMouseOver={e => { e.currentTarget.style.color = '#dc2626'; e.currentTarget.style.textDecoration = 'underline'; }}
-                onMouseOut={e => { e.currentTarget.style.color = '#64748b'; e.currentTarget.style.textDecoration = 'none'; }}
+                className="profile-menu-item logout"
               >
-                Log out
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                    <polyline points="16 17 21 12 16 7" />
+                    <line x1="21" y1="12" x2="9" y2="12" />
+                  </svg>
+                  <span>Log Out</span>
+                </div>
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Custom Logout Confirmation Modal */}
+      {showLogoutConfirmModal && (
+        <div 
+          onClick={() => setShowLogoutConfirmModal(false)}
+          style={{ 
+            position: 'fixed', 
+            inset: 0, 
+            background: 'rgba(15, 23, 42, 0.45)', 
+            backdropFilter: 'blur(4px)',
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center', 
+            zIndex: 300, 
+            padding: '20px', 
+            animation: 'fadeIn 0.2s ease-in-out' 
+          }}
+        >
+          <div 
+            onClick={e => e.stopPropagation()} 
+            style={{ 
+              background: '#ffffff', 
+              borderRadius: '16px', 
+              width: '100%', 
+              maxWidth: '340px', 
+              padding: '24px', 
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1)', 
+              border: '1px solid #e2e8f0', 
+              textAlign: 'center', 
+              animation: 'flyoutSlideDown 0.2s cubic-bezier(0.16, 1, 0.3, 1)' 
+            }}
+          >
+            <div 
+              style={{ 
+                width: '52px', 
+                height: '52px', 
+                borderRadius: '50%', 
+                background: '#fef2f2', 
+                color: '#dc2626', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center', 
+                margin: '0 auto 16px', 
+                border: '1px solid #fee2e2' 
+              }}
+            >
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                <polyline points="16 17 21 12 16 7" />
+                <line x1="21" y1="12" x2="9" y2="12" />
+              </svg>
+            </div>
+
+            <h3 style={{ fontSize: '17px', fontWeight: 800, color: '#0f172a', margin: '0 0 6px', letterSpacing: '-0.3px' }}>
+              Konfirmasi Log Out
+            </h3>
+            
+            <p style={{ fontSize: '13px', color: '#64748b', margin: '0 0 22px', lineHeight: 1.5 }}>
+              Apakah Anda yakin ingin keluar dari Portal GTM Activity Monitor?
+            </p>
+
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button
+                onClick={() => setShowLogoutConfirmModal(false)}
+                style={{
+                  flex: 1,
+                  padding: '10px 16px',
+                  borderRadius: '10px',
+                  border: '1px solid #cbd5e1',
+                  background: '#f8fafc',
+                  color: '#475569',
+                  fontSize: '13.5px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease'
+                }}
+                onMouseOver={e => { e.currentTarget.style.background = '#f1f5f9'; e.currentTarget.style.borderColor = '#94a3b8'; }}
+                onMouseOut={e => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.borderColor = '#cbd5e1'; }}
+              >
+                Batal
+              </button>
+
+              <button
+                onClick={executeLogout}
+                style={{
+                  flex: 1,
+                  padding: '10px 16px',
+                  borderRadius: '10px',
+                  border: '1px solid #dc2626',
+                  background: '#dc2626',
+                  color: '#ffffff',
+                  fontSize: '13.5px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 12px rgba(220, 38, 38, 0.25)',
+                  transition: 'all 0.15s ease'
+                }}
+                onMouseOver={e => { e.currentTarget.style.background = '#b91c1c'; e.currentTarget.style.borderColor = '#b91c1c'; }}
+                onMouseOut={e => { e.currentTarget.style.background = '#dc2626'; e.currentTarget.style.borderColor = '#dc2626'; }}
+              >
+                Ya, Log Out
               </button>
             </div>
           </div>

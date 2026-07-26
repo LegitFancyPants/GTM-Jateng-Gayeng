@@ -154,6 +154,60 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
+// Reset / Forgot Password with credentials verification (Username, Nama Lengkap, Branch)
+app.post('/api/auth/reset-password', async (req, res) => {
+  try {
+    const { username, fullName, branchName, newPassword } = req.body;
+    if (!username || !fullName || !branchName || !newPassword) {
+      return res.status(400).json({ success: false, message: 'Semua kolom (username, nama lengkap, branch, dan password baru) wajib diisi.' });
+    }
+
+    if (newPassword.length < 4) {
+      return res.status(400).json({ success: false, message: 'Password baru minimal harus 4 karakter.' });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { username },
+      include: { branch: true }
+    });
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'Kredensial tidak cocok. Username tidak ditemukan.' });
+    }
+
+    // Verify Full Name
+    if (user.fullName.trim().toLowerCase() !== fullName.trim().toLowerCase()) {
+      return res.status(400).json({ success: false, message: 'Kredensial tidak cocok. Nama Lengkap tidak sesuai dengan data akun.' });
+    }
+
+    // Verify Branch Name
+    if (user.role === 'USER') {
+      if (!user.branch || user.branch.name.trim().toLowerCase() !== branchName.trim().toLowerCase()) {
+        return res.status(400).json({ success: false, message: 'Kredensial tidak cocok. Branch tidak sesuai dengan data akun.' });
+      }
+    } else if (user.role === 'ADMIN') {
+      if (branchName.trim().toUpperCase() !== 'ADMIN' && branchName.trim().toLowerCase() !== (user.branch?.name || '').trim().toLowerCase()) {
+        return res.status(400).json({ success: false, message: 'Kredensial tidak cocok. Branch tidak sesuai untuk akun Administrator.' });
+      }
+    }
+
+    // Hash new password and update user in database
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { password: hashedPassword }
+    });
+
+    res.json({
+      success: true,
+      message: 'Password Anda telah berhasil diperbarui. Silakan login kembali dengan password baru Anda.'
+    });
+  } catch (error) {
+    console.error('Error in /api/auth/reset-password:', error);
+    res.status(500).json({ success: false, message: 'Terjadi kesalahan pada server saat mereset password.' });
+  }
+});
+
 // Verify session & get current user profile
 app.get('/api/auth/me', authenticateToken, (req, res) => {
   res.json({ success: true, user: req.user });

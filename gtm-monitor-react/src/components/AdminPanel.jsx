@@ -122,47 +122,45 @@ export default function AdminPanel({ token, branches = [], onUpdate, goDashboard
     <div style={{ animation: 'fadeIn 0.3s ease-in-out' }}>
       {/* Admin Header Banner */}
       <div className="card" style={{ padding: '24px 28px', marginBottom: '24px', background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)', color: '#fff', border: '1px solid #334155', position: 'relative', overflow: 'hidden' }}>
-        <div style={{ position: 'absolute', top: '-40px', right: '-40px', width: '180px', height: '180px', background: 'radial-gradient(circle, rgba(200,16,46,0.3) 0%, rgba(0,0,0,0) 70%)', borderRadius: '50%', pointerEvents: 'none' }} />
+        {/* Full-height Seamless Fading Red GTM Block on the Right */}
+        <div 
+          style={{ 
+            position: 'absolute', 
+            top: 0, 
+            right: 0, 
+            bottom: 0, 
+            width: '240px', 
+            background: 'linear-gradient(to right, rgba(200, 16, 46, 0) 0%, rgba(200, 16, 46, 0.25) 30%, rgba(200, 16, 46, 0.75) 100%)', 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'flex-end', 
+            pointerEvents: 'none',
+            paddingRight: '32px',
+            overflow: 'hidden'
+          }}
+        >
+          <span 
+            style={{ 
+              fontSize: '56px', 
+              fontWeight: 900, 
+              color: '#ffffff', 
+              letterSpacing: '2px', 
+              opacity: 0.2,
+              filter: 'blur(2.5px)',
+              userSelect: 'none'
+            }}
+          >
+            GTM
+          </span>
+        </div>
         
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', position: 'relative', zIndex: 1 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <div style={{ width: '52px', height: '52px', borderRadius: '14px', background: '#C8102E', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '26px', boxShadow: '0 10px 15px -3px rgba(200,16,46,0.4)' }}>
-              🛡️
-            </div>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <h2 style={{ fontSize: '22px', fontWeight: 800, margin: 0, color: '#f8fafc', letterSpacing: '-0.5px' }}>Administrator Control Center</h2>
-                <span style={{ fontSize: '11px', fontWeight: 700, padding: '3px 10px', borderRadius: '50px', background: '#059669', color: '#ecfdf5', border: '1px solid #10b981', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#fff', display: 'inline-block' }} />
-                  Active Session
-                </span>
-              </div>
-              <p style={{ fontSize: '13px', color: '#94a3b8', margin: '4px 0 0', fontWeight: 500 }}>
-                Pusat verifikasi bukti kegiatan GTM lapangan dan pembaruan database kapasitas ODP mingguan.
-              </p>
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-            <button 
-              onClick={goDashboard} 
-              style={{ padding: '9px 16px', borderRadius: '8px', border: '1px solid #475569', background: 'rgba(255,255,255,0.05)', color: '#e2e8f0', fontWeight: 600, fontSize: '13px', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '6px' }}
-              onMouseOver={e => e.currentTarget.style.background = 'rgba(255,255,255,0.15)'}
-              onMouseOut={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
-            >
-              <span>🏠</span> Dashboard
-            </button>
-            {onLogout && (
-              <button 
-                onClick={onLogout} 
-                style={{ padding: '9px 16px', borderRadius: '8px', border: '1px solid #ef4444', background: 'rgba(239,68,68,0.15)', color: '#fca5a5', fontWeight: 700, fontSize: '13px', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '6px' }}
-                onMouseOver={e => { e.currentTarget.style.background = '#ef4444'; e.currentTarget.style.color = '#fff'; }}
-                onMouseOut={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.15)'; e.currentTarget.style.color = '#fca5a5'; }}
-              >
-                <span>🚪</span> Logout Admin
-              </button>
-            )}
-          </div>
+        <div style={{ position: 'relative', zIndex: 1, paddingRight: '160px' }}>
+          <h2 style={{ fontSize: '22px', fontWeight: 800, margin: 0, color: '#f8fafc', letterSpacing: '-0.5px' }}>
+            Administrator Control Panel
+          </h2>
+          <p style={{ fontSize: '13.5px', color: '#94a3b8', margin: '6px 0 0', fontWeight: 500 }}>
+            Pusat verifikasi bukti kegiatan GTM lapangan dan pembaruan database kapasitas ODP mingguan.
+          </p>
         </div>
       </div>
 
@@ -216,7 +214,6 @@ export default function AdminPanel({ token, branches = [], onUpdate, goDashboard
             boxShadow: activeTab === 'monitoring' ? '0 4px 12px rgba(200,16,46,0.25)' : 'none'
           }}
         >
-          <span>📋</span>
           <span>Monitoring & Verifikasi Proyek</span>
           {stats.actUploaded > 0 && (
             <span style={{ background: activeTab === 'monitoring' ? '#fff' : '#f59e0b', color: activeTab === 'monitoring' ? '#C8102E' : '#fff', padding: '2px 8px', borderRadius: '50px', fontSize: '11px', fontWeight: 800 }}>
@@ -243,8 +240,7 @@ export default function AdminPanel({ token, branches = [], onUpdate, goDashboard
             boxShadow: activeTab === 'excel' ? '0 4px 12px rgba(200,16,46,0.25)' : 'none'
           }}
         >
-          <span>📥</span>
-          <span>Update Data Mingguan (Excel)</span>
+          <span>Update Data Mingguan</span>
         </button>
       </div>
 
@@ -277,9 +273,9 @@ export default function AdminPanel({ token, branches = [], onUpdate, goDashboard
                 style={{ padding: '8px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', fontWeight: 600, color: statusFilter === 'need_review' ? '#d97706' : '#0f172a', background: statusFilter === 'need_review' ? '#fffbeb' : '#fff', cursor: 'pointer' }}
               >
                 <option value="all">Semua Proyek</option>
-                <option value="need_review">⚡ Menunggu Verifikasi ({stats.actUploaded})</option>
-                <option value="verified">✅ Sudah Terverifikasi</option>
-                <option value="pending">⏳ Belum Dikerjakan</option>
+                <option value="need_review">Menunggu Verifikasi ({stats.actUploaded})</option>
+                <option value="verified">Sudah Terverifikasi</option>
+                <option value="pending">Belum Dikerjakan</option>
               </select>
             </div>
 
@@ -330,56 +326,58 @@ export default function AdminPanel({ token, branches = [], onUpdate, goDashboard
             </div>
           )}
         </div>
-      )}
-
-      {/* TAB 2: UPDATE DATABASE MINGGUAN (EXCEL) */}
+      )}      {/* TAB 2: UPDATE DATABASE MINGGUAN (EXCEL) */}
       {activeTab === 'excel' && (
         <div className="fade-in">
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr', gap: '24px', alignItems: 'start' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr', gap: '24px', alignItems: 'stretch' }}>
             {/* Left Column: Instructions */}
-            <div className="card" style={{ padding: '24px 26px', background: '#f8fafc', border: '1px solid #e2e8f0' }}>
-              <h3 style={{ fontSize: '17px', fontWeight: 800, color: '#0f172a', marginTop: 0, marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span>ℹ️</span> Panduan Pembaruan Database
-              </h3>
-              <p style={{ fontSize: '13.5px', color: '#475569', lineHeight: 1.6, marginBottom: '16px' }}>
-                Sistem dirancang untuk memperbarui kapasitas port ODP mingguan secara otomatis tanpa mengganggu data kegiatan lapangan yang sudah ada.
-              </p>
+            <div className="card" style={{ padding: '28px 28px', background: '#f8fafc', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+              <div>
+                <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#0f172a', marginTop: 0, marginBottom: '12px' }}>
+                  Panduan Pembaruan Database
+                </h3>
+                <p style={{ fontSize: '13.5px', color: '#475569', lineHeight: 1.6, marginBottom: '20px' }}>
+                  Sistem dirancang untuk memperbarui kapasitas port ODP mingguan secara otomatis tanpa mengganggu data kegiatan lapangan yang sudah ada.
+                </p>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', fontSize: '13px' }}>
-                <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
-                  <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: '#C8102E', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '12px', flexShrink: 0 }}>1</div>
-                  <div>
-                    <b style={{ color: '#0f172a' }}>Persiapkan File Excel (.xlsx / .csv)</b>
-                    <p style={{ margin: '2px 0 0', color: '#64748b', lineHeight: 1.5 }}>Pastikan kolom memiliki header baku: <code>Branch</code>, <code>Project</code>, <code>WOK</code>, <code>ODP</code>, <code>Avai</code>, <code>Used</code>, dan <code>Total</code>.</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', fontSize: '13px' }}>
+                  <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                    <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: '#e2e8f0', color: '#475569', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '12px', flexShrink: 0 }}>1</div>
+                    <div>
+                      <b style={{ color: '#0f172a' }}>Persiapkan File Excel (.xlsx / .csv)</b>
+                      <p style={{ margin: '2px 0 0', color: '#64748b', lineHeight: 1.5 }}>Pastikan kolom memiliki header baku: <code>Branch</code>, <code>Project</code>, <code>WOK</code>, <code>ODP</code>, <code>Avai</code>, <code>Used</code>, dan <code>Total</code>.</p>
+                    </div>
                   </div>
-                </div>
 
-                <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
-                  <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: '#C8102E', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '12px', flexShrink: 0 }}>2</div>
-                  <div>
-                    <b style={{ color: '#0f172a' }}>Pencocokan ODP Otomatis (Upsert)</b>
-                    <p style={{ margin: '2px 0 0', color: '#64748b', lineHeight: 1.5 }}>Sistem akan mencocokkan nama ODP. Jika sudah ada, angka kapasitas akan diupdate. Jika ODP baru, akan otomatis ditambahkan.</p>
+                  <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                    <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: '#e2e8f0', color: '#475569', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '12px', flexShrink: 0 }}>2</div>
+                    <div>
+                      <b style={{ color: '#0f172a' }}>Pencocokan ODP Otomatis (Upsert)</b>
+                      <p style={{ margin: '2px 0 0', color: '#64748b', lineHeight: 1.5 }}>Sistem akan mencocokkan nama ODP. Jika sudah ada, angka kapasitas akan diupdate. Jika ODP baru, akan otomatis ditambahkan.</p>
+                    </div>
                   </div>
-                </div>
 
-                <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
-                  <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: '#10b981', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '12px', flexShrink: 0 }}>✓</div>
-                  <div>
-                    <b style={{ color: '#0f172a' }}>Riwayat Kegiatan Tetap Aman</b>
-                    <p style={{ margin: '2px 0 0', color: '#64748b', lineHeight: 1.5 }}>Foto bukti kegiatan, tanggal rencana/aktual, dan status verifikasi mingguan sebelumnya <b>tidak akan terhapus atau reset</b>.</p>
+                  <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                    <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: '#e2e8f0', color: '#475569', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '12px', flexShrink: 0 }}>3</div>
+                    <div>
+                      <b style={{ color: '#0f172a' }}>Riwayat Kegiatan Tetap Aman</b>
+                      <p style={{ margin: '2px 0 0', color: '#64748b', lineHeight: 1.5 }}>Foto bukti kegiatan, tanggal rencana/aktual, dan status verifikasi mingguan sebelumnya <b>tidak akan terhapus atau reset</b>.</p>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
 
             {/* Right Column: Upload Box */}
-            <div className="card" style={{ padding: '28px 32px', border: '1px solid #cbd5e1', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.05)' }}>
-              <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#0f172a', marginTop: 0, marginBottom: '6px' }}>
-                📤 Upload Excel Update Mingguan
-              </h3>
-              <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '22px' }}>
-                Pilih file dari komputer Anda lalu tekan tombol pembaruan di bawah.
-              </p>
+            <div className="card" style={{ padding: '28px 32px', border: '1px solid #cbd5e1', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+              <div>
+                <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#0f172a', marginTop: 0, marginBottom: '6px' }}>
+                  Upload Berkas Update Mingguan
+                </h3>
+                <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '22px' }}>
+                  Pilih file dari komputer Anda lalu tekan tombol pembaruan di bawah.
+                </p>
+              </div>
 
               <form onSubmit={handleUpload}>
                 <div style={{ marginBottom: '22px' }}>
@@ -399,17 +397,55 @@ export default function AdminPanel({ token, branches = [], onUpdate, goDashboard
                       textAlign: 'center'
                     }}
                   >
-                    <div style={{ fontSize: '36px', marginBottom: '8px' }}>
-                      {file ? '📊' : '📁'}
-                    </div>
                     {file ? (
-                      <div>
-                        <div style={{ fontSize: '15px', fontWeight: 700, color: '#166534' }}>{file.name}</div>
+                      <div onClick={e => e.stopPropagation()}>
+                        <div style={{ fontSize: '15px', fontWeight: 700, color: '#166534', wordBreak: 'break-all' }}>{file.name}</div>
                         <div style={{ fontSize: '12px', color: '#15803d', marginTop: '4px' }}>{(file.size / 1024).toFixed(1)} KB · Siap diunggah</div>
-                        <span style={{ display: 'inline-block', marginTop: '10px', fontSize: '12px', fontWeight: 700, color: '#059669', textDecoration: 'underline' }}>Klik untuk mengganti file</span>
+                        
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px', marginTop: '14px' }}>
+                          <label 
+                            htmlFor="excel-upload-input"
+                            style={{ 
+                              fontSize: '12.5px', 
+                              fontWeight: 700, 
+                              color: '#059669', 
+                              cursor: 'pointer',
+                              textDecoration: 'underline'
+                            }}
+                          >
+                            Ganti File
+                          </label>
+
+                          <span style={{ color: '#cbd5e1' }}>•</span>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setFile(null);
+                              setMessage(null);
+                              setError(null);
+                            }}
+                            style={{
+                              border: 'none',
+                              background: 'transparent',
+                              color: '#dc2626',
+                              fontSize: '12.5px',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              padding: 0,
+                              textDecoration: 'underline',
+                              transition: 'color 0.15s'
+                            }}
+                            onMouseOver={e => e.currentTarget.style.color = '#991b1b'}
+                            onMouseOut={e => e.currentTarget.style.color = '#dc2626'}
+                          >
+                            Hapus File
+                          </button>
+                        </div>
                       </div>
                     ) : (
                       <div>
+                        <div style={{ fontSize: '36px', marginBottom: '8px' }}>📁</div>
                         <div style={{ fontSize: '15px', fontWeight: 700, color: '#334155' }}>Klik untuk memilih file Excel</div>
                         <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>Mendukung format .xlsx, .xls, atau .csv</div>
                       </div>
@@ -465,10 +501,7 @@ export default function AdminPanel({ token, branches = [], onUpdate, goDashboard
                       <span>Sedang Membaca & Memperbarui Database...</span>
                     </>
                   ) : (
-                    <>
-                      <span>📤</span>
-                      <span>Proses Update Database Mingguan</span>
-                    </>
+                    <span>Proses Update Database Mingguan</span>
                   )}
                 </button>
               </form>
