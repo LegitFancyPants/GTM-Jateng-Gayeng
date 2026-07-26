@@ -3,3 +3,12 @@ node_modules
 .env
 
 /generated/prisma
+
+# SQLite database files (local only, use Neon for cloud DB)
+dev.db
+prisma/dev.db
+*.db
+
+# Local photo uploads (photos are stored in Cloudinary, not locally)
+uploads/
+temp/

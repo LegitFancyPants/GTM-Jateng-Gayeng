@@ -7,6 +7,8 @@ const path = require('path');
 const fs = require('fs');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
+const cloudinary = require('cloudinary');
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
 
 const app = express();
 const prisma = new PrismaClient();
@@ -15,24 +17,29 @@ const prisma = new PrismaClient();
 const PORT = process.env.PORT || 3001;
 const JWT_SECRET = process.env.JWT_SECRET || 'gtm-super-secret-key-2026';
 
+// Cloudinary Configuration
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
 app.use(cors());
 app.use(express.json());
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Multer storage for photos
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, 'uploads/');
+// Cloudinary Multer Storage for activity photos
+const cloudinaryStorage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: 'gtm-activities',
+    allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
+    transformation: [{ quality: 'auto', fetch_format: 'auto' }],
   },
-  filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
-  }
 });
-const upload = multer({ storage: storage });
+const upload = multer({ storage: cloudinaryStorage });
 
-// Multer storage for Excel files
-const excelUpload = multer({ dest: 'temp/' });
+// Multer memory storage for Excel files (temp only)
+const excelUpload = multer({ storage: multer.memoryStorage() });
 
 // --- Authentication Middlewares ---
 
@@ -211,18 +218,24 @@ app.get('/api/data', authenticateToken, async (req, res) => {
 app.post('/api/activities', authenticateToken, upload.single('photo'), async (req, res) => {
   try {
     const { projectName, branchName, type, status, planDate, actualDate } = req.body;
-    let photoUrl = req.file ? `/uploads/${req.file.filename}` : undefined;
+    // Cloudinary returns the secure URL directly in req.file.path
+    let photoUrl = req.file ? req.file.path : undefined;
 
     // Security Check: USER can only update their assigned branch
     if (req.user && req.user.role === 'USER' && req.user.branchName !== branchName) {
-      if (req.file) fs.unlinkSync(req.file.path);
+      // If a file was uploaded to Cloudinary, delete it
+      if (req.file && req.file.filename) {
+        await cloudinary.v2.uploader.destroy(req.file.filename).catch(() => {});
+      }
       return res.status(403).json({ error: `Akses ditolak. Anda hanya berhak memodifikasi data di branch ${req.user.branchName}.` });
     }
 
     // Find the Project by name + branch
     const branch = await prisma.branch.findUnique({ where: { name: branchName } });
     if (!branch) {
-      if (req.file) fs.unlinkSync(req.file.path);
+      if (req.file && req.file.filename) {
+        await cloudinary.v2.uploader.destroy(req.file.filename).catch(() => {});
+      }
       return res.status(404).json({ error: 'Branch not found' });
     }
 
@@ -231,7 +244,9 @@ app.post('/api/activities', authenticateToken, upload.single('photo'), async (re
     });
 
     if (!project) {
-      if (req.file) fs.unlinkSync(req.file.path);
+      if (req.file && req.file.filename) {
+        await cloudinary.v2.uploader.destroy(req.file.filename).catch(() => {});
+      }
       return res.status(404).json({ error: 'Project not found' });
     }
 
@@ -262,7 +277,6 @@ app.post('/api/activities', authenticateToken, upload.single('photo'), async (re
     res.json({ success: true, activity });
   } catch (error) {
     console.error(error);
-    if (req.file) fs.unlinkSync(req.file.path);
     res.status(500).json({ error: 'Failed to save activity' });
   }
 });
@@ -311,7 +325,8 @@ app.post('/api/admin/import-excel', requireAdmin, excelUpload.single('file'), as
       return res.status(400).json({ error: 'No file uploaded' });
     }
 
-    const workbook = xlsx.readFile(req.file.path);
+    // Read from buffer (memoryStorage)
+    const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
     const sheetName = workbook.SheetNames[0];
     const sheet = workbook.Sheets[sheetName];
     const data = xlsx.utils.sheet_to_json(sheet);
@@ -368,13 +383,9 @@ app.post('/api/admin/import-excel', requireAdmin, excelUpload.single('file'), as
       });
     }
 
-    // Clean up temp file
-    fs.unlinkSync(req.file.path);
-
     res.json({ success: true, message: 'Database updated successfully' });
   } catch (error) {
     console.error(error);
-    if (req.file) fs.unlinkSync(req.file.path);
     res.status(500).json({ error: 'Failed to import Excel data' });
   }
 });
