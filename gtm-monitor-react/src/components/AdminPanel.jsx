@@ -166,28 +166,28 @@ export default function AdminPanel({ token, branches = [], onUpdate, goDashboard
 
       {/* Admin KPI Summary Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '24px' }}>
-        <div className="card" style={{ padding: '18px 20px', borderLeft: '4px solid #3b82f6' }}>
+        <div className="card" style={{ padding: '18px 20px' }}>
           <div style={{ fontSize: '11.5px', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Total Branch / Proyek</div>
           <div style={{ fontSize: '24px', fontWeight: 800, color: '#0f172a', marginTop: '6px' }}>{branches.length} / {totalProjects}</div>
           <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '4px' }}>Terkoneksi dalam sistem GTM</div>
         </div>
-        
-        <div className="card" style={{ padding: '18px 20px', borderLeft: '4px solid #10b981' }}>
+
+        <div className="card" style={{ padding: '18px 20px' }}>
           <div style={{ fontSize: '11.5px', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Total ODP / Kapasitas</div>
           <div style={{ fontSize: '24px', fontWeight: 800, color: '#0f172a', marginTop: '6px' }}>{stats.odpCount} <span style={{ fontSize: '16px', fontWeight: 600, color: '#64748b' }}>ODP</span></div>
           <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '4px' }}>{stats.totalUsed} / {stats.totalPort} port terpakai ({stats.occRate}%)</div>
         </div>
 
-        <div className="card" style={{ padding: '18px 20px', borderLeft: '4px solid #f59e0b', background: stats.actUploaded > 0 ? '#fffbeb' : '#fff', transition: 'all 0.3s' }}>
-          <div style={{ fontSize: '11.5px', color: stats.actUploaded > 0 ? '#b45309' : '#64748b', fontWeight: 700, textTransform: 'uppercase', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div className="card" style={{ padding: '18px 20px' }}>
+          <div style={{ fontSize: '11.5px', color: '#64748b', fontWeight: 700, textTransform: 'uppercase', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <span>Menunggu Verifikasi</span>
             {stats.actUploaded > 0 && <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#f59e0b', display: 'inline-block' }} />}
           </div>
-          <div style={{ fontSize: '24px', fontWeight: 800, color: stats.actUploaded > 0 ? '#d97706' : '#0f172a', marginTop: '6px' }}>{stats.actUploaded} <span style={{ fontSize: '16px', fontWeight: 600, color: stats.actUploaded > 0 ? '#b45309' : '#64748b' }}>kegiatan</span></div>
-          <div style={{ fontSize: '12px', color: stats.actUploaded > 0 ? '#92400e' : '#94a3b8', marginTop: '4px', fontWeight: stats.actUploaded > 0 ? 600 : 400 }}>Butuh tindakan review admin</div>
+          <div style={{ fontSize: '24px', fontWeight: 800, color: '#0f172a', marginTop: '6px' }}>{stats.actUploaded} <span style={{ fontSize: '16px', fontWeight: 600, color: '#64748b' }}>kegiatan</span></div>
+          <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '4px' }}>Butuh tindakan review admin</div>
         </div>
 
-        <div className="card" style={{ padding: '18px 20px', borderLeft: '4px solid #C8102E' }}>
+        <div className="card" style={{ padding: '18px 20px' }}>
           <div style={{ fontSize: '11.5px', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Progress Verifikasi GTM</div>
           <div style={{ fontSize: '24px', fontWeight: 800, color: '#0f172a', marginTop: '6px' }}>{stats.actCompletionPct}%</div>
           <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '4px' }}>{stats.actVerified} kegiatan sudah terverifikasi</div>

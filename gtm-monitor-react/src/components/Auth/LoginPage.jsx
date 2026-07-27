@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-export default function LoginPage({ branches = [], onLoginSuccess, goSignUp }) {
+export default function LoginPage({ branches = [], onLoginSuccess }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -366,29 +366,6 @@ export default function LoginPage({ branches = [], onLoginSuccess, goSignUp }) {
             </div>
           </form>
         )}
-
-        {/* Footer / Switch to Sign Up */}
-        <div style={{ marginTop: '28px', paddingTop: '20px', borderTop: '1px solid #f1f5f9', textAlign: 'center' }}>
-          <p style={{ fontSize: '13.5px', color: '#64748b', margin: 0 }}>
-            Belum memiliki akun?{' '}
-            <button 
-              onClick={goSignUp}
-              style={{ 
-                background: 'transparent', 
-                border: 'none', 
-                color: '#C8102E', 
-                fontWeight: 700, 
-                cursor: 'pointer', 
-                padding: 0, 
-                fontSize: '13.5px' 
-              }}
-              onMouseOver={e => e.currentTarget.style.textDecoration = 'underline'}
-              onMouseOut={e => e.currentTarget.style.textDecoration = 'none'}
-            >
-              Daftar di sini
-            </button>
-          </p>
-        </div>
 
       </div>
     </div>

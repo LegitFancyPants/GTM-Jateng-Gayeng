@@ -93,8 +93,8 @@ const requireAdmin = (req, res, next) => {
 
 // --- Auth Endpoints ---
 
-// Register / Sign Up (User Baru)
-app.post('/api/auth/register', async (req, res) => {
+// Register User Baru (khusus Admin — akun WOK sudah dibuat tetap, bukan self-signup)
+app.post('/api/auth/register', requireAdmin, async (req, res) => {
   try {
     const { username, password, fullName, branchName } = req.body;
     if (!username || !password || !fullName || !branchName) {

@@ -4,7 +4,6 @@ import BranchView from './components/BranchView';
 import UploadView from './components/UploadView';
 import AdminPanel from './components/AdminPanel';
 import LoginPage from './components/Auth/LoginPage';
-import SignUpPage from './components/Auth/SignUpPage';
 import { formatBranch } from './utils';
 import './index.css';
 
@@ -20,7 +19,6 @@ function App() {
     return saved ? JSON.parse(saved) : null;
   });
   const [token, setToken] = useState(() => localStorage.getItem('gtm_token') || null);
-  const [authView, setAuthView] = useState('login'); // 'login' | 'signup'
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showLogoutConfirmModal, setShowLogoutConfirmModal] = useState(false);
 
@@ -362,10 +360,7 @@ function App() {
 
   // 1. Auth Gate / Routing
   if (!user || !token) {
-    if (authView === 'signup') {
-      return <SignUpPage branches={branches} onLoginSuccess={handleLoginSuccess} goLogin={() => setAuthView('login')} />;
-    }
-    return <LoginPage branches={branches} onLoginSuccess={handleLoginSuccess} goSignUp={() => setAuthView('signup')} />;
+    return <LoginPage branches={branches} onLoginSuccess={handleLoginSuccess} />;
   }
 
   // 2. Loading screen when logged in
