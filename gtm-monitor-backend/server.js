@@ -28,8 +28,9 @@ app.use(cors());
 app.use(express.json());
 
 // Cloudinary Multer Storage for activity photos
+// PENTING: multer-storage-cloudinary v4 membutuhkan API v2
 const cloudinaryStorage = new CloudinaryStorage({
-  cloudinary: cloudinary,
+  cloudinary: cloudinary.v2,
   params: {
     folder: 'gtm-activities',
     allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
@@ -272,8 +273,12 @@ app.get('/api/data', authenticateToken, async (req, res) => {
 app.post('/api/activities', authenticateToken, upload.single('photo'), async (req, res) => {
   try {
     const { projectName, branchName, type, status, planDate, actualDate } = req.body;
-    // Cloudinary returns the secure URL directly in req.file.path
-    let photoUrl = req.file ? req.file.path : undefined;
+    // Cloudinary returns the secure URL — coba berbagai properti sebagai fallback
+    let photoUrl = req.file
+      ? (req.file.path || req.file.secure_url || req.file.url || undefined)
+      : undefined;
+    console.log('[Upload] req.file info:', req.file ? { path: req.file.path, secure_url: req.file.secure_url, filename: req.file.filename, size: req.file.size } : 'no file');
+    console.log('[Upload] photoUrl resolved:', photoUrl);
 
     // Security Check: USER can only update their assigned branch
     if (req.user && req.user.role === 'USER' && req.user.branchName !== branchName) {
@@ -304,7 +309,7 @@ app.post('/api/activities', authenticateToken, upload.single('photo'), async (re
       return res.status(404).json({ error: 'Project not found' });
     }
 
-    // Upsert project activity
+    // Upsert project activity (dengan userId untuk tracking)
     const activity = await prisma.projectActivity.upsert({
       where: {
         projectId_type: {
@@ -316,7 +321,8 @@ app.post('/api/activities', authenticateToken, upload.single('photo'), async (re
         status: status || undefined,
         planDate: planDate ? new Date(planDate) : undefined,
         actualDate: actualDate ? new Date(actualDate) : undefined,
-        ...(photoUrl && { photoUrl })
+        ...(photoUrl && { photoUrl }),
+        userId: req.user?.id || undefined  // update userId jika ada perubahan
       },
       create: {
         projectId: project.id,
@@ -324,7 +330,8 @@ app.post('/api/activities', authenticateToken, upload.single('photo'), async (re
         status: status || 'belum',
         planDate: planDate ? new Date(planDate) : undefined,
         actualDate: actualDate ? new Date(actualDate) : undefined,
-        photoUrl: photoUrl
+        photoUrl: photoUrl,
+        userId: req.user?.id || undefined  // simpan siapa yang upload
       }
     });
 

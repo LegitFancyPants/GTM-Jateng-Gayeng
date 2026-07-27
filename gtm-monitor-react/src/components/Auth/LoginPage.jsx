@@ -12,11 +12,19 @@ export default function LoginPage({ branches = [], onLoginSuccess, goSignUp }) {
   const [resetUsername, setResetUsername] = useState('');
   const [resetFullName, setResetFullName] = useState('');
   
-  const availableBranches = branches && branches.length > 0 
-    ? branches.map(b => typeof b === 'string' ? b : b.name)
-    : ['BEKASI', 'BOGOR', 'PURWOKERTO', 'BANDUNG', 'CIREBON', 'TEGAL', 'SEMARANG', 'SURAKARTA', 'YOGYAKARTA', 'SURABAYA'];
+  // Daftar 6 branch resmi (urut berdasarkan ID 1-6)
+  const OFFICIAL_BRANCHES = [
+    'MAGELANG',
+    'PEKALONGAN',
+    'PURWOKERTO',
+    'SEMARANG',
+    'SURAKARTA',
+    'YOGYAKARTA',
+  ];
 
-  const [resetBranchName, setResetBranchName] = useState(availableBranches[0] || 'PURWOKERTO');
+  const availableBranches = OFFICIAL_BRANCHES;
+
+  const [resetBranchName, setResetBranchName] = useState(availableBranches[0]);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 

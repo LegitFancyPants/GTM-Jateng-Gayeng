@@ -291,14 +291,36 @@ function App() {
         body: formData
       });
       if (res.ok) {
+        const resData = await res.json();
+        const realPhotoUrl = resData?.activity?.photoUrl;
+        // Update state langsung dengan photoUrl asli dari server (Cloudinary URL)
+        setBranches(prev => {
+          const newBranches = JSON.parse(JSON.stringify(prev));
+          const b = newBranches.find(x => x.name === branchName);
+          const p = b?.projects.find(x => x.name === projectName);
+          if (p) {
+            let a = p.activities?.find(x => x.type === actType);
+            if (a) {
+              a.photoUrl = realPhotoUrl || a.photoUrl;
+              a.status = 'upload';
+            }
+          }
+          return newBranches;
+        });
+        // Fetch ulang untuk sinkronisasi penuh dengan database
         fetchData();
       } else if (res.status === 403 || res.status === 401) {
         const errData = await res.json();
         alert(`❌ ${errData.error || errData.message}`);
         fetchData();
+      } else {
+        // Upload gagal, kembalikan state ke kondisi semula
+        fetchData();
       }
     } catch (err) {
       console.error('Error uploading photo:', err);
+      // Kembalikan state jika error
+      fetchData();
     }
   };
 

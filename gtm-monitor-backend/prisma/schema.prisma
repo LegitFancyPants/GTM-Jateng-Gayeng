@@ -8,7 +8,7 @@ generator client {
 }
 
 model Branch {
-  id       String    @id @default(uuid())
+  id       Int       @id @default(autoincrement())
   name     String    @unique
   projects Project[]
   users    User[]
@@ -19,7 +19,7 @@ model Project {
   name       String
   wok        String
   branch     Branch            @relation(fields: [branchId], references: [id])
-  branchId   String
+  branchId   Int
   odps       Odp[]
   activities ProjectActivity[]
 }
@@ -65,6 +65,9 @@ model ProjectActivity {
   project    Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
   projectId  String
 
+  user       User?     @relation(fields: [userId], references: [id])
+  userId     Int?
+
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
 
@@ -72,12 +75,13 @@ model ProjectActivity {
 }
 
 model User {
-  id        String   @id @default(uuid())
-  username  String   @unique
-  password  String   // Hashed password
-  fullName  String
-  role      String   @default("USER") // "USER" | "ADMIN"
-  branch    Branch?  @relation(fields: [branchId], references: [id])
-  branchId  String?  // Null jika ADMIN
-  createdAt DateTime @default(now())
+  id         Int               @id @default(autoincrement())
+  username   String            @unique
+  password   String            // Hashed password
+  fullName   String
+  role       String            @default("USER") // "USER" | "ADMIN"
+  branch     Branch?           @relation(fields: [branchId], references: [id])
+  branchId   Int?              // Null jika ADMIN
+  activities ProjectActivity[]
+  createdAt  DateTime          @default(now())
 }

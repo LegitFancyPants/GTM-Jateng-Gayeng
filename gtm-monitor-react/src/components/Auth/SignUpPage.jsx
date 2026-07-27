@@ -5,12 +5,20 @@ export default function SignUpPage({ branches = [], onLoginSuccess, goLogin }) {
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
   
-  // Use branches from prop or default fallbacks
-  const availableBranches = branches && branches.length > 0 
-    ? branches.map(b => typeof b === 'string' ? b : b.name)
-    : ['BEKASI', 'BOGOR', 'PURWOKERTO', 'BANDUNG', 'CIREBON', 'TEGAL', 'SEMARANG', 'SURAKARTA', 'YOGYAKARTA', 'SURABAYA'];
+  // Daftar 6 branch resmi (urut berdasarkan ID 1-6)
+  const OFFICIAL_BRANCHES = [
+    'MAGELANG',
+    'PEKALONGAN',
+    'PURWOKERTO',
+    'SEMARANG',
+    'SURAKARTA',
+    'YOGYAKARTA',
+  ];
 
-  const [branchName, setBranchName] = useState(availableBranches[0] || 'PURWOKERTO');
+  // Selalu gunakan daftar resmi agar urutan dan isi konsisten
+  const availableBranches = OFFICIAL_BRANCHES;
+
+  const [branchName, setBranchName] = useState(availableBranches[0]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
