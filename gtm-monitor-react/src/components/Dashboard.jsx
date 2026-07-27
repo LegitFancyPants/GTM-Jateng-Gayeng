@@ -42,7 +42,7 @@ export default function Dashboard({ branches, goBranch }) {
       const delta = (hash(b.name) % 14) - 5; // mock delta
       return {
         name: b.name, occRate: st.occRate, projCount: b.projects.length, actPct: st.actCompletionPct,
-        color: BRANCH_COLORS[b.name] || '#64748b', delta
+        color: BRANCH_COLORS[b.name?.toString().trim().toUpperCase()] || BRANCH_COLORS[b.name] || '#64748b', delta
       };
     }).sort((a, b) => a.occRate - b.occRate);
   }, [branches]);
@@ -59,7 +59,7 @@ export default function Dashboard({ branches, goBranch }) {
     const points = allOdps.filter(o => Number.isFinite(o.lat) && Number.isFinite(o.lon)).map(o => ({
       lat: o.lat,
       lon: o.lon,
-      color: BRANCH_COLORS[o.branch] || '#64748b',
+      color: BRANCH_COLORS[o.branch?.toString().trim().toUpperCase()] || BRANCH_COLORS[o.branch] || '#64748b',
       key: o.odp,
       branch: o.branch
     }));
@@ -156,7 +156,7 @@ export default function Dashboard({ branches, goBranch }) {
         <div style={{ display: 'flex', gap: '20px', marginTop: '12px' }}>
           {branches.map(b => (
             <div key={b.name} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12.5px', color: '#334155' }}>
-              <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: BRANCH_COLORS[b.name] || '#64748b' }} />
+              <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: BRANCH_COLORS[b.name?.toString().trim().toUpperCase()] || BRANCH_COLORS[b.name] || '#64748b' }} />
               {b.name}
             </div>
           ))}
