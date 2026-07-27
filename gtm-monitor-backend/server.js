@@ -261,13 +261,22 @@ app.get('/api/data', authenticateToken, async (req, res) => {
       }
     });
 
-    // Transform data to match what the frontend expects
+    // Transform data to match what the frontend expects (Filter: ODP > 1 and OCC < 35%)
     const formattedBranches = branches.map(b => ({
       name: b.name,
-      projects: b.projects.map(p => ({
-        name: p.name,
-        wok: p.wok,
-        odps: p.odps.map(o => {
+      projects: b.projects
+        .filter(p => {
+          const odpCount = p.odps.length;
+          if (odpCount <= 1) return false;
+          const usedTotal = p.odps.reduce((s, o) => s + o.used, 0);
+          const totalPort = p.odps.reduce((s, o) => s + o.total, 0);
+          const occ = totalPort > 0 ? (usedTotal / totalPort) * 100 : 0;
+          return occ < 35;
+        })
+        .map(p => ({
+          name: p.name,
+          wok: p.wok,
+          odps: p.odps.map(o => {
           const coords = getOdpCoords(o.odp, b.name, o.lat, o.lon);
           return {
             odp: o.odp,
@@ -285,7 +294,8 @@ app.get('/api/data', authenticateToken, async (req, res) => {
           status: a.status,
           photoUrl: a.photoUrl,
           planDate: a.planDate,
-          actualDate: a.actualDate
+          actualDate: a.actualDate,
+          keterangan: a.keterangan
         }))
       }))
     }));
@@ -300,7 +310,8 @@ app.get('/api/data', authenticateToken, async (req, res) => {
 // 2. Upload/Update Project Activity (Protected & Branch-Scoped)
 app.post('/api/activities', authenticateToken, upload.single('photo'), async (req, res) => {
   try {
-    const { projectName, branchName, type, status, planDate, actualDate } = req.body;
+    const { projectName, branchName, type, status, planDate, actualDate, keterangan } = req.body;
+    console.log(`[Activity POST] project: ${projectName}, type: ${type}, status: ${status}, keterangan:`, keterangan);
     // Cloudinary returns the secure URL — coba berbagai properti sebagai fallback
     let photoUrl = req.file
       ? (req.file.path || req.file.secure_url || req.file.url || undefined)
@@ -350,6 +361,7 @@ app.post('/api/activities', authenticateToken, upload.single('photo'), async (re
         planDate: planDate ? new Date(planDate) : undefined,
         actualDate: actualDate ? new Date(actualDate) : undefined,
         ...(photoUrl && { photoUrl }),
+        ...(keterangan !== undefined && { keterangan }),
         userId: req.user?.id || undefined  // update userId jika ada perubahan
       },
       create: {
@@ -359,6 +371,7 @@ app.post('/api/activities', authenticateToken, upload.single('photo'), async (re
         planDate: planDate ? new Date(planDate) : undefined,
         actualDate: actualDate ? new Date(actualDate) : undefined,
         photoUrl: photoUrl,
+        keterangan: keterangan !== undefined ? keterangan : null,
         userId: req.user?.id || undefined  // simpan siapa yang upload
       }
     });

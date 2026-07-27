@@ -49,6 +49,7 @@ export default function LoginPage({ branches = [], onLoginSuccess }) {
       const data = await res.json();
 
       if (res.ok && data.success) {
+        document.activeElement?.blur();
         onLoginSuccess(data.token, data.user);
       } else {
         setError(data.message || 'Login gagal. Periksa kembali username dan password Anda.');

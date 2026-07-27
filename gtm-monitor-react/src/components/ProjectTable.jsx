@@ -37,6 +37,42 @@ const OdpRow = memo(({ o, odpGrid }) => {
   );
 });
 
+const ActivityTextInput = memo(({ a, actType, bName, p, updateActivityField }) => {
+  const initialValue = a?.[actType.fieldKey] || a?.keterangan || a?.fields?.[actType.fieldKey] || a?.fields?.kodeSf || '';
+  const [val, setVal] = useState(initialValue);
+
+  useEffect(() => {
+    setVal(initialValue);
+  }, [initialValue]);
+
+  const handleKeyDown = async (e) => {
+    if (e.key === 'Enter' && updateActivityField) {
+      e.preventDefault();
+      if (!val || !val.trim()) {
+        alert('⚠️ Silakan ketik kode terlebih dahulu lalu tekan Enter.');
+        return;
+      }
+      const res = await updateActivityField(bName, p.name, actType.key, actType.fieldKey, val);
+      if (res !== false) {
+        alert('✅ Bukti sudah terkirim!');
+      }
+    }
+  };
+
+  return (
+    <input
+      type="text"
+      placeholder={actType.placeholder}
+      value={val}
+      onChange={(e) => setVal(e.target.value)}
+      onKeyDown={handleKeyDown}
+      style={{ width: '120px', fontSize: '12px', padding: '4px 8px', border: '1px solid #e2e8f0', borderRadius: '5px' }}
+      readOnly={!updateActivityField}
+      title="Ketik kode (cth: SF 0973) lalu tekan Enter untuk mengirim"
+    />
+  );
+});
+
 // ─── OPTIMASI 2: REACT RENDER OPTIMIZATION (MEMOIZED PROJECT ROW) ───
 const ProjectRow = memo(({ p, branchName, isExpanded, toggleProject, onReview, updateActivityField, uploadPhoto, verifyActivity, tableGrid, odpGrid }) => {
   const pOdps = p.odps || [];
@@ -153,14 +189,7 @@ const ProjectRow = memo(({ p, branchName, isExpanded, toggleProject, onReview, u
 
               {/* Text Input */}
               {actType.kind === 'text' && (
-                <input
-                  type="text"
-                  placeholder={actType.placeholder}
-                  value={a?.fields?.[actType.fieldKey] || ''}
-                  onChange={(e) => updateActivityField ? updateActivityField(bName, p.name, actType.key, actType.fieldKey, e.target.value) : undefined}
-                  style={{ width: '120px', fontSize: '12px', padding: '4px 8px', border: '1px solid #e2e8f0', borderRadius: '5px' }}
-                  readOnly={!updateActivityField}
-                />
+                <ActivityTextInput a={a} actType={actType} bName={bName} p={p} updateActivityField={updateActivityField} />
               )}
             </div>
           );

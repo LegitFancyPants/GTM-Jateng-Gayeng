@@ -2,7 +2,7 @@ export const ACT_TYPES = [
   { key: 'tsel_menyapa', label: 'Tsel Menyapa Warga', kind: 'date', fieldKey: 'planDate' },
   { key: 'branding_outlet', label: 'Branding Downline/Outlet', kind: 'photo' },
   { key: 'bumdes', label: 'Kerjasama dengan BUMDES', kind: 'photo' },
-  { key: 'rekrutmen_sf', label: 'Rekrutmen SF AKAMSI', kind: 'text', fieldKey: 'kodeSf', placeholder: 'Kode SF' },
+  { key: 'rekrutmen_sf', label: 'Rekrutmen SF AKAMSI', kind: 'text', fieldKey: 'keterangan', placeholder: 'Kode SF' },
   { key: 'open_table', label: 'Always ON Open Table', kind: 'photo' }
 ];
 

@@ -74,7 +74,10 @@ export default function ReviewModal({ modalData, closeModal, verifyActivity }) {
                   {a?.actualDate && (
                     <div><b>Actual Date:</b> {new Date(a.actualDate).toLocaleDateString('id-ID')}</div>
                   )}
-                  {!a?.photoUrl && !a?.planDate && !a?.actualDate && (
+                  {(a?.keterangan || a?.fields?.keterangan || a?.fields?.kodeSf || a?.kodeSf) && (
+                    <div><b>Kode SF:</b> {a?.keterangan || a?.fields?.keterangan || a?.fields?.kodeSf || a?.kodeSf}</div>
+                  )}
+                  {!a?.photoUrl && !a?.planDate && !a?.actualDate && !a?.keterangan && !a?.fields?.keterangan && !a?.fields?.kodeSf && !a?.kodeSf && (
                     <div style={{ color: '#94a3b8', fontStyle: 'italic' }}>Belum ada data</div>
                   )}
                 </div>
