@@ -1,10 +1,10 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback } from 'react';
 import Dashboard from './components/Dashboard';
 import BranchView from './components/BranchView';
 import UploadView from './components/UploadView';
 import AdminPanel from './components/AdminPanel';
 import LoginPage from './components/Auth/LoginPage';
-import { formatBranch } from './utils';
+import { formatBranch, flatOdps, computeStats, BRANCH_COLORS } from './utils';
 import './index.css';
 
 function App() {
@@ -27,11 +27,11 @@ function App() {
   const uploadTabRef = useRef(null);
   const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0, opacity: 0 });
 
-  const updateIndicator = () => {
+  const updateIndicator = (targetView = view) => {
     let target = null;
-    if (view === 'dashboard' || view === 'branch') {
+    if (targetView === 'dashboard' || targetView === 'branch') {
       target = dashboardTabRef.current;
-    } else if (view === 'upload') {
+    } else if (targetView === 'upload') {
       target = uploadTabRef.current;
     }
 
@@ -46,10 +46,10 @@ function App() {
     }
   };
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     updateIndicator();
-    const timer = setTimeout(updateIndicator, 50);
-    const timer2 = setTimeout(updateIndicator, 200);
+    const timer = setTimeout(() => updateIndicator(), 50);
+    const timer2 = setTimeout(() => updateIndicator(), 200);
     window.addEventListener('resize', updateIndicator);
 
     return () => {
@@ -60,6 +60,65 @@ function App() {
   }, [view, loading, token, branches]);
 
   const isAdmin = user && user.role === 'ADMIN';
+
+  // ─── PRE-COMPUTED DATA (dihitung 1x saat branches berubah, reused saat ganti tab) ───
+  const allOdps = useMemo(() => flatOdps(branches), [branches]);
+
+  const kpi = useMemo(() => computeStats(branches), [branches]);
+
+  const statusChips = useMemo(() => {
+    const counts = { GREEN: 0, YELLOW: 0, BLACK: 0, RED: 0 };
+    allOdps.forEach(o => {
+      const pct = o.total > 0 ? o.used / o.total : 0;
+      const status = o.used === 0 ? 'BLACK' : pct < 0.5 ? 'GREEN' : pct < 0.75 ? 'YELLOW' : 'RED';
+      counts[status] = (counts[status] || 0) + 1;
+    });
+    return [
+      { label: 'Green', count: counts.GREEN, color: '#16a34a' },
+      { label: 'Yellow', count: counts.YELLOW, color: '#d97706' },
+      { label: 'Black', count: counts.BLACK, color: '#334155' }
+    ];
+  }, [allOdps]);
+
+  const ranking = useMemo(() => {
+    return branches.map(b => {
+      const st = computeStats([b]);
+      const hash = (str) => { let h = 0; for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) | 0; return Math.abs(h); };
+      const delta = (hash(b.name) % 14) - 5;
+      return {
+        name: b.name, occRate: st.occRate, projCount: b.projects.length, actPct: st.actCompletionPct,
+        color: BRANCH_COLORS[b.name?.toString().trim().toUpperCase()] || BRANCH_COLORS[b.name] || '#64748b', delta
+      };
+    }).sort((a, b) => a.occRate - b.occRate);
+  }, [branches]);
+
+  const { mapBounds, mapPoints } = useMemo(() => {
+    const lats = allOdps.map(o => o.lat).filter(Number.isFinite);
+    const lons = allOdps.map(o => o.lon).filter(Number.isFinite);
+    const minLat = Math.min(...lats), maxLat = Math.max(...lats);
+    const minLon = Math.min(...lons), maxLon = Math.max(...lons);
+    const calculatedBounds = (lats.length > 0 && lons.length > 0)
+      ? [[minLat, minLon], [maxLat, maxLon]]
+      : [[-7.5, 109], [-6.5, 111]];
+    
+    // Sample max 120 ODP points per branch for fast map rendering (~720 markers total)
+    const validOdps = allOdps.filter(o => Number.isFinite(o.lat) && Number.isFinite(o.lon));
+    const branchBuckets = {};
+    validOdps.forEach(o => {
+      if (!branchBuckets[o.branch]) branchBuckets[o.branch] = [];
+      if (branchBuckets[o.branch].length < 120) {
+        branchBuckets[o.branch].push(o);
+      }
+    });
+
+    const sampledOdps = Object.values(branchBuckets).flat();
+    const points = sampledOdps.map(o => ({
+      lat: o.lat, lon: o.lon,
+      color: BRANCH_COLORS[o.branch?.toString().trim().toUpperCase()] || BRANCH_COLORS[o.branch] || '#64748b',
+      key: o.odp, branch: o.branch
+    }));
+    return { mapBounds: calculatedBounds, mapPoints: points };
+  }, [allOdps]);
 
   const fetchData = async () => {
     if (!token) {
@@ -142,7 +201,8 @@ function App() {
     return () => window.removeEventListener('popstate', handlePopState);
   }, [user, token, view, activeBranch]);
 
-  const navigateTo = (newView, newBranch = null, replace = false) => {
+  const navigateTo = useCallback((newView, newBranch = null, replace = false) => {
+    updateIndicator(newView);
     setView(newView);
     setActiveBranch(newBranch);
     const stateObj = { view: newView, activeBranch: newBranch };
@@ -151,7 +211,7 @@ function App() {
     } else {
       window.history.pushState(stateObj, '');
     }
-  };
+  }, []);
 
   const handleLoginSuccess = (newToken, newUser) => {
     document.activeElement?.blur();
@@ -196,28 +256,28 @@ function App() {
     executeLogout();
   };
 
-  const goDashboard = () => {
+  const goDashboard = useCallback(() => {
     navigateTo('dashboard', null);
-  };
+  }, [navigateTo]);
 
-  const goBranch = (name) => {
+  const goBranch = useCallback((name) => {
     navigateTo('branch', name);
-  };
+  }, [navigateTo]);
 
-  const goUpload = () => {
+  const goUpload = useCallback(() => {
     navigateTo('upload', null);
-  };
+  }, [navigateTo]);
 
-  const goAdmin = () => {
+  const goAdmin = useCallback(() => {
     if (!isAdmin) {
       alert('Akses ditolak. Hanya Administrator yang dapat membuka Admin Panel.');
       return;
     }
     navigateTo('admin', null);
-  };
+  }, [isAdmin, navigateTo]);
 
   // Update activity field at PROJECT level
-  const updateActivityField = async (branchName, projectName, actType, fieldKey, value) => {
+  const updateActivityField = useCallback(async (branchName, projectName, actType, fieldKey, value) => {
     // Optimistic UI Update
     setBranches(prev => {
       const newBranches = JSON.parse(JSON.stringify(prev));
@@ -272,10 +332,10 @@ function App() {
       return false;
     }
     return true;
-  };
+  }, [token]);
 
   // Upload photo at PROJECT level
-  const uploadPhoto = async (branchName, projectName, actType, file) => {
+  const uploadPhoto = useCallback(async (branchName, projectName, actType, file) => {
     // Optimistic UI Update
     setBranches(prev => {
       const newBranches = JSON.parse(JSON.stringify(prev));
@@ -312,7 +372,6 @@ function App() {
       if (res.ok) {
         const resData = await res.json();
         const realPhotoUrl = resData?.activity?.photoUrl;
-        // Update state langsung dengan photoUrl asli dari server (Cloudinary URL)
         setBranches(prev => {
           const newBranches = JSON.parse(JSON.stringify(prev));
           const b = newBranches.find(x => x.name === branchName);
@@ -326,25 +385,22 @@ function App() {
           }
           return newBranches;
         });
-        // Fetch ulang untuk sinkronisasi penuh dengan database
         fetchData();
       } else if (res.status === 403 || res.status === 401) {
         const errData = await res.json();
         alert(`❌ ${errData.error || errData.message}`);
         fetchData();
       } else {
-        // Upload gagal, kembalikan state ke kondisi semula
         fetchData();
       }
     } catch (err) {
       console.error('Error uploading photo:', err);
-      // Kembalikan state jika error
       fetchData();
     }
-  };
+  }, [token]);
 
   // Verify activity at PROJECT level (Admin only)
-  const verifyActivity = async (branchName, projectName, actType) => {
+  const verifyActivity = useCallback(async (branchName, projectName, actType) => {
     if (!isAdmin) return;
 
     try {
@@ -361,7 +417,6 @@ function App() {
         })
       });
       if (res.ok) {
-        // Optimistic UI Update
         setBranches(prev => {
           const newBranches = JSON.parse(JSON.stringify(prev));
           const b = newBranches.find(x => x.name === branchName);
@@ -377,7 +432,7 @@ function App() {
     } catch (err) {
       console.error('Error verifying activity:', err);
     }
-  };
+  }, [isAdmin, token]);
 
   // 1. Auth Gate / Routing
   if (!user || !token) {
@@ -536,7 +591,7 @@ function App() {
       {/* Main Content */}
       <div className="main-content">
         <div className="fade-in" key={view}>
-          {view === 'dashboard' && <Dashboard branches={branches} goBranch={goBranch} />}
+          {view === 'dashboard' && <Dashboard branches={branches} goBranch={goBranch} kpi={kpi} statusChips={statusChips} ranking={ranking} mapBounds={mapBounds} mapPoints={mapPoints} />}
           {view === 'branch' && (
             <BranchView 
               branches={branches} 
@@ -564,6 +619,7 @@ function App() {
               verifyActivity={verifyActivity}
               updateActivityField={updateActivityField}
               uploadPhoto={uploadPhoto}
+              kpi={kpi}
             />
           )}
         </div>

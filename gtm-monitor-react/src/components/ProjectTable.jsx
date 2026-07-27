@@ -229,13 +229,16 @@ export default function ProjectTable({ projects, branchName, onReview, updateAct
     setExpanded(prev => ({ ...prev, [projectName]: !prev[projectName] }));
   }, []);
 
+  // ─── OPTIMASI 2: GUNAKAN NILAI PRE-COMPUTED DARI SERVER ───
+  // usedTotal, avaiTotal, totalPort, occRate sudah dihitung di server.js — tidak perlu reduce() di sini.
   const projectsWithTotals = useMemo(() => {
-    return projects.map(p => {
-      const usedTotal = p.odps.reduce((s, o) => s + o.used, 0);
-      const avaiTotal = p.odps.reduce((s, o) => s + o.avai, 0);
-      const totalPort = p.odps.reduce((s, o) => s + o.total, 0);
-      return { ...p, usedTotal, avaiTotal, totalPort };
-    });
+    return projects.map(p => ({
+      ...p,
+      // Gunakan nilai yang sudah ada dari server, fallback ke 0 jika tidak ada
+      usedTotal: p.usedTotal ?? p.odps.reduce((s, o) => s + o.used, 0),
+      avaiTotal: p.avaiTotal ?? p.odps.reduce((s, o) => s + o.avai, 0),
+      totalPort: p.totalPort ?? p.odps.reduce((s, o) => s + o.total, 0),
+    }));
   }, [projects]);
 
   const displayProjects = useMemo(() => {

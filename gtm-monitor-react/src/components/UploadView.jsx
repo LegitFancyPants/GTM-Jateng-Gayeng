@@ -1,9 +1,10 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, memo } from 'react';
 import ProjectTable from './ProjectTable';
 import ReviewModal from './ReviewModal';
 import { formatBranch } from '../utils';
 
-export default function UploadView({ branches, updateActivityField, verifyActivity, uploadPhoto }) {
+// UploadView dibungkus React.memo agar TIDAK re-render saat menu profile di header dibuka/ditutup.
+const UploadView = memo(function UploadView({ branches, updateActivityField, verifyActivity, uploadPhoto }) {
   const [selectedBranch, setSelectedBranch] = useState('Semua Branch');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -19,10 +20,15 @@ export default function UploadView({ branches, updateActivityField, verifyActivi
   const branchesWithFilteredProjects = useMemo(() => {
     const s = search.toLowerCase();
     return filteredBranches.map(b => {
-      const projs = b.projects.filter(p => !s || p.name.toLowerCase().includes(s) || p.wok.toLowerCase().includes(s));
+      const projs = b.projects.filter(p => !s || p.name.toLowerCase().includes(s) || (p.wok && p.wok.toLowerCase().includes(s)));
       return { ...b, projects: projs };
-    }).filter(b => b.projects.length > 0); // Hide branches that have 0 matching projects
+    }).filter(b => b.projects.length > 0);
   }, [filteredBranches, search]);
+
+  // 3. Memoize multi-branch flatMap so a new array reference isn't created on every render
+  const allProjectsMultiBranch = useMemo(() => {
+    return branchesWithFilteredProjects.flatMap(b => b.projects.map(p => ({ ...p, branchName: b.name })));
+  }, [branchesWithFilteredProjects]);
 
   const openModal = (bName, pName) => setModalKey(`${bName}||${pName}`);
   const closeModal = () => setModalKey(null);
@@ -104,7 +110,7 @@ export default function UploadView({ branches, updateActivityField, verifyActivi
         branchesWithFilteredProjects.length > 0 && (
           <div style={{ marginBottom: '32px' }}>
             <ProjectTable 
-              projects={branchesWithFilteredProjects.flatMap(b => b.projects.map(p => ({ ...p, branchName: b.name })))} 
+              projects={allProjectsMultiBranch} 
               branchName="Multi Branch" 
               updateActivityField={updateActivityField}
               uploadPhoto={uploadPhoto}
@@ -138,4 +144,6 @@ export default function UploadView({ branches, updateActivityField, verifyActivi
       <ReviewModal modalData={modalData} closeModal={closeModal} verifyActivity={verifyActivity} />
     </div>
   );
-}
+});
+
+export default UploadView;

@@ -1,20 +1,23 @@
-import { useState } from 'react';
+import { useState, useMemo, memo } from 'react';
 import ProjectTable from './ProjectTable';
 import ReviewModal from './ReviewModal';
 import { computeStats } from '../utils';
 
-export default function BranchView({ branches, activeBranch, verifyActivity, updateActivityField, uploadPhoto }) {
+// BranchView dibungkus React.memo agar TIDAK re-render saat menu profile di header dibuka/ditutup.
+const BranchView = memo(function BranchView({ branches, activeBranch, verifyActivity, updateActivityField, uploadPhoto }) {
   const [search, setSearch] = useState('');
   const [modalKey, setModalKey] = useState(null); // format: branchName||projectName
 
   const branch = branches.find(b => b.name === activeBranch);
   if (!branch) return null;
 
-  const stats = computeStats([branch]);
+  const stats = useMemo(() => computeStats([branch]), [branch]);
 
   // Filter projects by search
-  const s = search.toLowerCase();
-  const filteredProjects = branch.projects.filter(p => !s || p.name.toLowerCase().includes(s) || p.wok.toLowerCase().includes(s));
+  const filteredProjects = useMemo(() => {
+    const s = search.toLowerCase();
+    return branch.projects.filter(p => !s || p.name.toLowerCase().includes(s) || (p.wok && p.wok.toLowerCase().includes(s)));
+  }, [branch.projects, search]);
 
   const openModal = (bName, pName) => setModalKey(`${bName}||${pName}`);
   const closeModal = () => setModalKey(null);
@@ -25,7 +28,6 @@ export default function BranchView({ branches, activeBranch, verifyActivity, upd
     const b = branches.find(x => x.name === bName);
     const p = b?.projects.find(x => x.name === pName);
     if (p) {
-      // Aggregate ODP data for project summary
       const totalAvai = p.odps.reduce((s, o) => s + o.avai, 0);
       const totalUsed = p.odps.reduce((s, o) => s + o.used, 0);
       const totalPort = p.odps.reduce((s, o) => s + o.total, 0);
@@ -81,4 +83,6 @@ export default function BranchView({ branches, activeBranch, verifyActivity, upd
       <ReviewModal modalData={modalData} closeModal={closeModal} verifyActivity={verifyActivity} />
     </div>
   );
-}
+});
+
+export default BranchView;

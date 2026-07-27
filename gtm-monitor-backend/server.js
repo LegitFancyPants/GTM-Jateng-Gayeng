@@ -273,31 +273,45 @@ app.get('/api/data', authenticateToken, async (req, res) => {
           const occ = totalPort > 0 ? (usedTotal / totalPort) * 100 : 0;
           return occ < 35;
         })
-        .map(p => ({
-          name: p.name,
-          wok: p.wok,
-          odps: p.odps.map(o => {
-          const coords = getOdpCoords(o.odp, b.name, o.lat, o.lon);
+        .map(p => {
+          // Pre-kalkulasi total per proyek (dikerjakan 1x di server, bukan ribuan kali di browser)
+          const usedTotal = p.odps.reduce((s, o) => s + o.used, 0);
+          const avaiTotal = p.odps.reduce((s, o) => s + o.avai, 0);
+          const totalPort = p.odps.reduce((s, o) => s + o.total, 0);
+          const occRate = totalPort > 0 ? Math.round((usedTotal / totalPort) * 1000) / 10 : 0;
+
           return {
-            odp: o.odp,
-            avai: o.avai,
-            used: o.used,
-            total: o.total,
-            lat: coords.lat,
-            lon: coords.lon
+            name: p.name,
+            wok: p.wok,
+            // Totals siap pakai — tidak perlu dihitung ulang di frontend
+            usedTotal,
+            avaiTotal,
+            totalPort,
+            occRate,
+            odpCount: p.odps.length,
+            odps: p.odps.map(o => {
+              const coords = getOdpCoords(o.odp, b.name, o.lat, o.lon);
+              return {
+                odp: o.odp,
+                avai: o.avai,
+                used: o.used,
+                total: o.total,
+                lat: coords.lat,
+                lon: coords.lon
+              };
+            }),
+            // Project-level activities
+            activities: p.activities.map(a => ({
+              id: a.id,
+              type: a.type,
+              status: a.status,
+              photoUrl: a.photoUrl,
+              planDate: a.planDate,
+              actualDate: a.actualDate,
+              keterangan: a.keterangan
+            }))
           };
-        }),
-        // Project-level activities
-        activities: p.activities.map(a => ({
-          id: a.id,
-          type: a.type,
-          status: a.status,
-          photoUrl: a.photoUrl,
-          planDate: a.planDate,
-          actualDate: a.actualDate,
-          keterangan: a.keterangan
-        }))
-      }))
+        })
     }));
 
     res.json(formattedBranches);

@@ -1,9 +1,8 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, memo } from 'react';
 import ProjectTable from './ProjectTable';
 import ReviewModal from './ReviewModal';
-import { computeStats } from '../utils';
 
-export default function AdminPanel({ token, branches = [], onUpdate, goDashboard, onLogout, verifyActivity, updateActivityField, uploadPhoto }) {
+const AdminPanel = memo(function AdminPanel({ token, branches = [], onUpdate, goDashboard, onLogout, verifyActivity, updateActivityField, uploadPhoto, kpi }) {
   const [activeTab, setActiveTab] = useState('monitoring'); // 'monitoring' | 'excel'
   
   // Excel Upload States
@@ -18,8 +17,8 @@ export default function AdminPanel({ token, branches = [], onUpdate, goDashboard
   const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'need_review' | 'verified' | 'pending'
   const [modalKey, setModalKey] = useState(null); // format: branchName||projectName
 
-  // Compute overall KPI stats for Admin
-  const stats = useMemo(() => computeStats(branches), [branches]);
+  // Gunakan kpi yang sudah di-compute di App.jsx (tidak perlu hitung ulang di sini)
+  const stats = kpi || { odpCount: 0, totalUsed: 0, totalPort: 0, occRate: 0, actUploaded: 0, actCompletionPct: 0, actVerified: 0 };
   const totalProjects = useMemo(() => branches.reduce((s, b) => s + (b.projects?.length || 0), 0), [branches]);
 
   // Filter Branches and Projects for Monitoring Tab
@@ -45,6 +44,10 @@ export default function AdminPanel({ token, branches = [], onUpdate, goDashboard
       return { ...b, projects: projs };
     }).filter(b => b.projects.length > 0);
   }, [filteredBranches, search, statusFilter]);
+
+  const allProjectsMultiBranch = useMemo(() => {
+    return branchesWithFilteredProjects.flatMap(b => b.projects.map(p => ({ ...p, branchName: b.name })));
+  }, [branchesWithFilteredProjects]);
 
   const openModal = (bName, pName) => setModalKey(`${bName}||${pName}`);
   const closeModal = () => setModalKey(null);
@@ -296,7 +299,7 @@ export default function AdminPanel({ token, branches = [], onUpdate, goDashboard
             selectedBranch === 'Semua Branch' ? (
               <div style={{ marginBottom: '32px' }}>
                 <ProjectTable 
-                  projects={branchesWithFilteredProjects.flatMap(b => b.projects.map(p => ({ ...p, branchName: b.name })))} 
+                  projects={allProjectsMultiBranch} 
                   branchName="Multi Branch" 
                   updateActivityField={updateActivityField}
                   uploadPhoto={uploadPhoto}
@@ -326,7 +329,7 @@ export default function AdminPanel({ token, branches = [], onUpdate, goDashboard
             </div>
           )}
         </div>
-      )}      {/* TAB 2: UPDATE DATABASE MINGGUAN (EXCEL) */}
+      )}      {/* TAB 2: UPDATE DATABASE MINGGUAN (EXCEL) */}
       {activeTab === 'excel' && (
         <div className="fade-in">
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr', gap: '24px', alignItems: 'stretch' }}>
@@ -514,4 +517,6 @@ export default function AdminPanel({ token, branches = [], onUpdate, goDashboard
       <ReviewModal modalData={modalData} closeModal={closeModal} verifyActivity={verifyActivity} />
     </div>
   );
-}
+});
+
+export default AdminPanel;
