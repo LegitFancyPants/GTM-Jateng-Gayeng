@@ -46,19 +46,19 @@ const BranchView = memo(function BranchView({ branches, activeBranch, verifyActi
     <div>
       {/* KPI Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', margin: '0 0 20px' }}>
-        <div className="card" style={{ padding: '16px 18px' }}>
+        <div className="card-static" style={{ padding: '16px 18px' }}>
           <div style={{ fontSize: '11.5px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Occupancy Rate</div>
           <div style={{ fontSize: '24px', fontWeight: 800, color: '#0f172a', marginTop: '4px' }}>{stats.occRate}%</div>
         </div>
-        <div className="card" style={{ padding: '16px 18px' }}>
+        <div className="card-static" style={{ padding: '16px 18px' }}>
           <div style={{ fontSize: '11.5px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Port Avai / Used / Total</div>
           <div style={{ fontSize: '20px', fontWeight: 800, color: '#0f172a', marginTop: '4px' }}>{stats.totalAvai} / {stats.totalUsed} / {stats.totalPort}</div>
         </div>
-        <div className="card" style={{ padding: '16px 18px' }}>
+        <div className="card-static" style={{ padding: '16px 18px' }}>
           <div style={{ fontSize: '11.5px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Jumlah Proyek / ODP</div>
           <div style={{ fontSize: '20px', fontWeight: 800, color: '#0f172a', marginTop: '4px' }}>{branch.projects.length} / {stats.odpCount}</div>
         </div>
-        <div className="card" style={{ padding: '16px 18px' }}>
+        <div className="card-static" style={{ padding: '16px 18px' }}>
           <div style={{ fontSize: '11.5px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Aktivitas GTM Selesai</div>
           <div style={{ fontSize: '24px', fontWeight: 800, color: '#0f172a', marginTop: '4px' }}>{stats.actCompletionPct}%</div>
         </div>

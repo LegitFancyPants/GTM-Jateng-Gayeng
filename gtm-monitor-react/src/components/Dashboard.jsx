@@ -39,17 +39,17 @@ const Dashboard = memo(function Dashboard({ branches, goBranch, kpi, statusChips
     <div>
       {/* KPI Row */}
       <div className="kpi-grid">
-        <div className="card" style={{ padding: '18px 20px' }}>
+        <div className="card-static" style={{ padding: '18px 20px' }}>
           <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Total Occupancy Rate</div>
           <div style={{ fontSize: '30px', fontWeight: 800, color: '#0f172a', marginTop: '6px' }}>{safeKpi.occRate}%</div>
           <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '4px' }}>{safeKpi.totalUsed} / {safeKpi.totalPort} port terpakai</div>
         </div>
-        <div className="card" style={{ padding: '18px 20px' }}>
+        <div className="card-static" style={{ padding: '18px 20px' }}>
           <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Port Tersedia</div>
           <div style={{ fontSize: '30px', fontWeight: 800, color: '#0f172a', marginTop: '6px' }}>{safeKpi.totalAvai}</div>
           <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '4px' }}>dari total {safeKpi.totalPort} port di {safeKpi.odpCount} ODP</div>
         </div>
-        <div className="card" style={{ padding: '18px 20px' }}>
+        <div className="card-static" style={{ padding: '18px 20px' }}>
           <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Status ODP</div>
           <div style={{ fontSize: '30px', fontWeight: 800, color: '#0f172a', marginTop: '6px' }}>
             {safeKpi.odpCount} <span style={{ fontSize: '16px', fontWeight: 600, color: '#64748b' }}>ODP</span>
@@ -63,7 +63,7 @@ const Dashboard = memo(function Dashboard({ branches, goBranch, kpi, statusChips
             ))}
           </div>
         </div>
-        <div className="card" style={{ padding: '18px 20px' }}>
+        <div className="card-static" style={{ padding: '18px 20px' }}>
           <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Aktivitas GTM Terverifikasi</div>
           <div style={{ fontSize: '30px', fontWeight: 800, color: '#0f172a', marginTop: '6px' }}>{safeKpi.actCompletionPct}%</div>
           <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '4px' }}>{safeKpi.actVerified} verified · {safeKpi.actUploaded} upload · {safeKpi.actBelum} belum</div>
