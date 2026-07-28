@@ -1,6 +1,7 @@
 import { useState, useMemo, memo } from 'react';
 import ProjectTable from './ProjectTable';
 import ReviewModal from './ReviewModal';
+import { formatBranch } from '../utils';
 
 const AdminPanel = memo(function AdminPanel({ token, branches = [], onUpdate, goDashboard, onLogout, verifyActivity, updateActivityField, uploadPhoto, kpi }) {
   const [activeTab, setActiveTab] = useState('monitoring'); // 'monitoring' | 'excel'
@@ -16,6 +17,8 @@ const AdminPanel = memo(function AdminPanel({ token, branches = [], onUpdate, go
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'need_review' | 'verified' | 'pending'
   const [modalKey, setModalKey] = useState(null); // format: branchName||projectName
+  const [isBranchDropdownOpen, setIsBranchDropdownOpen] = useState(false);
+  const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
 
   // Gunakan kpi yang sudah di-compute di App.jsx (tidak perlu hitung ulang di sini)
   const stats = kpi || { odpCount: 0, totalUsed: 0, totalPort: 0, occRate: 0, actUploaded: 0, actCompletionPct: 0, actVerified: 0 };
@@ -26,6 +29,35 @@ const AdminPanel = memo(function AdminPanel({ token, branches = [], onUpdate, go
     if (selectedBranch === 'Semua Branch') return branches;
     return branches.filter(b => b.name === selectedBranch);
   }, [branches, selectedBranch]);
+
+  // Hitung jumlah proyek per status filter (Semua, Menunggu Verifikasi, Sudah Terverifikasi, Belum Dikerjakan)
+  const statusCounts = useMemo(() => {
+    let needReviewCount = 0;
+    let verifiedCount = 0;
+    let pendingCount = 0;
+    let totalCount = 0;
+
+    filteredBranches.forEach(b => {
+      (b.projects || []).forEach(p => {
+        totalCount++;
+        const acts = p.activities || [];
+        if (acts.some(a => a.status === 'upload')) {
+          needReviewCount++;
+        } else if (acts.some(a => a.status === 'verified')) {
+          verifiedCount++;
+        } else if (acts.length === 0 || acts.every(a => a.status === 'belum')) {
+          pendingCount++;
+        }
+      });
+    });
+
+    return {
+      all: totalCount,
+      need_review: needReviewCount,
+      verified: verifiedCount,
+      pending: pendingCount
+    };
+  }, [filteredBranches]);
 
   const branchesWithFilteredProjects = useMemo(() => {
     const s = search.toLowerCase();
@@ -251,35 +283,124 @@ const AdminPanel = memo(function AdminPanel({ token, branches = [], onUpdate, go
       {activeTab === 'monitoring' && (
         <div className="fade-in">
           {/* Filter Bar */}
-          <div className="card" style={{ padding: '16px 20px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
-            {/* Branch Filter */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '13px', fontWeight: 700, color: '#475569' }}>Branch:</span>
-              <select
-                value={selectedBranch}
-                onChange={e => setSelectedBranch(e.target.value)}
-                style={{ padding: '8px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', fontWeight: 600, color: '#0f172a', background: '#fff', cursor: 'pointer' }}
+          <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '14px 20px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap', position: 'relative', zIndex: 80 }}>
+            {/* Branch Filter Capsule Dropdown */}
+            <div style={{ position: 'relative' }}>
+              <div 
+                onClick={() => {
+                  setIsBranchDropdownOpen(!isBranchDropdownOpen);
+                  setIsStatusDropdownOpen(false);
+                }}
+                style={{ 
+                  padding: '9px 16px', 
+                  borderRadius: '50px', 
+                  border: '1px solid #e2e8f0', 
+                  fontSize: '13.5px', 
+                  background: '#fff', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '8px', 
+                  cursor: 'pointer', 
+                  minWidth: '200px', 
+                  userSelect: 'none' 
+                }}
               >
-                <option value="Semua Branch">Semua Branch ({branches.length})</option>
-                {branches.map(b => (
-                  <option key={b.name} value={b.name}>{b.name} ({b.projects?.length || 0})</option>
-                ))}
-              </select>
+                <span style={{ fontSize: '13px', fontWeight: 600, color: '#64748b' }}>Branch:</span>
+                <span style={{ flex: 1, whiteSpace: 'nowrap', fontWeight: 700, color: '#0f172a' }}>
+                  {selectedBranch === 'Semua Branch' 
+                    ? `Semua Branch (${totalProjects})` 
+                    : `${formatBranch(selectedBranch)} (${branches.find(x => x.name === selectedBranch)?.projects?.length || 0})`}
+                </span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: isBranchDropdownOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>
+                  <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+              </div>
+
+              {isBranchDropdownOpen && (
+                <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: '8px', width: '230px', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '16px', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.12)', zIndex: 1000, overflow: 'hidden' }}>
+                  <div 
+                    className={`dropdown-item ${selectedBranch === 'Semua Branch' ? 'active' : ''}`}
+                    onClick={() => { setSelectedBranch('Semua Branch'); setIsBranchDropdownOpen(false); }}
+                  >
+                    Semua Branch ({totalProjects})
+                  </div>
+                  {branches.map(b => (
+                    <div 
+                      key={b.name}
+                      className={`dropdown-item ${selectedBranch === b.name ? 'active' : ''}`}
+                      onClick={() => { setSelectedBranch(b.name); setIsBranchDropdownOpen(false); }}
+                    >
+                      {formatBranch(b.name)} ({b.projects?.length || 0})
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
-            {/* Status Filter */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '13px', fontWeight: 700, color: '#475569' }}>Status:</span>
-              <select
-                value={statusFilter}
-                onChange={e => setStatusFilter(e.target.value)}
-                style={{ padding: '8px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', fontWeight: 600, color: statusFilter === 'need_review' ? '#d97706' : '#0f172a', background: statusFilter === 'need_review' ? '#fffbeb' : '#fff', cursor: 'pointer' }}
+            {/* Status Filter Capsule Dropdown */}
+            <div style={{ position: 'relative' }}>
+              <div 
+                onClick={() => {
+                  setIsStatusDropdownOpen(!isStatusDropdownOpen);
+                  setIsBranchDropdownOpen(false);
+                }}
+                style={{ 
+                  padding: '9px 16px', 
+                  borderRadius: '50px', 
+                  border: '1px solid #e2e8f0', 
+                  fontSize: '13.5px', 
+                  background: '#fff', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '8px', 
+                  cursor: 'pointer', 
+                  minWidth: '200px', 
+                  userSelect: 'none' 
+                }}
               >
-                <option value="all">Semua Proyek</option>
-                <option value="need_review">Menunggu Verifikasi ({stats.actUploaded})</option>
-                <option value="verified">Sudah Terverifikasi</option>
-                <option value="pending">Belum Dikerjakan</option>
-              </select>
+                <span style={{ fontSize: '13px', fontWeight: 600, color: '#64748b' }}>Status:</span>
+                <span style={{ flex: 1, whiteSpace: 'nowrap', fontWeight: 700, color: '#0f172a' }}>
+                  {statusFilter === 'all' 
+                    ? `Semua Status (${statusCounts.all})` 
+                    : statusFilter === 'need_review' 
+                    ? `Menunggu Verifikasi (${statusCounts.need_review})` 
+                    : statusFilter === 'verified' 
+                    ? `Sudah Terverifikasi (${statusCounts.verified})` 
+                    : `Belum Dikerjakan (${statusCounts.pending})`}
+                </span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: isStatusDropdownOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>
+                  <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+              </div>
+
+              {isStatusDropdownOpen && (
+                <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: '8px', width: '240px', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '16px', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.12)', zIndex: 1000, overflow: 'hidden' }}>
+                  <div 
+                    className={`dropdown-item ${statusFilter === 'all' ? 'active' : ''}`}
+                    onClick={() => { setStatusFilter('all'); setIsStatusDropdownOpen(false); }}
+                  >
+                    Semua Status ({statusCounts.all})
+                  </div>
+                  <div 
+                    className={`dropdown-item ${statusFilter === 'need_review' ? 'active' : ''}`}
+                    onClick={() => { setStatusFilter('need_review'); setIsStatusDropdownOpen(false); }}
+                  >
+                    Menunggu Verifikasi ({statusCounts.need_review})
+                  </div>
+                  <div 
+                    className={`dropdown-item ${statusFilter === 'verified' ? 'active' : ''}`}
+                    onClick={() => { setStatusFilter('verified'); setIsStatusDropdownOpen(false); }}
+                  >
+                    Sudah Terverifikasi ({statusCounts.verified})
+                  </div>
+                  <div 
+                    className={`dropdown-item ${statusFilter === 'pending' ? 'active' : ''}`}
+                    onClick={() => { setStatusFilter('pending'); setIsStatusDropdownOpen(false); }}
+                  >
+                    Belum Dikerjakan ({statusCounts.pending})
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Search Input */}
@@ -289,7 +410,7 @@ const AdminPanel = memo(function AdminPanel({ token, branches = [], onUpdate, go
                 placeholder="Cari nama proyek atau WOK..."
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                style={{ width: '100%', boxSizing: 'border-box', padding: '8px 16px', borderRadius: '50px', border: '1px solid #cbd5e1', fontSize: '13px', background: '#f8fafc' }}
+                style={{ width: '100%', boxSizing: 'border-box', padding: '9px 18px', borderRadius: '50px', border: '1px solid #e2e8f0', fontSize: '13.5px', background: '#fff' }}
               />
             </div>
           </div>

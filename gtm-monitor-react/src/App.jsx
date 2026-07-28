@@ -81,12 +81,13 @@ function App() {
   }, [allOdps]);
 
   const ranking = useMemo(() => {
-    return branches.map(b => {
+    return (branches || []).map(b => {
       const st = computeStats([b]);
-      const hash = (str) => { let h = 0; for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) | 0; return Math.abs(h); };
-      const delta = (hash(b.name) % 14) - 5;
+      const hash = (str) => { let h = 0; for (let i = 0; i < (str || '').length; i++) h = (h * 31 + str.charCodeAt(i)) | 0; return Math.abs(h); };
+      const delta = (hash(b.name || '') % 14) - 5;
+      const projCount = (b && Array.isArray(b.projects)) ? b.projects.length : 0;
       return {
-        name: b.name, occRate: st.occRate, projCount: b.projects.length, actPct: st.actCompletionPct,
+        name: b.name, occRate: st.occRate, projCount, actPct: st.actCompletionPct,
         color: BRANCH_COLORS[b.name?.toString().trim().toUpperCase()] || BRANCH_COLORS[b.name] || '#64748b', delta
       };
     }).sort((a, b) => a.occRate - b.occRate);
@@ -97,7 +98,7 @@ function App() {
     const lons = allOdps.map(o => o.lon).filter(Number.isFinite);
     const minLat = Math.min(...lats), maxLat = Math.max(...lats);
     const minLon = Math.min(...lons), maxLon = Math.max(...lons);
-    const calculatedBounds = (lats.length > 0 && lons.length > 0)
+    const calculatedBounds = (lats.length > 0 && lons.length > 0 && Number.isFinite(minLat) && Number.isFinite(maxLat) && (minLat !== maxLat || minLon !== maxLon))
       ? [[minLat, minLon], [maxLat, maxLon]]
       : [[-7.5, 109], [-6.5, 111]];
     
@@ -218,26 +219,24 @@ function App() {
     lastLoginTimestamp.current = Date.now();
     setShowProfileModal(false);
     setShowLogoutConfirmModal(false);
+    setBranches([]);
     setToken(newToken);
     setUser(newUser);
     localStorage.setItem('gtm_token', newToken);
     localStorage.setItem('gtm_user', JSON.stringify(newUser));
     
-    if (newUser.role === 'USER' && newUser.branchName) {
-      navigateTo('branch', newUser.branchName, true);
-    } else {
-      navigateTo('dashboard', null, true);
-    }
+    // Semua akun (Admin & User) selalu masuk ke Dashboard terlebih dahulu
+    navigateTo('dashboard', null, true);
   };
 
   const executeLogout = () => {
     setUser(null);
     setToken(null);
+    setBranches([]);
     localStorage.removeItem('gtm_user');
     localStorage.removeItem('gtm_token');
     setView('dashboard');
     setActiveBranch(null);
-    setAuthView('login');
     setShowProfileModal(false);
     setShowLogoutConfirmModal(false);
     window.history.replaceState(null, '');
@@ -576,17 +575,6 @@ function App() {
           </button>
         </div>
       </div>
-
-      {/* Breadcrumb */}
-      {view !== 'dashboard' && (
-        <div style={{ padding: '14px 32px 0', fontSize: '13px', color: '#64748b', display: 'flex', alignItems: 'center', gap: '6px', animation: 'fadeIn 0.3s ease-in-out' }}>
-          <span onClick={goDashboard} style={{ cursor: 'pointer', color: '#C8102E', fontWeight: 600 }}>Dashboard</span>
-          <span>/</span>
-          <span style={{ fontWeight: 600, color: '#334155' }}>
-            {view === 'branch' ? activeBranch : view === 'upload' ? 'Upload Activity' : 'Admin Control Center'}
-          </span>
-        </div>
-      )}
 
       {/* Main Content */}
       <div className="main-content">

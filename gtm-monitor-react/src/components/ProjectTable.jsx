@@ -224,6 +224,7 @@ export default function ProjectTable({ projects, branchName, onReview, updateAct
   // ─── OPTIMASI 1: PAGINATION STATE ───
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
+  const [isPageSizeOpen, setIsPageSizeOpen] = useState(false);
 
   const toggleProject = useCallback((projectName) => {
     setExpanded(prev => ({ ...prev, [projectName]: !prev[projectName] }));
@@ -414,39 +415,115 @@ export default function ProjectTable({ projects, branchName, onReview, updateAct
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          {/* Custom Capsule Dropup for Page Size */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#64748b', fontWeight: 600 }}>
             <span>Per halaman:</span>
-            <select
-              value={pageSize}
-              onChange={(e) => { setPageSize(Number(e.target.value)); setCurrentPage(1); }}
-              style={{ padding: '4px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px', fontWeight: 600, color: '#0f172a', background: '#fff', cursor: 'pointer' }}
-            >
-              <option value={15}>15</option>
-              <option value={25}>25</option>
-              <option value={50}>50</option>
-              <option value={100}>100</option>
-            </select>
+            <div style={{ position: 'relative' }}>
+              <button
+                type="button"
+                onClick={() => setIsPageSizeOpen(!isPageSizeOpen)}
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: '50px',
+                  border: '1px solid #cbd5e1',
+                  fontSize: '13px',
+                  background: '#fff',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  cursor: 'pointer',
+                  userSelect: 'none',
+                  fontWeight: 700,
+                  color: '#0f172a'
+                }}
+              >
+                <span>{pageSize} proyek</span>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: isPageSizeOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>
+                  <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+              </button>
+
+              {isPageSizeOpen && (
+                <div style={{
+                  position: 'absolute',
+                  bottom: '100%',
+                  left: 0,
+                  marginBottom: '6px',
+                  width: '120px',
+                  background: '#fff',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '16px',
+                  boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
+                  zIndex: 50,
+                  overflow: 'hidden'
+                }}>
+                  {[15, 25, 50].map(size => (
+                    <div
+                      key={size}
+                      className={`dropdown-item ${pageSize === size ? 'active' : ''}`}
+                      onClick={() => { setPageSize(size); setCurrentPage(1); setIsPageSizeOpen(false); }}
+                      style={{ padding: '8px 14px', fontSize: '13px' }}
+                    >
+                      {size} proyek
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          {/* Capsule Arrow Buttons for Prev / Next */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <button
+              type="button"
               disabled={currentPage === 1}
               onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-              style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', background: currentPage === 1 ? '#f1f5f9' : '#fff', color: currentPage === 1 ? '#94a3b8' : '#0f172a', fontWeight: 700, fontSize: '13px', cursor: currentPage === 1 ? 'not-allowed' : 'pointer', transition: 'all 0.2s' }}
+              title="Halaman Sebelumnya"
+              style={{
+                padding: '7px 14px',
+                borderRadius: '50px',
+                border: '1px solid #cbd5e1',
+                background: currentPage === 1 ? '#f1f5f9' : '#fff',
+                color: currentPage === 1 ? '#94a3b8' : '#0f172a',
+                cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                transition: 'all 0.2s',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
             >
-              ← Prev
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="19" y1="12" x2="5" y2="12"></line>
+                <polyline points="12 19 5 12 12 5"></polyline>
+              </svg>
             </button>
             
-            <span style={{ padding: '0 8px', fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>
+            <span style={{ padding: '0 4px', fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>
               {currentPage} / {totalPages}
             </span>
 
             <button
+              type="button"
               disabled={currentPage === totalPages}
               onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-              style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', background: currentPage === totalPages ? '#f1f5f9' : '#fff', color: currentPage === totalPages ? '#94a3b8' : '#0f172a', fontWeight: 700, fontSize: '13px', cursor: currentPage === totalPages ? 'not-allowed' : 'pointer', transition: 'all 0.2s' }}
+              title="Halaman Selanjutnya"
+              style={{
+                padding: '7px 14px',
+                borderRadius: '50px',
+                border: '1px solid #cbd5e1',
+                background: currentPage === totalPages ? '#f1f5f9' : '#fff',
+                color: currentPage === totalPages ? '#94a3b8' : '#0f172a',
+                cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
+                transition: 'all 0.2s',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
             >
-              Next →
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+                <polyline points="12 5 19 12 12 19"></polyline>
+              </svg>
             </button>
           </div>
         </div>

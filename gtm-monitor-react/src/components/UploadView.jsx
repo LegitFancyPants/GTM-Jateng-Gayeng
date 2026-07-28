@@ -11,6 +11,8 @@ const UploadView = memo(function UploadView({ branches, updateActivityField, ver
   const [modalKey, setModalKey] = useState(null); // format: branchName||projectName
 
   // 1. Filter Branches based on dropdown
+  const totalProjects = useMemo(() => branches.reduce((s, b) => s + (b.projects?.length || 0), 0), [branches]);
+
   const filteredBranches = useMemo(() => {
     if (selectedBranch === 'Semua Branch') return branches;
     return branches.filter(b => b.name === selectedBranch);
@@ -56,7 +58,7 @@ const UploadView = memo(function UploadView({ branches, updateActivityField, ver
   return (
     <div>
       {/* Header / Controls */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '14px', margin: '16px 0 20px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '14px', margin: '0 0 20px', position: 'relative', zIndex: 80 }}>
         {branches.length === 1 ? (
           <div style={{ padding: '9px 16px', borderRadius: '50px', border: '1px solid #cbd5e1', fontSize: '13.5px', background: '#f8fafc', fontWeight: 700, color: '#059669', display: 'flex', alignItems: 'center', gap: '6px' }}>
             <span>Branch: {formatBranch(branches[0].name)}</span>
@@ -65,20 +67,24 @@ const UploadView = memo(function UploadView({ branches, updateActivityField, ver
           <div style={{ position: 'relative' }}>
             <div 
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-              style={{ padding: '9px 16px', borderRadius: '50px', border: '1px solid #e2e8f0', fontSize: '13.5px', background: '#fff', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', minWidth: '180px', userSelect: 'none' }}
+              style={{ padding: '9px 16px', borderRadius: '50px', border: '1px solid #e2e8f0', fontSize: '13.5px', background: '#fff', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', minWidth: '200px', userSelect: 'none' }}
             >
-              <span style={{ flex: 1, whiteSpace: 'nowrap' }}>{formatBranch(selectedBranch)}</span>
+              <span style={{ flex: 1, whiteSpace: 'nowrap', fontWeight: 700, color: '#0f172a' }}>
+                {selectedBranch === 'Semua Branch' 
+                  ? `Semua Branch (${totalProjects})` 
+                  : `${formatBranch(selectedBranch)} (${branches.find(x => x.name === selectedBranch)?.projects?.length || 0})`}
+              </span>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: isDropdownOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>
                 <polyline points="6 9 12 15 18 9"></polyline>
               </svg>
             </div>
             {isDropdownOpen && (
-              <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: '8px', width: '100%', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '16px', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', zIndex: 50, overflow: 'hidden' }}>
+              <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: '8px', width: '230px', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '16px', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.12)', zIndex: 1000, overflow: 'hidden' }}>
                 <div 
                   className={`dropdown-item ${selectedBranch === 'Semua Branch' ? 'active' : ''}`}
                   onClick={() => { setSelectedBranch('Semua Branch'); setIsDropdownOpen(false); }}
                 >
-                  Semua Branch
+                  Semua Branch ({totalProjects})
                 </div>
                 {branches.map(b => (
                   <div 
@@ -86,7 +92,7 @@ const UploadView = memo(function UploadView({ branches, updateActivityField, ver
                     className={`dropdown-item ${selectedBranch === b.name ? 'active' : ''}`}
                     onClick={() => { setSelectedBranch(b.name); setIsDropdownOpen(false); }}
                   >
-                    {formatBranch(b.name)}
+                    {formatBranch(b.name)} ({b.projects?.length || 0})
                   </div>
                 ))}
               </div>
