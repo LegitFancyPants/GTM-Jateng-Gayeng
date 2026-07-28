@@ -644,13 +644,6 @@ function App() {
 
             {/* Account Details */}
             <div style={{ padding: '12px 12px', borderBottom: '1px solid #f1f5f9', fontSize: '12.5px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                <span style={{ color: '#64748b', fontWeight: 500 }}>Hak Akses</span>
-                <span className={`role-badge ${isAdmin ? 'admin' : 'user'}`}>
-                  {isAdmin ? 'Master Admin' : 'Tim Daerah'}
-                </span>
-              </div>
-
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ color: '#64748b', fontWeight: 500 }}>Branch</span>
                 <span style={{ fontWeight: 700, color: '#0f172a' }}>
