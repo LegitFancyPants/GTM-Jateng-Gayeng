@@ -1,6 +1,9 @@
+import { useState } from 'react';
 import { ACT_TYPES, actMeta } from '../utils';
 
 export default function ReviewModal({ modalData, closeModal, verifyActivity }) {
+  const [previewPhoto, setPreviewPhoto] = useState(null);
+
   if (!modalData) return null;
 
   return (
@@ -65,9 +68,6 @@ export default function ReviewModal({ modalData, closeModal, verifyActivity }) {
                 </div>
                 
                 <div style={{ fontSize: '12.5px', color: '#475569', lineHeight: 1.7 }}>
-                  {a?.photoUrl && a.photoUrl !== 'uploading...' && (
-                    <div><b>Foto:</b> ✅ Terlampir</div>
-                  )}
                   {a?.planDate && (
                     <div><b>Plan Date:</b> {new Date(a.planDate).toLocaleDateString('id-ID')}</div>
                   )}
@@ -76,6 +76,49 @@ export default function ReviewModal({ modalData, closeModal, verifyActivity }) {
                   )}
                   {(a?.keterangan || a?.fields?.keterangan || a?.fields?.kodeSf || a?.kodeSf) && (
                     <div><b>Kode SF:</b> {a?.keterangan || a?.fields?.keterangan || a?.fields?.kodeSf || a?.kodeSf}</div>
+                  )}
+                  {a?.photoUrl && a.photoUrl !== 'uploading...' && (
+                    <div style={{ marginTop: '8px', marginBottom: '6px' }}>
+                      <div style={{ fontSize: '12px', fontWeight: 600, color: '#64748b', marginBottom: '4px' }}>Foto Bukti Kegiatan:</div>
+                      <div 
+                        onClick={() => setPreviewPhoto({ url: a.photoUrl, title: `${actType.label} - ${modalData.pName}` })}
+                        style={{ 
+                          position: 'relative', 
+                          display: 'inline-block', 
+                          cursor: 'pointer', 
+                          borderRadius: '8px', 
+                          overflow: 'hidden', 
+                          border: '2px solid #cbd5e1',
+                          background: '#f8fafc',
+                          transition: 'transform 0.15s ease'
+                        }}
+                        title="Klik untuk melihat foto lebih besar"
+                      >
+                        <img 
+                          src={a.photoUrl} 
+                          alt={actType.label} 
+                          style={{ width: '130px', height: '90px', objectFit: 'cover', display: 'block' }} 
+                        />
+                        <div style={{
+                          position: 'absolute',
+                          bottom: 0,
+                          left: 0,
+                          right: 0,
+                          background: 'rgba(15, 23, 42, 0.8)',
+                          color: '#fff',
+                          fontSize: '10.5px',
+                          fontWeight: 700,
+                          padding: '3px 0',
+                          textAlign: 'center',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '4px'
+                        }}>
+                          🔍 Klik Perbesar
+                        </div>
+                      </div>
+                    </div>
                   )}
                   {!a?.photoUrl && !a?.planDate && !a?.actualDate && !a?.keterangan && !a?.fields?.keterangan && !a?.fields?.kodeSf && !a?.kodeSf && (
                     <div style={{ color: '#94a3b8', fontStyle: 'italic' }}>Belum ada data</div>
@@ -88,7 +131,7 @@ export default function ReviewModal({ modalData, closeModal, verifyActivity }) {
                       onClick={() => verifyActivity(modalData.bName, modalData.pName, actType.key)}
                       style={{ padding: '7px 14px', borderRadius: '7px', border: 'none', background: '#16a34a', color: '#fff', fontSize: '12.5px', fontWeight: 700, cursor: 'pointer' }}
                     >
-                      ✅ Verifikasi
+                      Verifikasi
                     </button>
                   </div>
                 )}
@@ -97,6 +140,65 @@ export default function ReviewModal({ modalData, closeModal, verifyActivity }) {
           })}
         </div>
       </div>
+
+      {/* Lightbox Photo Preview Modal */}
+      {previewPhoto && (
+        <div 
+          onClick={() => setPreviewPhoto(null)} 
+          style={{ 
+            position: 'fixed', 
+            inset: 0, 
+            background: 'rgba(15, 23, 42, 0.85)', 
+            display: 'flex', 
+            flexDirection: 'column',
+            alignItems: 'center', 
+            justifyContent: 'center', 
+            zIndex: 200, 
+            padding: '20px' 
+          }}
+        >
+          <div 
+            onClick={e => e.stopPropagation()} 
+            style={{ 
+              position: 'relative', 
+              maxWidth: '90vw', 
+              maxHeight: '85vh', 
+              display: 'flex', 
+              flexDirection: 'column', 
+              alignItems: 'center', 
+              background: '#fff', 
+              borderRadius: '16px', 
+              padding: '18px', 
+              boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)' 
+            }}
+          >
+            <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', gap: '16px' }}>
+              <div style={{ fontSize: '14.5px', fontWeight: 800, color: '#0f172a' }}>{previewPhoto.title}</div>
+              <button 
+                onClick={() => setPreviewPhoto(null)} 
+                style={{ border: 'none', background: '#f1f5f9', width: '32px', height: '32px', borderRadius: '50%', cursor: 'pointer', fontWeight: 700, fontSize: '14px', color: '#64748b' }}
+              >
+                ✕
+              </button>
+            </div>
+            <img 
+              src={previewPhoto.url} 
+              alt={previewPhoto.title} 
+              style={{ maxWidth: '100%', maxHeight: '68vh', borderRadius: '10px', objectFit: 'contain', border: '1px solid #e2e8f0' }} 
+            />
+            <div style={{ marginTop: '14px', textAlign: 'center' }}>
+              <a 
+                href={previewPhoto.url} 
+                target="_blank" 
+                rel="noreferrer" 
+                style={{ fontSize: '13px', color: '#2563eb', fontWeight: 700, textDecoration: 'none' }}
+              >
+                🔗 Buka Foto Ukuran Asli di Tab Baru
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { useState, useMemo, memo } from 'react';
 import ProjectTable from './ProjectTable';
 import ReviewModal from './ReviewModal';
 import { formatBranch } from '../utils';
+import { API_BASE_URL } from '../apiConfig';
 
 const AdminPanel = memo(function AdminPanel({ token, branches = [], onUpdate, goDashboard, onLogout, verifyActivity, updateActivityField, uploadPhoto, kpi }) {
   const [activeTab, setActiveTab] = useState('monitoring'); // 'monitoring' | 'excel'
@@ -128,7 +129,7 @@ const AdminPanel = memo(function AdminPanel({ token, branches = [], onUpdate, go
     formData.append('file', file);
 
     try {
-      const response = await fetch('http://localhost:3001/api/admin/import-excel', {
+      const response = await fetch(`${API_BASE_URL}/api/admin/import-excel`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`

@@ -674,6 +674,16 @@ app.post('/api/admin/import-excel', requireAdmin, excelUpload.single('file'), as
   }
 });
 
+// --- Serve Static React App & SPA Fallback for Single Deploy ---
+const staticPath = path.join(__dirname, '../gtm-monitor-react/dist');
+if (fs.existsSync(staticPath)) {
+  app.use(express.static(staticPath));
+  app.use((req, res) => {
+    res.sendFile(path.join(staticPath, 'index.html'));
+  });
+}
+
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
+

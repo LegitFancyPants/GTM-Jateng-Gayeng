@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { API_BASE_URL } from '../../apiConfig';
 
 export default function LoginPage({ branches = [], onLoginSuccess }) {
   const [username, setUsername] = useState('');
@@ -40,7 +41,7 @@ export default function LoginPage({ branches = [], onLoginSuccess }) {
     setSuccessMessage(null);
 
     try {
-      const res = await fetch('http://localhost:3001/api/auth/login', {
+      const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password })
@@ -83,7 +84,7 @@ export default function LoginPage({ branches = [], onLoginSuccess }) {
     setError(null);
 
     try {
-      const res = await fetch('http://localhost:3001/api/auth/reset-password', {
+      const res = await fetch(`${API_BASE_URL}/api/auth/reset-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

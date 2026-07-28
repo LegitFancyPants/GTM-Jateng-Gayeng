@@ -49,27 +49,25 @@ const ActivityTextInput = memo(({ a, actType, bName, p, updateActivityField }) =
     if (e.key === 'Enter' && updateActivityField) {
       e.preventDefault();
       if (!val || !val.trim()) {
-        alert('⚠️ Silakan ketik kode terlebih dahulu lalu tekan Enter.');
         return;
       }
-      const res = await updateActivityField(bName, p.name, actType.key, actType.fieldKey, val);
-      if (res !== false) {
-        alert('✅ Bukti sudah terkirim!');
-      }
+      await updateActivityField(bName, p.name, actType.key, actType.fieldKey, val);
     }
   };
 
   return (
-    <input
-      type="text"
-      placeholder={actType.placeholder}
-      value={val}
-      onChange={(e) => setVal(e.target.value)}
-      onKeyDown={handleKeyDown}
-      style={{ width: '120px', fontSize: '12px', padding: '4px 8px', border: '1px solid #e2e8f0', borderRadius: '5px' }}
-      readOnly={!updateActivityField}
-      title="Ketik kode (cth: SF 0973) lalu tekan Enter untuk mengirim"
-    />
+    <>
+      <input
+        type="text"
+        placeholder={actType.placeholder}
+        value={val}
+        onChange={(e) => setVal(e.target.value)}
+        onKeyDown={handleKeyDown}
+        style={{ width: '120px', fontSize: '12px', padding: '4px 8px', border: '1px solid #e2e8f0', borderRadius: '5px' }}
+        readOnly={!updateActivityField}
+        title="Ketik kode (cth: SF 0973) lalu tekan Enter untuk mengirim"
+      />
+    </>
   );
 });
 
@@ -89,34 +87,34 @@ const ProjectRow = memo(({ p, branchName, isExpanded, toggleProject, onReview, u
         className="table-row"
         style={{ gridTemplateColumns: tableGrid }}
       >
-        <div 
+        <div
           style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#64748b' }}
           onClick={() => toggleProject(p.name)}
         >
-          <svg 
-            width="14" 
-            height="14" 
-            viewBox="0 0 24 24" 
-            fill="none" 
-            stroke="currentColor" 
-            strokeWidth="2.5" 
-            strokeLinecap="round" 
-            strokeLinejoin="round" 
-            style={{ 
-              transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)', 
-              transition: 'transform 0.2s ease' 
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            style={{
+              transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
+              transition: 'transform 0.2s ease'
             }}
           >
             <polyline points="9 18 15 12 9 6"></polyline>
           </svg>
         </div>
-        <div 
+        <div
           style={{ fontSize: '13.5px', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', cursor: 'pointer' }}
           onClick={() => toggleProject(p.name)}
         >
           {p.name}
         </div>
-        <div 
+        <div
           style={{ fontSize: '12px', color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', cursor: 'pointer' }}
           onClick={() => toggleProject(p.name)}
         >
@@ -137,6 +135,54 @@ const ProjectRow = memo(({ p, branchName, isExpanded, toggleProject, onReview, u
               <div style={{ fontSize: '11px', fontWeight: 700, padding: '3px 10px', borderRadius: '6px', backgroundColor: meta.bg, color: meta.color, border: meta.border, height: '15px', display: 'flex', alignItems: 'center' }}>
                 {meta.label}
               </div>
+
+              {/* Date + Photo Input (For Tsel Menyapa Warga) */}
+              {actType.kind === 'date_photo' && (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
+                  <input
+                    type="date"
+                    value={a?.planDate ? new Date(a.planDate).toISOString().split('T')[0] : ''}
+                    onChange={(e) => updateActivityField ? updateActivityField(bName, p.name, actType.key, 'planDate', e.target.value) : undefined}
+                    style={{ width: '120px', fontSize: '11.5px', padding: '3px 6px', border: '1px solid #e2e8f0', borderRadius: '5px' }}
+                    readOnly={!updateActivityField}
+                    title="Pilih tanggal rencana"
+                  />
+                  <label style={{ width: '120px', height: '36px', borderRadius: '6px', border: a?.photoUrl ? '2px solid #22c55e' : '1px dashed #cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', background: a?.photoUrl ? '#f0fdf4' : '#f8fafc', fontSize: '11px', color: a?.photoUrl ? '#16a34a' : '#64748b', cursor: uploadPhoto ? 'pointer' : 'default', overflow: 'hidden', textAlign: 'center', padding: '2px 8px', boxSizing: 'border-box' }}>
+                    {a?.photoUrl && a.photoUrl !== 'uploading...' ? (
+                      <>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                          <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                        </svg>
+                        <span style={{ fontWeight: 700, fontSize: '11px', color: '#16a34a' }}>Foto Terisi</span>
+                      </>
+                    ) : a?.photoUrl === 'uploading...' ? (
+                      <span style={{ fontSize: '11px', color: '#64748b' }}>Uploading...</span>
+                    ) : (
+                      <>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                          <circle cx="8.5" cy="8.5" r="1.5" />
+                          <polyline points="21 15 16 10 5 21" />
+                        </svg>
+                        <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 600 }}>+ Upload Foto</span>
+                      </>
+                    )}
+                    {uploadPhoto && (
+                      <input
+                        type="file"
+                        accept="image/*"
+                        style={{ display: 'none' }}
+                        onChange={(e) => {
+                          if (e.target.files && e.target.files[0]) {
+                            uploadPhoto(bName, p.name, actType.key, e.target.files[0]);
+                          }
+                        }}
+                      />
+                    )}
+                  </label>
+                </div>
+              )}
 
               {/* Photo Input */}
               {actType.kind === 'photo' && (
@@ -162,9 +208,9 @@ const ProjectRow = memo(({ p, branchName, isExpanded, toggleProject, onReview, u
                     </>
                   )}
                   {uploadPhoto && (
-                    <input 
-                      type="file" 
-                      accept="image/*" 
+                    <input
+                      type="file"
+                      accept="image/*"
                       style={{ display: 'none' }}
                       onChange={(e) => {
                         if (e.target.files && e.target.files[0]) {
@@ -279,7 +325,7 @@ export default function ProjectTable({ projects, branchName, onReview, updateAct
       const newState = { ...prev };
       if (key === 'sort' && val !== null) {
         ['usedTotal', 'avaiTotal', 'totalPort'].forEach(c => {
-           if (c !== col) newState[c].sort = null;
+          if (c !== col) newState[c].sort = null;
         });
       }
       newState[col] = { ...newState[col], [key]: val };
@@ -289,43 +335,43 @@ export default function ProjectTable({ projects, branchName, onReview, updateAct
 
   const renderFilterPopup = (col) => {
     if (filterPopup !== col) return null;
-    
+
     const valueCounts = {};
     projectsWithTotals.forEach(p => {
-       const v = p[col];
-       valueCounts[v] = (valueCounts[v] || 0) + 1;
+      const v = p[col];
+      valueCounts[v] = (valueCounts[v] || 0) + 1;
     });
 
-    const allValues = Object.keys(valueCounts).map(Number).sort((a,b) => a-b);
+    const allValues = Object.keys(valueCounts).map(Number).sort((a, b) => a - b);
     const searchLower = filters[col].search.toLowerCase();
     const visibleValues = allValues.filter(v => v.toString().toLowerCase().includes(searchLower));
-    
+
     return (
       <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: '4px', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', zIndex: 100, width: '200px', padding: '8px', fontSize: '12px', color: '#334155', fontWeight: 400, textAlign: 'left', textTransform: 'none', letterSpacing: 'normal' }}>
-        <div 
+        <div
           onClick={() => { updateFilter(col, 'sort', 'asc'); setFilterPopup(null); }}
           style={{ padding: '6px 8px', cursor: 'pointer', borderRadius: '4px', backgroundColor: filters[col].sort === 'asc' ? '#f1f5f9' : 'transparent', display: 'flex', alignItems: 'center', gap: '8px' }}>
           <span style={{ fontSize: '14px' }}>↓</span> Sort A to Z (Kecil ke Besar)
         </div>
-        <div 
+        <div
           onClick={() => { updateFilter(col, 'sort', 'desc'); setFilterPopup(null); }}
           style={{ padding: '6px 8px', cursor: 'pointer', borderRadius: '4px', backgroundColor: filters[col].sort === 'desc' ? '#f1f5f9' : 'transparent', display: 'flex', alignItems: 'center', gap: '8px' }}>
           <span style={{ fontSize: '14px' }}>↑</span> Sort Z to A (Besar ke Kecil)
         </div>
         <div style={{ height: '1px', background: '#e2e8f0', margin: '8px 0' }} />
-        
-        <input 
-          type="text" 
-          placeholder="Search" 
+
+        <input
+          type="text"
+          placeholder="Search"
           value={filters[col].search}
           onChange={e => updateFilter(col, 'search', e.target.value)}
           style={{ width: '100%', boxSizing: 'border-box', padding: '6px 12px', border: '1px solid #cbd5e1', borderRadius: '50px', marginBottom: '8px', fontSize: '12px' }}
         />
-        
+
         <div style={{ maxHeight: '150px', overflowY: 'auto' }}>
           <label style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 2px', cursor: 'pointer' }}>
-            <input 
-              type="checkbox" 
+            <input
+              type="checkbox"
               checked={filters[col].unchecked.length === 0}
               onChange={(e) => {
                 if (e.target.checked) updateFilter(col, 'unchecked', []);
@@ -336,13 +382,13 @@ export default function ProjectTable({ projects, branchName, onReview, updateAct
           </label>
           {visibleValues.map(v => (
             <label key={v} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 2px', cursor: 'pointer' }}>
-              <input 
-                type="checkbox" 
+              <input
+                type="checkbox"
                 checked={!filters[col].unchecked.includes(v)}
                 onChange={(e) => {
-                   const u = filters[col].unchecked;
-                   if (e.target.checked) updateFilter(col, 'unchecked', u.filter(x => x !== v));
-                   else updateFilter(col, 'unchecked', [...u, v]);
+                  const u = filters[col].unchecked;
+                  if (e.target.checked) updateFilter(col, 'unchecked', u.filter(x => x !== v));
+                  else updateFilter(col, 'unchecked', [...u, v]);
                 }}
               />
               {v} <span style={{ color: '#94a3b8', fontSize: '11px', fontWeight: 600 }}>({valueCounts[v]})</span>
@@ -391,7 +437,7 @@ export default function ProjectTable({ projects, branchName, onReview, updateAct
 
           {/* Rows */}
           {paginatedProjects.map((p) => (
-            <ProjectRow 
+            <ProjectRow
               key={p.name}
               p={p}
               branchName={branchName}
@@ -497,7 +543,7 @@ export default function ProjectTable({ projects, branchName, onReview, updateAct
                 <polyline points="12 19 5 12 12 5"></polyline>
               </svg>
             </button>
-            
+
             <span style={{ padding: '0 4px', fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>
               {currentPage} / {totalPages}
             </span>

@@ -5,6 +5,7 @@ import UploadView from './components/UploadView';
 import AdminPanel from './components/AdminPanel';
 import LoginPage from './components/Auth/LoginPage';
 import { formatBranch, flatOdps, computeStats, BRANCH_COLORS } from './utils';
+import { API_BASE_URL } from './apiConfig';
 import './index.css';
 
 function App() {
@@ -15,10 +16,10 @@ function App() {
 
   // Universal Auth State
   const [user, setUser] = useState(() => {
-    const saved = localStorage.getItem('gtm_user');
+    const saved = sessionStorage.getItem('gtm_user') || localStorage.getItem('gtm_user');
     return saved ? JSON.parse(saved) : null;
   });
-  const [token, setToken] = useState(() => localStorage.getItem('gtm_token') || null);
+  const [token, setToken] = useState(() => sessionStorage.getItem('gtm_token') || localStorage.getItem('gtm_token') || null);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showLogoutConfirmModal, setShowLogoutConfirmModal] = useState(false);
   const lastLoginTimestamp = useRef(0);
@@ -128,7 +129,7 @@ function App() {
     }
     try {
       setLoading(true);
-      const res = await fetch('http://localhost:3001/api/data', {
+      const res = await fetch(`${API_BASE_URL}/api/data`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
@@ -149,35 +150,8 @@ function App() {
     fetchData();
   }, [token]);
 
-  // 15-Minute Inactivity Auto-Logout Timer
-  useEffect(() => {
-    if (!user || !token) return;
-
-    let timeoutId;
-    const INACTIVITY_TIME = 15 * 60 * 1000; // 15 menit
-
-    const handleTimeout = () => {
-      alert('⏰ Sesi Anda telah berakhir karena tidak ada aktivitas selama 15 menit. Silakan login kembali.');
-      handleLogout(false);
-    };
-
-    const resetTimer = () => {
-      clearTimeout(timeoutId);
-      timeoutId = setTimeout(handleTimeout, INACTIVITY_TIME);
-    };
-
-    // Set initial timer
-    resetTimer();
-
-    // Event listeners for activity
-    const events = ['mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart'];
-    events.forEach(e => window.addEventListener(e, resetTimer, { passive: true }));
-
-    return () => {
-      clearTimeout(timeoutId);
-      events.forEach(e => window.removeEventListener(e, resetTimer));
-    };
-  }, [user, token]);
+  // Sesi pengguna tetap aktif selama tab browser masih dibuka
+  // (Pengguna akan ter-logout otomatis hanya jika keluar dari tab/browser atau menekan Log Out di profil)
 
   // Browser Back/Forward (popstate) Navigation Handler
   useEffect(() => {
@@ -222,6 +196,8 @@ function App() {
     setBranches([]);
     setToken(newToken);
     setUser(newUser);
+    sessionStorage.setItem('gtm_token', newToken);
+    sessionStorage.setItem('gtm_user', JSON.stringify(newUser));
     localStorage.setItem('gtm_token', newToken);
     localStorage.setItem('gtm_user', JSON.stringify(newUser));
     
@@ -233,6 +209,8 @@ function App() {
     setUser(null);
     setToken(null);
     setBranches([]);
+    sessionStorage.removeItem('gtm_user');
+    sessionStorage.removeItem('gtm_token');
     localStorage.removeItem('gtm_user');
     localStorage.removeItem('gtm_token');
     setView('dashboard');
@@ -303,7 +281,7 @@ function App() {
     });
 
     try {
-      const res = await fetch('http://localhost:3001/api/activities', {
+      const res = await fetch(`${API_BASE_URL}/api/activities`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -361,7 +339,7 @@ function App() {
     formData.append('photo', file);
 
     try {
-      const res = await fetch('http://localhost:3001/api/activities', {
+      const res = await fetch(`${API_BASE_URL}/api/activities`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -403,7 +381,7 @@ function App() {
     if (!isAdmin) return;
 
     try {
-      const res = await fetch('http://localhost:3001/api/verify', {
+      const res = await fetch(`${API_BASE_URL}/api/verify`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
