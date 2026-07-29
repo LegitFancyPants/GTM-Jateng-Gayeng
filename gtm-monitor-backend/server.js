@@ -9,6 +9,7 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const cloudinary = require('cloudinary');
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
+const crypto = require('crypto');
 
 const app = express();
 const prisma = new PrismaClient();
@@ -472,20 +473,46 @@ app.post('/api/admin/import-excel', requireAdmin, excelUpload.single('file'), as
       }
     }
 
+    const projectsToCreate = [];
     const odpsToCreate = [];
     const odpsToUpdate = [];
 
     // ─── 2. PROCESS ROWS IN RAM (Sangat cepat & 100% akurat) ───
     for (const sheetName of workbook.SheetNames) {
       const sheet = workbook.Sheets[sheetName];
-      const data = xlsx.utils.sheet_to_json(sheet);
+      // Convert to 2D array to find the true header row (ignoring titles)
+      const rawData = xlsx.utils.sheet_to_json(sheet, { header: 1 });
+      let headerRowIndex = 0;
+      let headers = [];
+      
+      for (let i = 0; i < Math.min(10, rawData.length); i++) {
+        const rowStrings = (rawData[i] || []).map(c => c ? c.toString().trim().toUpperCase() : '');
+        if (rowStrings.some(c => c.includes('PROJECT') || c.includes('PROYEK') || c.includes('BRANCH') || c.includes('CABANG'))) {
+          headerRowIndex = i;
+          headers = rowStrings;
+          break;
+        }
+      }
+
+      if (headers.length === 0) continue; // Skip sheet if no valid headers found
+
+      // Map rows based on the detected headers
+      const data = [];
+      for (let i = headerRowIndex + 1; i < rawData.length; i++) {
+        const rowObj = {};
+        let hasData = false;
+        for (let j = 0; j < headers.length; j++) {
+          if (headers[j]) {
+            rowObj[headers[j]] = rawData[i][j];
+            if (rawData[i][j] !== undefined && rawData[i][j] !== null && rawData[i][j] !== '') hasData = true;
+          }
+        }
+        if (hasData) data.push(rowObj);
+      }
 
       for (const row of data) {
-        // Normalize column headers (uppercase & trim spaces)
-        const normRow = {};
-        for (const [k, v] of Object.entries(row)) {
-          if (k) normRow[k.toString().trim().toUpperCase()] = v;
-        }
+        // Headers are already normalized (uppercase & trimmed)
+        const normRow = row;
 
         // Helper untuk mencari kolom dengan pencarian kata kunci yang fleksibel
         const findValue = (rowObj, possibleKeys, substringKeywords) => {
@@ -502,15 +529,21 @@ app.post('/api/admin/import-excel', requireAdmin, excelUpload.single('file'), as
           return undefined;
         };
 
-        const rawBranch = findValue(normRow, ['TELKOMSEL BRANCH', 'BRANCH', 'CABANG', 'NAMA BRANCH', 'NAMA CABANG', 'AREA'], ['BRANCH', 'CABANG']) || '';
-        const rawProject = findValue(normRow, ['PROJECT', 'PROYEK', 'NAMA PROJECT', 'NAMA PROYEK', 'ID PROJECT'], ['PROJECT', 'PROYEK']) || '';
-        const rawWok = findValue(normRow, ['WOK', 'WILAYAH', 'KOTA'], ['WOK', 'WILAYAH']) || '-';
-        const rawOdp = findValue(normRow, ['ODP NAME', 'ODP', 'ID ODP', 'NAMA ODP', 'ODP ID', 'PORT'], ['ODP', 'PORT']) || '';
-        const avai = parseInt(findValue(normRow, ['AVAI IUM', 'AVAI', 'AVAILABLE', 'TERSEDIA', 'PORT AVAI'], ['AVAI', 'AVAILABLE']) || 0) || 0;
-        const used = parseInt(findValue(normRow, ['USED IUM', 'USED', 'TERPAKAI', 'PORT USED'], ['USED', 'TERPAKAI']) || 0) || 0;
-        const total = parseInt(findValue(normRow, ['IS TOTALIUM', 'TOTALIUM', 'TOTAL', 'TOTAL PORT', 'KAPASITAS'], ['TOTALIUM', 'TOTAL', 'TOTALIUM']) || 0) || 0;
+        const rawBranch = findValue(normRow, ['TELKOMSEL BRANCH', 'TELKOMSEL', 'BRANCH', 'CABANG', 'NAMA BRANCH', 'NAMA CABANG', 'AREA'], ['BRANCH', 'CABANG', 'TELKOMSEL']) || '';
+        const rawProject = findValue(normRow, ['NAMA PROYEK', 'PROJECT', 'PROYEK', 'NAMA PROJECT', 'ID PROJECT'], ['PROJECT', 'PROYEK']) || '';
+        const rawWok = findValue(normRow, ['BWOK', 'WOK', 'WILAYAH', 'KOTA'], ['WOK', 'WILAYAH', 'BWOK']) || '-';
+        const rawUsia = findValue(normRow, ['USIA', 'AGE', 'UMUR'], ['USIA', 'AGE']) || '';
+        
+        const rawOdp = findValue(normRow, ['ODP NAME', 'ID ODP', 'NAMA ODP', 'ODP ID'], ['ODP NAME', 'ID ODP']);
+        const jumlahOdp = parseInt(findValue(normRow, ['JUMLAH ODP', 'ODP COUNT', 'TOTAL ODP'], ['JUMLAH ODP']) || 1) || 1;
 
-        if (!rawBranch || !rawProject || !rawOdp) continue;
+        const total = parseInt(findValue(normRow, ['PORT', 'TOTAL PORT', 'IS TOTALIUM', 'TOTALIUM', 'TOTAL', 'KAPASITAS'], ['PORT', 'TOTAL']) || 0) || 0;
+        const used = parseInt(findValue(normRow, ['USED', 'USED IUM', 'TERPAKAI', 'PORT USED'], ['USED', 'TERPAKAI']) || 0) || 0;
+        
+        const avaiVal = findValue(normRow, ['AVAI IUM', 'AVAI', 'AVAILABLE', 'TERSEDIA', 'PORT AVAI'], ['AVAI', 'AVAILABLE']);
+        const avai = (avaiVal !== undefined && avaiVal !== null) ? (parseInt(avaiVal) || 0) : Math.max(0, total - used);
+
+        if (!rawBranch || !rawProject) continue;
 
         // Clean & uppercase branch name
         let branchName = rawBranch.toString().trim().toUpperCase();
@@ -533,82 +566,112 @@ app.post('/api/admin/import-excel', requireAdmin, excelUpload.single('file'), as
         }
 
         // Find or create Project
-        const projectName = rawProject.toString().trim();
+        let projectName = rawProject.toString().trim();
         const wokName = rawWok.toString().trim();
+        const usiaName = rawUsia.toString().trim();
+        
+        // Mencegah penggabungan proyek yang namanya sama tapi baris berbeda (misal beda Usia)
+        if (usiaName) {
+          projectName = `${projectName} (${usiaName})`;
+        }
+
         const projectKey = `${branch.id}||${projectName.toUpperCase()}`;
         let project = projectMap.get(projectKey);
 
         if (!project) {
-          project = await prisma.project.create({
-            data: {
-              name: projectName,
-              wok: wokName,
-              branchId: branch.id
-            }
-          });
+          const newProjectId = crypto.randomUUID();
+          project = {
+            id: newProjectId,
+            name: projectName,
+            wok: wokName,
+            branchId: branch.id
+          };
+          projectsToCreate.push(project);
           projectMap.set(projectKey, project);
           projectsCreated++;
         }
 
-        // Check ODP in RAM
-        const odpName = rawOdp.toString().trim();
-        const cleanOdpKey = odpName.toUpperCase();
-        const existingOdp = odpMap.get(cleanOdpKey);
+        // Processing ODPs (Either explicit ODP Name or Synthetic ODPs based on Jumlah ODP)
+        const countToCreate = rawOdp ? 1 : Math.max(1, jumlahOdp);
+        const baseSubTotal = Math.floor(total / countToCreate);
+        const baseSubUsed = Math.floor(used / countToCreate);
 
-        if (existingOdp) {
-          if (existingOdp.id && existingOdp.id.startsWith('temp-')) {
-            // Sudah ada di daftar odpsToCreate, update nilainya ke yang terbaru di sheet
-            const target = odpsToCreate.find(item => item.odp.toUpperCase() === cleanOdpKey);
-            if (target) {
-              target.avai = avai;
-              target.used = used;
-              target.total = total;
-              target.projectId = project.id;
+        let remainingTotal = total;
+        let remainingUsed = used;
+
+        for (let i = 1; i <= countToCreate; i++) {
+          const odpName = rawOdp 
+            ? rawOdp.toString().trim() 
+            : `${projectName}-${wokName !== '-' ? wokName : 'WOK'}-${totalRowsProcessed + 1}-${i}`;
+          
+          let subTotal = baseSubTotal;
+          let subUsed = baseSubUsed;
+          
+          // The last ODP gets the remainder to ensure exact sums
+          if (i === countToCreate) {
+            subTotal = remainingTotal;
+            subUsed = remainingUsed;
+          } else {
+            remainingTotal -= subTotal;
+            remainingUsed -= subUsed;
+          }
+          const subAvai = Math.max(0, subTotal - subUsed);
+
+          const cleanOdpKey = odpName.toUpperCase();
+          const existingOdp = odpMap.get(cleanOdpKey);
+
+          if (existingOdp) {
+            if (existingOdp.id && existingOdp.id.startsWith('temp-')) {
+              const target = odpsToCreate.find(item => item.odp.toUpperCase() === cleanOdpKey);
+              if (target) {
+                target.avai = subAvai;
+                target.used = subUsed;
+                target.total = subTotal;
+                target.projectId = project.id;
+              }
+            } else if (
+              existingOdp.avai !== subAvai ||
+              existingOdp.used !== subUsed ||
+              existingOdp.total !== subTotal ||
+              existingOdp.projectId !== project.id
+            ) {
+              odpsToUpdate.push({
+                id: existingOdp.id,
+                odp: odpName,
+                avai: subAvai,
+                used: subUsed,
+                total: subTotal,
+                projectId: project.id
+              });
+              existingOdp.avai = subAvai;
+              existingOdp.used = subUsed;
+              existingOdp.total = subTotal;
+              existingOdp.projectId = project.id;
+            } else {
+              odpsUnchanged++;
             }
-          } else if (
-            existingOdp.avai !== avai ||
-            existingOdp.used !== used ||
-            existingOdp.total !== total ||
-            existingOdp.projectId !== project.id
-          ) {
-            odpsToUpdate.push({
-              id: existingOdp.id,
+          } else {
+            const coords = getOdpCoords(odpName, branch.name, null, null);
+            odpsToCreate.push({
               odp: odpName,
-              avai,
-              used,
-              total,
+              avai: subAvai,
+              used: subUsed,
+              total: subTotal,
+              lat: coords.lat,
+              lon: coords.lon,
               projectId: project.id
             });
-            // Update RAM state
-            existingOdp.avai = avai;
-            existingOdp.used = used;
-            existingOdp.total = total;
-            existingOdp.projectId = project.id;
-          } else {
-            odpsUnchanged++;
+            odpMap.set(cleanOdpKey, {
+              id: 'temp-' + odpsToCreate.length,
+              odp: odpName,
+              avai: subAvai,
+              used: subUsed,
+              total: subTotal,
+              lat: coords.lat,
+              lon: coords.lon,
+              projectId: project.id
+            });
           }
-        } else {
-          const coords = getOdpCoords(odpName, branch.name, null, null);
-          odpsToCreate.push({
-            odp: odpName,
-            avai,
-            used,
-            total,
-            lat: coords.lat,
-            lon: coords.lon,
-            projectId: project.id
-          });
-          // Tambahkan ke RAM agar tidak ganda jika ada baris duplikat di Excel
-          odpMap.set(cleanOdpKey, {
-            id: 'temp-' + odpsToCreate.length,
-            odp: odpName,
-            avai,
-            used,
-            total,
-            lat: coords.lat,
-            lon: coords.lon,
-            projectId: project.id
-          });
         }
 
         totalRowsProcessed++;
@@ -617,7 +680,19 @@ app.post('/api/admin/import-excel', requireAdmin, excelUpload.single('file'), as
     }
 
     // ─── 3. BATCH EXECUTION (Kirim ke DB sekaligus dengan aman) ───
-    console.log(`⚡ RAM Processing selesai. Menyiapkan Batch DB: ${odpsToCreate.length} baru, ${odpsToUpdate.length} update, ${odpsUnchanged} tidak berubah.`);
+    console.log(`⚡ RAM Processing selesai. Menyiapkan Batch DB: ${projectsToCreate.length} project, ${odpsToCreate.length} ODP baru, ${odpsToUpdate.length} update.`);
+
+    // Batch Insert Project Baru
+    if (projectsToCreate.length > 0) {
+      const BATCH_SIZE = 500;
+      for (let i = 0; i < projectsToCreate.length; i += BATCH_SIZE) {
+        const batch = projectsToCreate.slice(i, i + BATCH_SIZE);
+        await prisma.project.createMany({
+          data: batch,
+          skipDuplicates: true
+        });
+      }
+    }
 
     // Batch Insert ODP Baru (dalam grup 500 baris)
     if (odpsToCreate.length > 0) {
