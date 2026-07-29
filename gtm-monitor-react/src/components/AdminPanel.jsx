@@ -153,14 +153,16 @@ const AdminPanel = memo(function AdminPanel({ token, branches = [], onUpdate, go
       const result = await response.json();
 
       if (response.ok && result.success) {
-        setMessage('Database berhasil diperbarui dengan data Excel baru!');
+        setMessage(result.message || 'Database berhasil diperbarui dengan data Excel baru!');
         setFile(null);
         if (onUpdate) onUpdate();
+      } else if (response.status === 401) {
+        setError(result.message || 'Sesi login Admin telah berakhir (15 menit tidak aktif). Silakan login kembali.');
       } else {
-        setError(result.error || 'Gagal mengupload dan memperbarui database.');
+        setError(result.message || result.error || 'Gagal mengunggah dan memperbarui database.');
       }
     } catch (err) {
-      setError('Terjadi kesalahan koneksi ke server.');
+      setError('Terjadi kesalahan koneksi ke server. Pastikan server backend sedang berjalan.');
       console.error(err);
     } finally {
       setLoading(false);

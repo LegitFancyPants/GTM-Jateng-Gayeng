@@ -94,7 +94,7 @@ const requireAdmin = (req, res, next) => {
 
 // --- Auth Endpoints ---
 
-// Register User Baru (khusus Admin — akun WOK sudah dibuat tetap, bukan self-signup)
+// Register User Baru (khusus Admin â€” akun WOK sudah dibuat tetap, bukan self-signup)
 app.post('/api/auth/register', requireAdmin, async (req, res) => {
   try {
     const { username, password, fullName, branchName } = req.body;
@@ -259,6 +259,8 @@ app.get('/api/data', authenticateToken, async (req, res) => {
     // Transform data to match what the frontend expects (Return all projects for Dashboard & typeDesign support)
     const formattedBranches = branches.map(b => ({
       name: b.name,
+      occRate: b.occRate,   // Nilai OCC BRANCH langsung dari Excel (0.0 - 1.0)
+      gapWoW: b.gapWoW,    // Nilai GAP WOW dari Excel
       projects: b.projects.map(p => {
         // Pre-kalkulasi total per proyek
         const usedTotal = p.odps.reduce((s, o) => s + o.used, 0);
@@ -325,12 +327,25 @@ app.get('/api/data', authenticateToken, async (req, res) => {
   }
 });
 
+// 1b. Get Import Metadata (Jateng DIY Summary for Dashboard KPI cards)
+app.get('/api/import-meta', authenticateToken, async (req, res) => {
+  try {
+    const meta = await prisma.importMeta.findUnique({
+      where: { key: 'jateng_diy_summary' }
+    });
+    res.json(meta || {});
+  } catch (error) {
+    console.error(error);
+    res.json({});
+  }
+});
+
 // 2. Upload/Update Project Activity (Protected & Branch-Scoped)
 app.post('/api/activities', authenticateToken, upload.single('photo'), async (req, res) => {
   try {
     const { projectName, branchName, type, status, planDate, actualDate, keterangan } = req.body;
     console.log(`[Activity POST] project: ${projectName}, type: ${type}, status: ${status}, keterangan:`, keterangan);
-    // Cloudinary returns the secure URL — coba berbagai properti sebagai fallback
+    // Cloudinary returns the secure URL â€” coba berbagai properti sebagai fallback
     let photoUrl = req.file
       ? (req.file.path || req.file.secure_url || req.file.url || undefined)
       : undefined;
@@ -438,7 +453,7 @@ app.post('/api/verify', requireAdmin, async (req, res) => {
   }
 });
 
-// 4. Import Excel (Admin only) — updates ODP data and creates Projects/Branches robustly & super fast
+// 4. Import Excel (Admin only) â€” updates ODP data and creates Projects/Branches robustly & super fast
 app.post('/api/admin/import-excel', requireAdmin, excelUpload.single('file'), async (req, res) => {
   try {
     if (!req.file) {
@@ -446,7 +461,27 @@ app.post('/api/admin/import-excel', requireAdmin, excelUpload.single('file'), as
     }
 
     const startTime = Date.now();
-    console.log('📦 Memulai import Excel dengan In-Memory Mapping & Batch Processing...');
+    console.log('ðŸ“¦ Memulai import Excel dengan In-Memory Mapping & Batch Processing...');
+
+    // â”€â”€â”€ PETA WOK â†’ BRANCH YANG BENAR (WOK menentukan Branch, bukan kolom Branch di Excel) â”€â”€â”€
+    const WOK_TO_BRANCH = {
+      'KEBUMEN': 'MAGELANG',
+      'MAGELANG TEMANGGUNG': 'MAGELANG',
+      'BATANG': 'PEKALONGAN',
+      'PEMALANG PURBALINGGA': 'PEKALONGAN',
+      'TEGAL BREBES': 'PEKALONGAN',
+      'CILACAP BANYUMAS': 'PURWOKERTO',
+      'WONOSOBO BANJARNEGARA': 'PURWOKERTO',
+      'DEMAK': 'SEMARANG',
+      'JEPARA KUDUS - PATI': 'SEMARANG',
+      'SEMARANG 1': 'SEMARANG',
+      'SEMARANG 2': 'SEMARANG',
+      'BOYOLALI': 'SURAKARTA',
+      'SRAGEN': 'SURAKARTA',
+      'SURAKARTA': 'SURAKARTA',
+      'YOGYA 1': 'YOGYAKARTA',
+      'YOGYA 2': 'YOGYAKARTA',
+    };
 
     // Read from buffer (memoryStorage)
     const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
@@ -454,9 +489,10 @@ app.post('/api/admin/import-excel', requireAdmin, excelUpload.single('file'), as
     let totalRowsProcessed = 0;
     let projectsCreated = 0;
     let odpsUnchanged = 0;
+    let wokBranchCorrections = 0;
     const branchesFound = new Set();
 
-    // ─── 1. IN-MEMORY MAPPING (Load semua data dari DB ke RAM sekaligus) ───
+    // â”€â”€â”€ 1. IN-MEMORY MAPPING (Load semua data dari DB ke RAM sekaligus) â”€â”€â”€
     const allDbBranches = await prisma.branch.findMany();
     const branchMap = new Map(); // uppercase name -> branch object
     for (const b of allDbBranches) {
@@ -480,7 +516,11 @@ app.post('/api/admin/import-excel', requireAdmin, excelUpload.single('file'), as
     const odpsToCreate = [];
     const odpsToUpdate = [];
 
-    // ─── 2. PROCESS ROWS IN RAM (Sangat cepat & 100% akurat) ───
+    // Storage untuk nilai OCC BRANCH dan GAP WOW per branch dari Excel
+    const branchOccFromExcel = {}; // branchName -> { occRate, gapWoW } (first occurrence)
+    let jatengDiySummary = null; // Baris summary "Jateng DIY"
+
+    // â”€â”€â”€ 2. PROCESS ROWS IN RAM (Sangat cepat & 100% akurat) â”€â”€â”€
     for (const sheetName of workbook.SheetNames) {
       const sheet = workbook.Sheets[sheetName];
       // Convert to 2D array to find the true header row (ignoring titles)
@@ -498,6 +538,10 @@ app.post('/api/admin/import-excel', requireAdmin, excelUpload.single('file'), as
       }
 
       if (headers.length === 0) continue; // Skip sheet if no valid headers found
+
+      // Build dynamic column index map
+      const colMap = {};
+      headers.forEach((h, idx) => { if (h) colMap[h] = idx; });
 
       // Map rows based on the detected headers
       const data = [];
@@ -535,7 +579,6 @@ app.post('/api/admin/import-excel', requireAdmin, excelUpload.single('file'), as
         const rawBranch = findValue(normRow, ['TELKOMSEL BRANCH', 'TELKOMSEL', 'BRANCH', 'CABANG', 'NAMA BRANCH', 'NAMA CABANG', 'AREA'], ['BRANCH', 'CABANG', 'TELKOMSEL']) || '';
         const rawProject = findValue(normRow, ['NAMA PROYEK', 'PROJECT', 'PROYEK', 'NAMA PROJECT', 'ID PROJECT'], ['PROJECT', 'PROYEK']) || '';
         const rawWok = findValue(normRow, ['BWOK', 'WOK', 'WILAYAH', 'KOTA'], ['WOK', 'WILAYAH', 'BWOK']) || '-';
-        const rawUsia = findValue(normRow, ['USIA', 'AGE', 'UMUR'], ['USIA', 'AGE']) || '';
         const rawTypeDesign = findValue(normRow, ['TYPE DESIGN', 'DESIGN TYPE', 'TYPE', 'GREENFIELD/BROWNFIELD', 'GREENFIELD / BROWNFIELD', 'DESIGN'], ['DESIGN', 'GREENFIELD', 'BROWNFIELD']);
         
         let typeDesign = 'Greenfield';
@@ -545,7 +588,7 @@ app.post('/api/admin/import-excel', requireAdmin, excelUpload.single('file'), as
           else if (strVal.includes('GREEN')) typeDesign = 'Greenfield';
         }
         
-        const rawStatus = findValue(normRow, ['STATUS ODP', 'OCC STATUS', 'STATUS', 'WARNA ODP', 'COLOR', 'WARNA'], ['STATUS', 'WARNA']);
+        const rawStatus = findValue(normRow, ['OCC 2', 'STATUS ODP', 'OCC STATUS', 'WARNA ODP', 'COLOR', 'WARNA'], ['WARNA', 'OCC 2']);
         let excelOccStatus = null;
         if (rawStatus) {
           const strS = rawStatus.toString().toUpperCase();
@@ -556,25 +599,80 @@ app.post('/api/admin/import-excel', requireAdmin, excelUpload.single('file'), as
           else if (strS.includes('RED') || strS.includes('MERAH')) excelOccStatus = 'RED';
         }
 
+        const rawLatVal = findValue(normRow, ['LATITUDE', 'LAT', 'KORDINAT LAT', 'Y'], ['LATITUDE', 'LAT']);
+        const rawLonVal = findValue(normRow, ['LONGITUDE', 'LON', 'LONG', 'KORDINAT LON', 'X'], ['LONGITUDE', 'LON', 'LONG']);
+        const parsedLat = parseFloat(rawLatVal);
+        const parsedLon = parseFloat(rawLonVal);
+        const hasExplicitCoords = !isNaN(parsedLat) && !isNaN(parsedLon);
+
         const rawOdp = findValue(normRow, ['ODP NAME', 'ID ODP', 'NAMA ODP', 'ODP ID'], ['ODP NAME', 'ID ODP']);
         const jumlahOdp = parseInt(findValue(normRow, ['JUMLAH ODP', 'ODP COUNT', 'TOTAL ODP'], ['JUMLAH ODP']) || 1) || 1;
 
-        const total = parseInt(findValue(normRow, ['PORT', 'TOTAL PORT', 'IS TOTALIUM', 'TOTALIUM', 'TOTAL', 'KAPASITAS'], ['PORT', 'TOTAL']) || 0) || 0;
+        const total = parseInt(findValue(normRow, ['PORT', 'TOTAL PORT', 'IS TOTALIUM', 'TOTALIUM', 'TOTAL', 'KAPASITAS'], ['TOTAL']) || 0) || 0;
         const used = parseInt(findValue(normRow, ['USED', 'USED IUM', 'TERPAKAI', 'PORT USED'], ['USED', 'TERPAKAI']) || 0) || 0;
         
         const avaiVal = findValue(normRow, ['AVAI IUM', 'AVAI', 'AVAILABLE', 'TERSEDIA', 'PORT AVAI'], ['AVAI', 'AVAILABLE']);
         const avai = (avaiVal !== undefined && avaiVal !== null) ? (parseInt(avaiVal) || 0) : Math.max(0, total - used);
 
-        if (!rawBranch || !rawProject) continue;
+        // Ambil OCC BRANCH dan GAP WOW dari kolom Excel
+        const rawOccBranch = findValue(normRow, ['OCC BRANCH'], ['OCC BRANCH']);
+        const rawGapWoW = findValue(normRow, ['GAP WOW', 'GAP WOW '], ['GAP WOW']);
 
-        // Clean & uppercase branch name
+        if (!rawBranch) continue;
+
+        // â”€â”€â”€ TANGKAP BARIS SUMMARY "JATENG DIY" â”€â”€â”€
+        if (rawBranch.toString().trim().toUpperCase().includes('JATENG') || rawBranch.toString().trim().toUpperCase() === 'JATENG DIY') {
+          jatengDiySummary = {
+            occRate: parseFloat(rawOccBranch) || null,
+            available: parseInt(avaiVal) || null,
+            used: parseInt(findValue(normRow, ['USED'], ['USED'])) || null,
+            total: parseInt(findValue(normRow, ['TOTAL'], ['TOTAL'])) || null,
+            gapWoW: parseFloat(rawGapWoW) || null,
+          };
+          console.log('ðŸ“Š Jateng DIY Summary Row ditemukan:', jatengDiySummary);
+          continue;
+        }
+
+        if (!rawProject) continue;
+
+        // â”€â”€â”€ WOK-BASED BRANCH CORRECTION â”€â”€â”€
+        // Prioritas: Jika WOK diketahui di peta relasi, gunakan Branch yang benar berdasarkan WOK
+        const wokNameUpper = rawWok.toString().trim().toUpperCase();
         let branchName = rawBranch.toString().trim().toUpperCase();
+        
+        // Alias normalisasi branch name
         if (branchName === 'JOGJA' || branchName === 'YOGYA' || branchName === 'DIY') branchName = 'YOGYAKARTA';
         if (branchName === 'SOLO') branchName = 'SURAKARTA';
         if (branchName === 'PWK') branchName = 'PURWOKERTO';
         if (branchName === 'PKL') branchName = 'PEKALONGAN';
         if (branchName === 'SMG') branchName = 'SEMARANG';
         if (branchName === 'MGL') branchName = 'MAGELANG';
+
+        // Koreksi Branch berdasarkan WOK (WOK lebih akurat daripada kolom Branch di Excel)
+        const correctBranch = WOK_TO_BRANCH[wokNameUpper];
+        if (correctBranch && correctBranch !== branchName) {
+          console.log(`ðŸ”§ WOK Correction: "${rawOdp || rawProject}" Branch ${branchName} â†’ ${correctBranch} (WOK: ${wokNameUpper})`);
+          branchName = correctBranch;
+          wokBranchCorrections++;
+        }
+
+        // Simpan OCC BRANCH dan GAP WOW per Branch ORIGINAL dari Excel (sebelum WOK correction)
+        // Karena nilai OCC BRANCH di Excel sudah dihitung per branch asal, bukan per WOK
+        const originalBranchForOcc = rawBranch.toString().trim().toUpperCase();
+        let normalizedOriginalBranch = originalBranchForOcc;
+        if (normalizedOriginalBranch === 'JOGJA' || normalizedOriginalBranch === 'YOGYA' || normalizedOriginalBranch === 'DIY') normalizedOriginalBranch = 'YOGYAKARTA';
+        if (normalizedOriginalBranch === 'SOLO') normalizedOriginalBranch = 'SURAKARTA';
+        if (normalizedOriginalBranch === 'PWK') normalizedOriginalBranch = 'PURWOKERTO';
+        if (normalizedOriginalBranch === 'PKL') normalizedOriginalBranch = 'PEKALONGAN';
+        if (normalizedOriginalBranch === 'SMG') normalizedOriginalBranch = 'SEMARANG';
+        if (normalizedOriginalBranch === 'MGL') normalizedOriginalBranch = 'MAGELANG';
+        
+        if (rawOccBranch !== undefined && rawOccBranch !== null && !branchOccFromExcel[normalizedOriginalBranch]) {
+          branchOccFromExcel[normalizedOriginalBranch] = {
+            occRate: parseFloat(rawOccBranch) || 0,
+            gapWoW: parseFloat(rawGapWoW) || 0,
+          };
+        }
 
         // Get or create branch
         let branch = branchMap.get(branchName);
@@ -590,12 +688,6 @@ app.post('/api/admin/import-excel', requireAdmin, excelUpload.single('file'), as
         // Find or create Project
         let projectName = rawProject.toString().trim();
         const wokName = rawWok.toString().trim();
-        const usiaName = rawUsia.toString().trim();
-        
-        // Mencegah penggabungan proyek yang namanya sama tapi baris berbeda (misal beda Usia)
-        if (usiaName) {
-          projectName = `${projectName} (${usiaName})`;
-        }
 
         const projectKey = `${branch.id}||${projectName.toUpperCase()}`;
         let project = projectMap.get(projectKey);
@@ -642,6 +734,9 @@ app.post('/api/admin/import-excel', requireAdmin, excelUpload.single('file'), as
 
           const cleanOdpKey = odpName.toUpperCase();
           const existingOdp = odpMap.get(cleanOdpKey);
+          const coords = hasExplicitCoords 
+            ? { lat: parsedLat, lon: parsedLon }
+            : getOdpCoords(odpName, branch.name, null, null);
 
           if (existingOdp) {
             if (existingOdp.id && existingOdp.id.startsWith('temp-')) {
@@ -651,6 +746,11 @@ app.post('/api/admin/import-excel', requireAdmin, excelUpload.single('file'), as
                 target.used = subUsed;
                 target.total = subTotal;
                 target.projectId = project.id;
+                if (hasExplicitCoords) {
+                  target.lat = parsedLat;
+                  target.lon = parsedLon;
+                }
+                if (excelOccStatus) target.occStatus = excelOccStatus;
               }
             } else if (
               existingOdp.avai !== subAvai ||
@@ -658,23 +758,34 @@ app.post('/api/admin/import-excel', requireAdmin, excelUpload.single('file'), as
               existingOdp.total !== subTotal ||
               existingOdp.projectId !== project.id
             ) {
-              odpsToUpdate.push({
+              const updatePayload = {
                 id: existingOdp.id,
                 odp: odpName,
                 avai: subAvai,
                 used: subUsed,
                 total: subTotal,
                 projectId: project.id
-              });
+              };
+              if (hasExplicitCoords) {
+                updatePayload.lat = parsedLat;
+                updatePayload.lon = parsedLon;
+              }
+              if (excelOccStatus) updatePayload.occStatus = excelOccStatus;
+
+              odpsToUpdate.push(updatePayload);
               existingOdp.avai = subAvai;
               existingOdp.used = subUsed;
               existingOdp.total = subTotal;
               existingOdp.projectId = project.id;
+              if (hasExplicitCoords) {
+                existingOdp.lat = parsedLat;
+                existingOdp.lon = parsedLon;
+              }
+              if (excelOccStatus) existingOdp.occStatus = excelOccStatus;
             } else {
               odpsUnchanged++;
             }
           } else {
-            const coords = getOdpCoords(odpName, branch.name, null, null);
             odpsToCreate.push({
               odp: odpName,
               avai: subAvai,
@@ -682,6 +793,7 @@ app.post('/api/admin/import-excel', requireAdmin, excelUpload.single('file'), as
               total: subTotal,
               lat: coords.lat,
               lon: coords.lon,
+              occStatus: excelOccStatus || 'GREEN',
               projectId: project.id
             });
             odpMap.set(cleanOdpKey, {
@@ -702,8 +814,8 @@ app.post('/api/admin/import-excel', requireAdmin, excelUpload.single('file'), as
       }
     }
 
-    // ─── 3. BATCH EXECUTION (Kirim ke DB sekaligus dengan aman) ───
-    console.log(`⚡ RAM Processing selesai. Menyiapkan Batch DB: ${projectsToCreate.length} project, ${odpsToCreate.length} ODP baru, ${odpsToUpdate.length} update.`);
+    // â”€â”€â”€ 3. BATCH EXECUTION (Kirim ke DB sekaligus dengan aman) â”€â”€â”€
+    console.log(`âš¡ RAM Processing selesai. Menyiapkan Batch DB: ${projectsToCreate.length} project, ${odpsToCreate.length} ODP baru, ${odpsToUpdate.length} update. WOK corrections: ${wokBranchCorrections}.`);
 
     // Batch Insert Project Baru
     if (projectsToCreate.length > 0) {
@@ -742,7 +854,9 @@ app.post('/api/admin/import-excel', requireAdmin, excelUpload.single('file'), as
                 avai: item.avai,
                 used: item.used,
                 total: item.total,
-                projectId: item.projectId
+                projectId: item.projectId,
+                ...(item.lat !== undefined ? { lat: item.lat, lon: item.lon } : {}),
+                ...(item.occStatus ? { occStatus: item.occStatus } : {})
               }
             }).catch(err => console.error(`Gagal update ODP ${item.odp}:`, err.message))
           )
@@ -750,19 +864,89 @@ app.post('/api/admin/import-excel', requireAdmin, excelUpload.single('file'), as
       }
     }
 
+    // â”€â”€â”€ 4. STALE ODP CLEANUP (Hapus ODP lama yang tidak ada di file update baru agar statistik 100% presisi) â”€â”€â”€
+    const processedOdpNames = new Set();
+    odpsToCreate.forEach(o => processedOdpNames.add(o.odp.toUpperCase()));
+    odpsToUpdate.forEach(o => processedOdpNames.add(o.odp.toUpperCase()));
+    for (const [key, o] of odpMap.entries()) {
+      if (o.id && !o.id.startsWith('temp-')) {
+        processedOdpNames.add(key);
+      }
+    }
+
+    const allDbOdps = await prisma.odp.findMany({ select: { id: true, odp: true } });
+    const staleOdpIds = allDbOdps
+      .filter(o => !processedOdpNames.has(o.odp.toUpperCase()))
+      .map(o => o.id);
+
+    if (staleOdpIds.length > 0) {
+      console.log(`ðŸ§¹ Membersihkan ${staleOdpIds.length} ODP lama yang tidak ada di file update baru...`);
+      for (let i = 0; i < staleOdpIds.length; i += 500) {
+        await prisma.odp.deleteMany({
+          where: { id: { in: staleOdpIds.slice(i, i + 500) } }
+        });
+      }
+    }
+
+    // Hapus proyek kosong tanpa ODP
+    await prisma.project.deleteMany({
+      where: { odps: { none: {} } }
+    });
+
+    // â”€â”€â”€ 5. SIMPAN NILAI OCC BRANCH & GAP WOW PER BRANCH KE DATABASE â”€â”€â”€
+    console.log('ðŸ“Š Menyimpan OCC BRANCH & GAP WOW per branch...');
+    for (const [bName, vals] of Object.entries(branchOccFromExcel)) {
+      const branch = branchMap.get(bName);
+      if (branch) {
+        await prisma.branch.update({
+          where: { id: branch.id },
+          data: {
+            occRate: vals.occRate,
+            gapWoW: vals.gapWoW,
+          }
+        });
+        console.log(`  ${bName}: OCC=${(vals.occRate * 100).toFixed(1)}% GAP=${(vals.gapWoW * 100).toFixed(1)}%`);
+      }
+    }
+
+    // â”€â”€â”€ 6. SIMPAN SUMMARY JATENG DIY KE ImportMeta â”€â”€â”€
+    if (jatengDiySummary) {
+      await prisma.importMeta.upsert({
+        where: { key: 'jateng_diy_summary' },
+        update: {
+          occRate: jatengDiySummary.occRate,
+          available: jatengDiySummary.available,
+          used: jatengDiySummary.used,
+          total: jatengDiySummary.total,
+          gapWoW: jatengDiySummary.gapWoW,
+        },
+        create: {
+          key: 'jateng_diy_summary',
+          occRate: jatengDiySummary.occRate,
+          available: jatengDiySummary.available,
+          used: jatengDiySummary.used,
+          total: jatengDiySummary.total,
+          gapWoW: jatengDiySummary.gapWoW,
+        }
+      });
+      console.log('ðŸ“Š Jateng DIY Summary disimpan ke ImportMeta.');
+    }
+
     const durationSec = ((Date.now() - startTime) / 1000).toFixed(2);
-    console.log(`✅ Excel Import selesai dalam ${durationSec} detik! (Processed ${totalRowsProcessed} rows across ${branchesFound.size} branches)`);
+    console.log(`âœ… Excel Import selesai dalam ${durationSec} detik! (Processed ${totalRowsProcessed} rows across ${branchesFound.size} branches, ${wokBranchCorrections} WOK corrections)`);
 
     res.json({ 
       success: true, 
-      message: `Database berhasil diperbarui dalam ${durationSec} detik! (${totalRowsProcessed} baris diproses: ${odpsToCreate.length} baru, ${odpsToUpdate.length} diperbarui, ${odpsUnchanged} tidak berubah)`,
+      message: `Database berhasil diperbarui dalam ${durationSec} detik! (${totalRowsProcessed} baris diproses: ${odpsToCreate.length} baru, ${odpsToUpdate.length} diperbarui, ${staleOdpIds.length} dibersihkan, ${wokBranchCorrections} WOKâ†’Branch dikoreksi)`,
       stats: {
         durationSec,
         rows: totalRowsProcessed,
         projectsCreated,
         odpsCreated: odpsToCreate.length,
         odpsUpdated: odpsToUpdate.length,
+        odpsRemoved: staleOdpIds.length,
         odpsUnchanged,
+        wokBranchCorrections,
         branches: Array.from(branchesFound)
       }
     });
@@ -771,6 +955,8 @@ app.post('/api/admin/import-excel', requireAdmin, excelUpload.single('file'), as
     res.status(500).json({ error: 'Failed to import Excel data: ' + error.message });
   }
 });
+
+
 
 // --- Serve Static React App & SPA Fallback for Single Deploy ---
 const staticPath = path.join(__dirname, '../gtm-monitor-react/dist');

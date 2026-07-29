@@ -10,9 +10,23 @@ generator client {
 model Branch {
   id       Int       @id @default(autoincrement())
   name     String    @unique
+  occRate  Float?    // Nilai OCC BRANCH langsung dari file Excel (0.0 - 1.0)
+  gapWoW   Float?    // Nilai GAP WOW dari file Excel (delta minggu ke minggu)
   projects Project[]
   users    User[]
 }
+
+model ImportMeta {
+  id            Int      @id @default(autoincrement())
+  key           String   @unique  // e.g. "jateng_diy_summary"
+  occRate       Float?   // Total Occupancy Rate Jateng DIY
+  available     Int?     // Total Port Tersedia Jateng DIY
+  used          Int?     // Total Port Terpakai
+  total         Int?     // Total Port Keseluruhan
+  gapWoW        Float?   // GAP WOW regional
+  updatedAt     DateTime @updatedAt
+}
+
 
 model Project {
   id         String            @id @default(uuid())

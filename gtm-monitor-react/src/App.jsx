@@ -10,6 +10,7 @@ import './index.css';
 
 function App() {
   const [branches, setBranches] = useState([]);
+  const [importMeta, setImportMeta] = useState(null); // Jateng DIY summary dari ImportMeta
   const [view, setView] = useState('dashboard'); // dashboard, branch, upload, admin
   const [activeBranch, setActiveBranch] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -75,7 +76,23 @@ function App() {
   // ─── PRE-COMPUTED DATA (dihitung 1x saat branches/typeDesignFilter berubah, reused saat ganti tab) ───
   const allOdps = useMemo(() => flatOdps(branches, typeDesignFilter), [branches, typeDesignFilter]);
 
-  const kpi = useMemo(() => computeStats(branches, typeDesignFilter), [branches, typeDesignFilter]);
+  const kpiRaw = useMemo(() => computeStats(branches, typeDesignFilter), [branches, typeDesignFilter]);
+
+  // Override KPI dengan nilai resmi dari file Excel (Jateng DIY summary) jika filter = ALL
+  const kpi = useMemo(() => {
+    if (typeDesignFilter === 'ALL' && importMeta && importMeta.occRate !== null) {
+      return {
+        ...kpiRaw,
+        occRate: Math.round(importMeta.occRate * 1000) / 10,  // 0.121 -> 12.1
+        totalAvai: importMeta.available || kpiRaw.totalAvai,
+        totalUsed: importMeta.used || kpiRaw.totalUsed,
+        totalPort: importMeta.total || kpiRaw.totalPort,
+        odpCount: kpiRaw.odpCount,
+        gapWoW: importMeta.gapWoW,
+      };
+    }
+    return { ...kpiRaw, gapWoW: null };
+  }, [kpiRaw, importMeta, typeDesignFilter]);
 
   const statusChips = useMemo(() => {
     const counts = { GREEN: 0, YELLOW: 0, ORANGE: 0, RED: 0, BLACK: 0 };
@@ -97,13 +114,19 @@ function App() {
   const ranking = useMemo(() => {
     return (branches || []).map(b => {
       const st = computeStats([b], typeDesignFilter);
-      const hash = (str) => { let h = 0; for (let i = 0; i < (str || '').length; i++) h = (h * 31 + str.charCodeAt(i)) | 0; return Math.abs(h); };
-      const delta = (hash(b.name || '') % 14) - 5;
+      // Gunakan OCC BRANCH dari kolom Excel jika filter ALL dan b.occRate tersedia, jika tidak gunakan st.occRate
+      const occRate = (typeDesignFilter === 'ALL' && b.occRate !== null && b.occRate !== undefined)
+        ? Math.round(b.occRate * 1000) / 10
+        : st.occRate;
+      // Gunakan GAP WOW dari Excel (persentase delta) — bukan hash palsu
+      const delta = (b.gapWoW !== null && b.gapWoW !== undefined)
+        ? Math.round(b.gapWoW * 1000) / 10  // 0.058 -> 5.8, -0.076 -> -7.6
+        : 0;
       const filteredProjs = (b && Array.isArray(b.projects))
         ? (typeDesignFilter === 'ALL' ? b.projects : b.projects.filter(p => (p.typeDesign || 'Greenfield') === typeDesignFilter))
         : [];
       return {
-        name: b.name, occRate: st.occRate, projCount: filteredProjs.length, actPct: st.actCompletionPct,
+        name: b.name, occRate, projCount: filteredProjs.length, actPct: st.actCompletionPct,
         color: BRANCH_COLORS[b.name?.toString().trim().toUpperCase()] || BRANCH_COLORS[b.name] || '#64748b', delta
       };
     }).sort((a, b) => a.occRate - b.occRate);
@@ -144,15 +167,19 @@ function App() {
     }
     try {
       setLoading(true);
-      const res = await fetch(`${API_BASE_URL}/api/data`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (res.ok) {
-        const data = await res.json();
+      const [dataRes, metaRes] = await Promise.all([
+        fetch(`${API_BASE_URL}/api/data`, { headers: { 'Authorization': `Bearer ${token}` } }),
+        fetch(`${API_BASE_URL}/api/import-meta`, { headers: { 'Authorization': `Bearer ${token}` } }).catch(() => null)
+      ]);
+      if (dataRes.ok) {
+        const data = await dataRes.json();
         setBranches(data);
-      } else if (res.status === 401) {
-        // Token expired or invalid
+      } else if (dataRes.status === 401) {
         handleLogout(false);
+      }
+      if (metaRes && metaRes.ok) {
+        const meta = await metaRes.json();
+        setImportMeta(meta);
       }
     } catch (err) {
       console.error('Failed to fetch data from backend:', err);
