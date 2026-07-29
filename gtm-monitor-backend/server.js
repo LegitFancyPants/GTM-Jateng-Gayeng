@@ -256,57 +256,66 @@ app.get('/api/data', authenticateToken, async (req, res) => {
       }
     });
 
-    // Transform data to match what the frontend expects (Filter: ODP > 1 and OCC < 35%)
+    // Transform data to match what the frontend expects (Return all projects for Dashboard & typeDesign support)
     const formattedBranches = branches.map(b => ({
       name: b.name,
-      projects: b.projects
-        .filter(p => {
-          const odpCount = p.odps.length;
-          if (odpCount <= 1) return false;
-          const usedTotal = p.odps.reduce((s, o) => s + o.used, 0);
-          const totalPort = p.odps.reduce((s, o) => s + o.total, 0);
-          const occ = totalPort > 0 ? (usedTotal / totalPort) * 100 : 0;
-          return occ < 35;
-        })
-        .map(p => {
-          // Pre-kalkulasi total per proyek (dikerjakan 1x di server, bukan ribuan kali di browser)
-          const usedTotal = p.odps.reduce((s, o) => s + o.used, 0);
-          const avaiTotal = p.odps.reduce((s, o) => s + o.avai, 0);
-          const totalPort = p.odps.reduce((s, o) => s + o.total, 0);
-          const occRate = totalPort > 0 ? Math.round((usedTotal / totalPort) * 1000) / 10 : 0;
+      projects: b.projects.map(p => {
+        // Pre-kalkulasi total per proyek
+        const usedTotal = p.odps.reduce((s, o) => s + o.used, 0);
+        const avaiTotal = p.odps.reduce((s, o) => s + o.avai, 0);
+        const totalPort = p.odps.reduce((s, o) => s + o.total, 0);
+        const occRate = totalPort > 0 ? Math.round((usedTotal / totalPort) * 1000) / 10 : 0;
+        const odpCount = p.odps.length;
+        const isPriority = odpCount > 1 && occRate < 35;
+        const typeDesign = p.typeDesign || 'Greenfield';
 
-          return {
-            name: p.name,
-            wok: p.wok,
-            // Totals siap pakai — tidak perlu dihitung ulang di frontend
-            usedTotal,
-            avaiTotal,
-            totalPort,
-            occRate,
-            odpCount: p.odps.length,
-            odps: p.odps.map(o => {
-              const coords = getOdpCoords(o.odp, b.name, o.lat, o.lon);
-              return {
-                odp: o.odp,
-                avai: o.avai,
-                used: o.used,
-                total: o.total,
-                lat: coords.lat,
-                lon: coords.lon
-              };
-            }),
-            // Project-level activities
-            activities: p.activities.map(a => ({
-              id: a.id,
-              type: a.type,
-              status: a.status,
-              photoUrl: a.photoUrl,
-              planDate: a.planDate,
-              actualDate: a.actualDate,
-              keterangan: a.keterangan
-            }))
-          };
-        })
+        return {
+          name: p.name,
+          wok: p.wok,
+          typeDesign,
+          isPriority,
+          // Totals siap pakai
+          usedTotal,
+          avaiTotal,
+          totalPort,
+          occRate,
+          odpCount,
+          odps: p.odps.map(o => {
+            const coords = getOdpCoords(o.odp, b.name, o.lat, o.lon);
+            const pct = o.total > 0 ? o.used / o.total : 0;
+            const calcStatus = o.used === 0
+              ? 'BLACK'
+              : pct < 0.25
+              ? 'GREEN'
+              : pct < 0.50
+              ? 'YELLOW'
+              : pct < 0.75
+              ? 'ORANGE'
+              : 'RED';
+            const occStatus = o.occStatus ? o.occStatus.toUpperCase() : calcStatus;
+
+            return {
+              odp: o.odp,
+              avai: o.avai,
+              used: o.used,
+              total: o.total,
+              lat: coords.lat,
+              lon: coords.lon,
+              occStatus: occStatus
+            };
+          }),
+          // Project-level activities
+          activities: p.activities.map(a => ({
+            id: a.id,
+            type: a.type,
+            status: a.status,
+            photoUrl: a.photoUrl,
+            planDate: a.planDate,
+            actualDate: a.actualDate,
+            keterangan: a.keterangan
+          }))
+        };
+      })
     }));
 
     res.json(formattedBranches);
@@ -527,7 +536,26 @@ app.post('/api/admin/import-excel', requireAdmin, excelUpload.single('file'), as
         const rawProject = findValue(normRow, ['NAMA PROYEK', 'PROJECT', 'PROYEK', 'NAMA PROJECT', 'ID PROJECT'], ['PROJECT', 'PROYEK']) || '';
         const rawWok = findValue(normRow, ['BWOK', 'WOK', 'WILAYAH', 'KOTA'], ['WOK', 'WILAYAH', 'BWOK']) || '-';
         const rawUsia = findValue(normRow, ['USIA', 'AGE', 'UMUR'], ['USIA', 'AGE']) || '';
+        const rawTypeDesign = findValue(normRow, ['TYPE DESIGN', 'DESIGN TYPE', 'TYPE', 'GREENFIELD/BROWNFIELD', 'GREENFIELD / BROWNFIELD', 'DESIGN'], ['DESIGN', 'GREENFIELD', 'BROWNFIELD']);
         
+        let typeDesign = 'Greenfield';
+        if (rawTypeDesign) {
+          const strVal = rawTypeDesign.toString().toUpperCase();
+          if (strVal.includes('BROWN')) typeDesign = 'Brownfield';
+          else if (strVal.includes('GREEN')) typeDesign = 'Greenfield';
+        }
+        
+        const rawStatus = findValue(normRow, ['STATUS ODP', 'OCC STATUS', 'STATUS', 'WARNA ODP', 'COLOR', 'WARNA'], ['STATUS', 'WARNA']);
+        let excelOccStatus = null;
+        if (rawStatus) {
+          const strS = rawStatus.toString().toUpperCase();
+          if (strS.includes('BLACK') || strS.includes('HITAM')) excelOccStatus = 'BLACK';
+          else if (strS.includes('GREEN') || strS.includes('HIJAU')) excelOccStatus = 'GREEN';
+          else if (strS.includes('YELLOW') || strS.includes('KUNING')) excelOccStatus = 'YELLOW';
+          else if (strS.includes('ORANGE') || strS.includes('JINGGA')) excelOccStatus = 'ORANGE';
+          else if (strS.includes('RED') || strS.includes('MERAH')) excelOccStatus = 'RED';
+        }
+
         const rawOdp = findValue(normRow, ['ODP NAME', 'ID ODP', 'NAMA ODP', 'ODP ID'], ['ODP NAME', 'ID ODP']);
         const jumlahOdp = parseInt(findValue(normRow, ['JUMLAH ODP', 'ODP COUNT', 'TOTAL ODP'], ['JUMLAH ODP']) || 1) || 1;
 
@@ -578,6 +606,7 @@ app.post('/api/admin/import-excel', requireAdmin, excelUpload.single('file'), as
             id: newProjectId,
             name: projectName,
             wok: wokName,
+            typeDesign: typeDesign,
             branchId: branch.id
           };
           projectsToCreate.push(project);

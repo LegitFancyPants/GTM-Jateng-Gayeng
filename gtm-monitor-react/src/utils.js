@@ -60,10 +60,13 @@ export function actMeta(status) {
   return { label: 'Belum Dikerjakan', bg: '#fee2e2', color: '#dc2626', border: '1px solid #fecaca' };
 }
 
-export function flatOdps(branches) {
+export function flatOdps(branches, typeDesignFilter) {
   const out = [];
   for (const b of (Array.isArray(branches) ? branches : [])) {
     for (const p of (b.projects || [])) {
+      if (typeDesignFilter && typeDesignFilter !== 'ALL' && (p.typeDesign || 'Greenfield') !== typeDesignFilter) {
+        continue;
+      }
       for (const o of (p.odps || [])) {
         const coords = getOdpCoords(o.odp, b.name, o.lat, o.lon);
         out.push({ ...o, lat: coords.lat, lon: coords.lon, branch: b.name, project: p.name, wok: p.wok });
@@ -73,13 +76,16 @@ export function flatOdps(branches) {
   return out;
 }
 
-export function computeStats(branches) {
+export function computeStats(branches, typeDesignFilter) {
   let totalAvai = 0, totalUsed = 0, totalPort = 0, odpCount = 0;
   const allActs = [];
 
   for (const b of (Array.isArray(branches) ? branches : [])) {
     const projs = b.projects || [];
     for (const p of projs) {
+      if (typeDesignFilter && typeDesignFilter !== 'ALL' && (p.typeDesign || 'Greenfield') !== typeDesignFilter) {
+        continue;
+      }
       for (const o of (p.odps || [])) {
         totalAvai += o.avai;
         totalUsed += o.used;

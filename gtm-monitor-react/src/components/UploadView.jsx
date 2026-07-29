@@ -5,8 +5,20 @@ import { formatBranch, computeStats } from '../utils';
 
 // UploadView dibungkus React.memo agar TIDAK re-render saat menu profile di header dibuka/ditutup.
 const UploadView = memo(function UploadView({ branches, initialBranch, updateActivityField, verifyActivity, uploadPhoto }) {
+  // Halaman Upload Activity Wajib difilter: OCC < 35%, ODP > 1, DAN Type Design === Greenfield
+  const priorityBranches = useMemo(() => {
+    return (branches || []).map(b => ({
+      ...b,
+      projects: (b.projects || []).filter(p => {
+        const isPriority = p.isPriority ?? (p.odpCount > 1 && p.occRate < 35);
+        const isGreenfield = (p.typeDesign || 'Greenfield') === 'Greenfield';
+        return isPriority && isGreenfield;
+      })
+    }));
+  }, [branches]);
+
   const [selectedBranch, setSelectedBranch] = useState(() => {
-    if (branches?.length === 1) return branches[0].name;
+    if (priorityBranches?.length === 1) return priorityBranches[0].name;
     return initialBranch || 'Semua Branch';
   });
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -15,18 +27,18 @@ const UploadView = memo(function UploadView({ branches, initialBranch, updateAct
 
   // Jika akun user biasa hanya memiliki akses 1 branch, kunci selectedBranch ke branch tersebut
   useEffect(() => {
-    if (branches?.length === 1 && selectedBranch !== branches[0].name) {
-      setSelectedBranch(branches[0].name);
+    if (priorityBranches?.length === 1 && selectedBranch !== priorityBranches[0].name) {
+      setSelectedBranch(priorityBranches[0].name);
     }
-  }, [branches, selectedBranch]);
+  }, [priorityBranches, selectedBranch]);
 
   // 1. Filter Branches based on dropdown
-  const totalProjects = useMemo(() => branches.reduce((s, b) => s + (b.projects?.length || 0), 0), [branches]);
+  const totalProjects = useMemo(() => priorityBranches.reduce((s, b) => s + (b.projects?.length || 0), 0), [priorityBranches]);
 
   const filteredBranches = useMemo(() => {
-    if (selectedBranch === 'Semua Branch') return branches;
-    return branches.filter(b => b.name === selectedBranch);
-  }, [branches, selectedBranch]);
+    if (selectedBranch === 'Semua Branch') return priorityBranches;
+    return priorityBranches.filter(b => b.name === selectedBranch);
+  }, [priorityBranches, selectedBranch]);
 
   // 2. Compute dynamic stats (KPI) for the selected branch filter
   const stats = useMemo(() => computeStats(filteredBranches), [filteredBranches]);

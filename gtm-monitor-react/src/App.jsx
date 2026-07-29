@@ -13,6 +13,7 @@ function App() {
   const [view, setView] = useState('dashboard'); // dashboard, branch, upload, admin
   const [activeBranch, setActiveBranch] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [typeDesignFilter, setTypeDesignFilter] = useState('ALL'); // ALL, Greenfield, Brownfield
 
   // Universal Auth State
   const [user, setUser] = useState(() => {
@@ -71,37 +72,42 @@ function App() {
     return branches;
   }, [branches, user]);
 
-  // ─── PRE-COMPUTED DATA (dihitung 1x saat branches berubah, reused saat ganti tab) ───
-  const allOdps = useMemo(() => flatOdps(branches), [branches]);
+  // ─── PRE-COMPUTED DATA (dihitung 1x saat branches/typeDesignFilter berubah, reused saat ganti tab) ───
+  const allOdps = useMemo(() => flatOdps(branches, typeDesignFilter), [branches, typeDesignFilter]);
 
-  const kpi = useMemo(() => computeStats(branches), [branches]);
+  const kpi = useMemo(() => computeStats(branches, typeDesignFilter), [branches, typeDesignFilter]);
 
   const statusChips = useMemo(() => {
-    const counts = { GREEN: 0, YELLOW: 0, BLACK: 0, RED: 0 };
+    const counts = { GREEN: 0, YELLOW: 0, ORANGE: 0, RED: 0, BLACK: 0 };
     allOdps.forEach(o => {
       const pct = o.total > 0 ? o.used / o.total : 0;
-      const status = o.used === 0 ? 'BLACK' : pct < 0.5 ? 'GREEN' : pct < 0.75 ? 'YELLOW' : 'RED';
+      const calcStatus = o.used === 0 ? 'BLACK' : pct < 0.25 ? 'GREEN' : pct < 0.50 ? 'YELLOW' : pct < 0.75 ? 'ORANGE' : 'RED';
+      const status = (o.occStatus || calcStatus).toUpperCase();
       counts[status] = (counts[status] || 0) + 1;
     });
     return [
-      { label: 'Green', count: counts.GREEN, color: '#16a34a' },
-      { label: 'Yellow', count: counts.YELLOW, color: '#d97706' },
-      { label: 'Black', count: counts.BLACK, color: '#334155' }
+      { label: 'Green', count: counts.GREEN || 0, color: '#16a34a' },
+      { label: 'Yellow', count: counts.YELLOW || 0, color: '#d97706' },
+      { label: 'Orange', count: counts.ORANGE || 0, color: '#f97316' },
+      { label: 'Red', count: counts.RED || 0, color: '#dc2626' },
+      { label: 'Black', count: counts.BLACK || 0, color: '#334155' }
     ];
   }, [allOdps]);
 
   const ranking = useMemo(() => {
     return (branches || []).map(b => {
-      const st = computeStats([b]);
+      const st = computeStats([b], typeDesignFilter);
       const hash = (str) => { let h = 0; for (let i = 0; i < (str || '').length; i++) h = (h * 31 + str.charCodeAt(i)) | 0; return Math.abs(h); };
       const delta = (hash(b.name || '') % 14) - 5;
-      const projCount = (b && Array.isArray(b.projects)) ? b.projects.length : 0;
+      const filteredProjs = (b && Array.isArray(b.projects))
+        ? (typeDesignFilter === 'ALL' ? b.projects : b.projects.filter(p => (p.typeDesign || 'Greenfield') === typeDesignFilter))
+        : [];
       return {
-        name: b.name, occRate: st.occRate, projCount, actPct: st.actCompletionPct,
+        name: b.name, occRate: st.occRate, projCount: filteredProjs.length, actPct: st.actCompletionPct,
         color: BRANCH_COLORS[b.name?.toString().trim().toUpperCase()] || BRANCH_COLORS[b.name] || '#64748b', delta
       };
     }).sort((a, b) => a.occRate - b.occRate);
-  }, [branches]);
+  }, [branches, typeDesignFilter]);
 
   const { mapBounds, mapPoints } = useMemo(() => {
     const lats = allOdps.map(o => o.lat).filter(Number.isFinite);
@@ -567,7 +573,7 @@ function App() {
       {/* Main Content */}
       <div className="main-content">
         <div className="fade-in" key={view}>
-          {view === 'dashboard' && <Dashboard branches={branches} goBranch={goBranch} kpi={kpi} statusChips={statusChips} ranking={ranking} mapBounds={mapBounds} mapPoints={mapPoints} isAdmin={isAdmin} />}
+          {view === 'dashboard' && <Dashboard branches={branches} goBranch={goBranch} kpi={kpi} statusChips={statusChips} ranking={ranking} mapBounds={mapBounds} mapPoints={mapPoints} isAdmin={isAdmin} typeDesignFilter={typeDesignFilter} setTypeDesignFilter={setTypeDesignFilter} />}
           {view === 'branch' && (
             isAdmin ? (
               <BranchView 
@@ -578,7 +584,7 @@ function App() {
                 verifyActivity={verifyActivity} 
               />
             ) : (
-              <Dashboard branches={branches} goBranch={goBranch} kpi={kpi} statusChips={statusChips} ranking={ranking} mapBounds={mapBounds} mapPoints={mapPoints} isAdmin={isAdmin} />
+              <Dashboard branches={branches} goBranch={goBranch} kpi={kpi} statusChips={statusChips} ranking={ranking} mapBounds={mapBounds} mapPoints={mapPoints} isAdmin={isAdmin} typeDesignFilter={typeDesignFilter} setTypeDesignFilter={setTypeDesignFilter} />
             )
           )}
           {view === 'upload' && (

@@ -1,7 +1,7 @@
 import { useState, useMemo, memo } from 'react';
 import ProjectTable from './ProjectTable';
 import ReviewModal from './ReviewModal';
-import { formatBranch } from '../utils';
+import { formatBranch, computeStats } from '../utils';
 import { API_BASE_URL } from '../apiConfig';
 
 const AdminPanel = memo(function AdminPanel({ token, branches = [], onUpdate, goDashboard, onLogout, verifyActivity, updateActivityField, uploadPhoto, kpi }) {
@@ -13,6 +13,19 @@ const AdminPanel = memo(function AdminPanel({ token, branches = [], onUpdate, go
   const [message, setMessage] = useState(null);
   const [error, setError] = useState(null);
 
+  // Data yang masuk ke Admin Panel persis sama dengan Halaman Upload Activity:
+  // (Wajib: OCC < 35%, ODP > 1, DAN Type Design === Greenfield)
+  const priorityBranches = useMemo(() => {
+    return (branches || []).map(b => ({
+      ...b,
+      projects: (b.projects || []).filter(p => {
+        const isPriority = p.isPriority ?? (p.odpCount > 1 && p.occRate < 35);
+        const isGreenfield = (p.typeDesign || 'Greenfield') === 'Greenfield';
+        return isPriority && isGreenfield;
+      })
+    })).filter(b => b.projects.length > 0);
+  }, [branches]);
+
   // Monitoring Filters States
   const [selectedBranch, setSelectedBranch] = useState('Semua Branch');
   const [search, setSearch] = useState('');
@@ -21,15 +34,15 @@ const AdminPanel = memo(function AdminPanel({ token, branches = [], onUpdate, go
   const [isBranchDropdownOpen, setIsBranchDropdownOpen] = useState(false);
   const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
 
-  // Gunakan kpi yang sudah di-compute di App.jsx (tidak perlu hitung ulang di sini)
-  const stats = kpi || { odpCount: 0, totalUsed: 0, totalPort: 0, occRate: 0, actUploaded: 0, actCompletionPct: 0, actVerified: 0 };
-  const totalProjects = useMemo(() => branches.reduce((s, b) => s + (b.projects?.length || 0), 0), [branches]);
+  // Gunakan kpi yang dihitung dari priorityBranches agar persis sama dengan Halaman Upload Activity
+  const stats = useMemo(() => computeStats(priorityBranches), [priorityBranches]);
+  const totalProjects = useMemo(() => priorityBranches.reduce((s, b) => s + (b.projects?.length || 0), 0), [priorityBranches]);
 
   // Filter Branches and Projects for Monitoring Tab
   const filteredBranches = useMemo(() => {
-    if (selectedBranch === 'Semua Branch') return branches;
-    return branches.filter(b => b.name === selectedBranch);
-  }, [branches, selectedBranch]);
+    if (selectedBranch === 'Semua Branch') return priorityBranches;
+    return priorityBranches.filter(b => b.name === selectedBranch);
+  }, [priorityBranches, selectedBranch]);
 
   // Hitung jumlah proyek per status filter (Semua, Menunggu Verifikasi, Sudah Terverifikasi, Belum Dikerjakan)
   const statusCounts = useMemo(() => {

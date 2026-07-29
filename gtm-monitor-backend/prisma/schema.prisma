@@ -18,6 +18,7 @@ model Project {
   id         String            @id @default(uuid())
   name       String
   wok        String
+  typeDesign String?           @default("Greenfield")
   branch     Branch            @relation(fields: [branchId], references: [id])
   branchId   Int
   odps       Odp[]
@@ -32,6 +33,7 @@ model Odp {
   total      Int
   lat        Float?
   lon        Float?
+  occStatus  String?    @default("GREEN")
   project    Project    @relation(fields: [projectId], references: [id])
   projectId  String
   activities Activity[]

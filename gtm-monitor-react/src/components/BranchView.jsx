@@ -11,13 +11,26 @@ const BranchView = memo(function BranchView({ branches, activeBranch, verifyActi
   const branch = branches.find(b => b.name === activeBranch);
   if (!branch) return null;
 
-  const stats = useMemo(() => computeStats([branch]), [branch]);
+  const priorityProjects = useMemo(() => {
+    return (branch.projects || []).filter(p => {
+      const isPriority = p.isPriority ?? (p.odpCount > 1 && p.occRate < 35);
+      const isGreenfield = (p.typeDesign || 'Greenfield') === 'Greenfield';
+      return isPriority && isGreenfield;
+    });
+  }, [branch.projects]);
+
+  const priorityBranch = useMemo(() => ({
+    ...branch,
+    projects: priorityProjects
+  }), [branch, priorityProjects]);
+
+  const stats = useMemo(() => computeStats([priorityBranch]), [priorityBranch]);
 
   // Filter projects by search
   const filteredProjects = useMemo(() => {
     const s = search.toLowerCase();
-    return branch.projects.filter(p => !s || p.name.toLowerCase().includes(s) || (p.wok && p.wok.toLowerCase().includes(s)));
-  }, [branch.projects, search]);
+    return priorityProjects.filter(p => !s || p.name.toLowerCase().includes(s) || (p.wok && p.wok.toLowerCase().includes(s)));
+  }, [priorityProjects, search]);
 
   const openModal = (bName, pName) => setModalKey(`${bName}||${pName}`);
   const closeModal = () => setModalKey(null);
