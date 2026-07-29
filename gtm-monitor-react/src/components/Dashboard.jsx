@@ -5,7 +5,7 @@ import MarkerClusterGroup from 'react-leaflet-cluster';
 import { BRANCH_COLORS } from '../utils';
 
 // Dashboard dibungkus React.memo agar TIDAK re-render saat menu profile di header dibuka/ditutup.
-const Dashboard = memo(function Dashboard({ branches, goBranch, kpi, statusChips, ranking, mapBounds, mapPoints }) {
+const Dashboard = memo(function Dashboard({ branches, goBranch, kpi, statusChips, ranking, mapBounds, mapPoints, isAdmin }) {
   const [showMarkers, setShowMarkers] = useState(false);
 
   // Tunda pemuatan marker peta 100ms agar halaman Dashboard & animasi garis merah berpindah seketika (0ms)
@@ -78,8 +78,9 @@ const Dashboard = memo(function Dashboard({ branches, goBranch, kpi, statusChips
         {safeRanking.map(b => (
           <div 
             key={b.name} 
-            onClick={() => goBranch(b.name)}
-            className="ranking-row"
+            onClick={() => isAdmin && goBranch && goBranch(b.name)}
+            className={`ranking-row ${isAdmin ? 'clickable' : ''}`}
+            style={{ cursor: isAdmin ? 'pointer' : 'default' }}
           >
             <div style={{ fontWeight: 700, fontSize: '14px', color: '#0f172a' }}>{b.name}</div>
             <div style={{ height: '8px', background: '#f1f5f9', borderRadius: '4px', overflow: 'hidden' }}>

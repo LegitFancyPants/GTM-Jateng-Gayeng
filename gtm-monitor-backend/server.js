@@ -242,16 +242,10 @@ app.get('/api/auth/me', authenticateToken, (req, res) => {
 
 // --- Data Endpoints (Protected & Branch-Scoped) ---
 
-// 1. Get All Data (Filtered by user branch if role === 'USER')
+// 1. Get All Data (Both ADMIN and USER get all branches for Dashboard view)
 app.get('/api/data', authenticateToken, async (req, res) => {
   try {
-    // Branch query filter based on role
-    const branchFilter = (req.user && req.user.role === 'USER' && req.user.branchName)
-      ? { name: req.user.branchName }
-      : {}; // ADMIN gets all branches
-
     const branches = await prisma.branch.findMany({
-      where: branchFilter,
       include: {
         projects: {
           include: {

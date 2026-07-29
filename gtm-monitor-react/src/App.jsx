@@ -62,6 +62,15 @@ function App() {
 
   const isAdmin = user && user.role === 'ADMIN';
 
+  // Untuk halaman Upload Activity: Akun User (Non-Admin) HANYA menerima data branch tempat ia bertugas
+  const uploadBranches = useMemo(() => {
+    if (user && user.role === 'USER' && user.branchName) {
+      const filtered = branches.filter(b => b.name === user.branchName);
+      return filtered.length > 0 ? filtered : branches;
+    }
+    return branches;
+  }, [branches, user]);
+
   // ─── PRE-COMPUTED DATA (dihitung 1x saat branches berubah, reused saat ganti tab) ───
   const allOdps = useMemo(() => flatOdps(branches), [branches]);
 
@@ -238,8 +247,9 @@ function App() {
   }, [navigateTo]);
 
   const goBranch = useCallback((name) => {
+    if (!isAdmin) return;
     navigateTo('branch', name);
-  }, [navigateTo]);
+  }, [isAdmin, navigateTo]);
 
   const goUpload = useCallback(() => {
     navigateTo('upload', null);
@@ -557,19 +567,23 @@ function App() {
       {/* Main Content */}
       <div className="main-content">
         <div className="fade-in" key={view}>
-          {view === 'dashboard' && <Dashboard branches={branches} goBranch={goBranch} kpi={kpi} statusChips={statusChips} ranking={ranking} mapBounds={mapBounds} mapPoints={mapPoints} />}
+          {view === 'dashboard' && <Dashboard branches={branches} goBranch={goBranch} kpi={kpi} statusChips={statusChips} ranking={ranking} mapBounds={mapBounds} mapPoints={mapPoints} isAdmin={isAdmin} />}
           {view === 'branch' && (
-            <BranchView 
-              branches={branches} 
-              activeBranch={activeBranch} 
-              updateActivityField={updateActivityField} 
-              uploadPhoto={uploadPhoto}
-              verifyActivity={isAdmin ? verifyActivity : null} 
-            />
+            isAdmin ? (
+              <BranchView 
+                branches={branches} 
+                activeBranch={activeBranch} 
+                updateActivityField={updateActivityField} 
+                uploadPhoto={uploadPhoto}
+                verifyActivity={verifyActivity} 
+              />
+            ) : (
+              <Dashboard branches={branches} goBranch={goBranch} kpi={kpi} statusChips={statusChips} ranking={ranking} mapBounds={mapBounds} mapPoints={mapPoints} isAdmin={isAdmin} />
+            )
           )}
           {view === 'upload' && (
             <UploadView 
-              branches={branches} 
+              branches={uploadBranches} 
               initialBranch={activeBranch}
               updateActivityField={updateActivityField} 
               uploadPhoto={uploadPhoto}

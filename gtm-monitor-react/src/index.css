@@ -85,11 +85,14 @@ button {
   gap: 16px; 
   padding: 12px 8px; 
   border-top: 1px solid #f1f5f9; 
-  cursor: pointer;
   transition: background 0.2s;
 }
 
-.ranking-row:hover {
+.ranking-row.clickable {
+  cursor: pointer;
+}
+
+.ranking-row.clickable:hover {
   background: #f8fafc;
 }
 
