@@ -461,27 +461,35 @@ app.post('/api/admin/import-excel', requireAdmin, excelUpload.single('file'), as
     }
 
     const startTime = Date.now();
-    console.log('ðŸ“¦ Memulai import Excel dengan In-Memory Mapping & Batch Processing...');
+    console.log('📦 Memulai import Excel dengan In-Memory Mapping & Batch Processing...');
 
-    // â”€â”€â”€ PETA WOK â†’ BRANCH YANG BENAR (WOK menentukan Branch, bukan kolom Branch di Excel) â”€â”€â”€
-    const WOK_TO_BRANCH = {
-      'KEBUMEN': 'MAGELANG',
-      'MAGELANG TEMANGGUNG': 'MAGELANG',
-      'BATANG': 'PEKALONGAN',
-      'PEMALANG PURBALINGGA': 'PEKALONGAN',
-      'TEGAL BREBES': 'PEKALONGAN',
-      'CILACAP BANYUMAS': 'PURWOKERTO',
-      'WONOSOBO BANJARNEGARA': 'PURWOKERTO',
-      'DEMAK': 'SEMARANG',
-      'JEPARA KUDUS - PATI': 'SEMARANG',
-      'SEMARANG 1': 'SEMARANG',
-      'SEMARANG 2': 'SEMARANG',
-      'BOYOLALI': 'SURAKARTA',
-      'SRAGEN': 'SURAKARTA',
-      'SURAKARTA': 'SURAKARTA',
-      'YOGYA 1': 'YOGYAKARTA',
-      'YOGYA 2': 'YOGYAKARTA',
-    };
+    // ─── PETA & NORMALISASI WOK → BRANCH YANG BENAR (WOK menentukan Branch) ───
+    function getCorrectBranchForWok(rawWok) {
+      if (!rawWok) return null;
+      const clean = rawWok.toString().trim().toUpperCase().replace(/[-_]/g, ' ').replace(/\s+/g, ' ');
+      
+      if (clean.includes('KEBUMEN')) return 'MAGELANG';
+      if (clean.includes('MAGELANG') || clean.includes('TEMANGGUNG')) return 'MAGELANG';
+
+      if (clean.includes('BATANG')) return 'PEKALONGAN';
+      if (clean.includes('PEMALANG') || clean.includes('PURBALINGGA')) return 'PEKALONGAN';
+      if (clean.includes('TEGAL') || clean.includes('BREBES')) return 'PEKALONGAN';
+
+      if (clean.includes('CILACAP') || clean.includes('BANYUMAS')) return 'PURWOKERTO';
+      if (clean.includes('WONOSOBO') || clean.includes('BANJARNEGARA')) return 'PURWOKERTO';
+
+      if (clean.includes('DEMAK')) return 'SEMARANG';
+      if (clean.includes('JEPARA') || clean.includes('KUDUS') || clean.includes('PATI')) return 'SEMARANG';
+      if (clean.includes('SEMARANG')) return 'SEMARANG';
+
+      if (clean.includes('BOYOLALI')) return 'SURAKARTA';
+      if (clean.includes('SRAGEN')) return 'SURAKARTA';
+      if (clean.includes('SURAKARTA') || clean.includes('SOLO')) return 'SURAKARTA';
+
+      if (clean.includes('YOGYA') || clean.includes('JOGJA') || clean.includes('YOGYAKARTA') || clean.includes('DIY')) return 'YOGYAKARTA';
+
+      return null;
+    }
 
     // Read from buffer (memoryStorage)
     const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
@@ -491,8 +499,9 @@ app.post('/api/admin/import-excel', requireAdmin, excelUpload.single('file'), as
     let odpsUnchanged = 0;
     let wokBranchCorrections = 0;
     const branchesFound = new Set();
+    const seenOdpKeysInCurrentImport = new Set();
 
-    // â”€â”€â”€ 1. IN-MEMORY MAPPING (Load semua data dari DB ke RAM sekaligus) â”€â”€â”€
+    // ─── 1. IN-MEMORY MAPPING (Load semua data dari DB ke RAM sekaligus) ───
     const allDbBranches = await prisma.branch.findMany();
     const branchMap = new Map(); // uppercase name -> branch object
     for (const b of allDbBranches) {
@@ -520,7 +529,7 @@ app.post('/api/admin/import-excel', requireAdmin, excelUpload.single('file'), as
     const branchOccFromExcel = {}; // branchName -> { occRate, gapWoW } (first occurrence)
     let jatengDiySummary = null; // Baris summary "Jateng DIY"
 
-    // â”€â”€â”€ 2. PROCESS ROWS IN RAM (Sangat cepat & 100% akurat) â”€â”€â”€
+    // ─── 2. PROCESS ROWS IN RAM (Sangat cepat & 100% akurat) ───
     for (const sheetName of workbook.SheetNames) {
       const sheet = workbook.Sheets[sheetName];
       // Convert to 2D array to find the true header row (ignoring titles)
@@ -620,7 +629,7 @@ app.post('/api/admin/import-excel', requireAdmin, excelUpload.single('file'), as
 
         if (!rawBranch) continue;
 
-        // â”€â”€â”€ TANGKAP BARIS SUMMARY "JATENG DIY" â”€â”€â”€
+        // ─── TANGKAP BARIS SUMMARY "JATENG DIY" ───
         if (rawBranch.toString().trim().toUpperCase().includes('JATENG') || rawBranch.toString().trim().toUpperCase() === 'JATENG DIY') {
           jatengDiySummary = {
             occRate: parseFloat(rawOccBranch) || null,
@@ -629,14 +638,14 @@ app.post('/api/admin/import-excel', requireAdmin, excelUpload.single('file'), as
             total: parseInt(findValue(normRow, ['TOTAL'], ['TOTAL'])) || null,
             gapWoW: parseFloat(rawGapWoW) || null,
           };
-          console.log('ðŸ“Š Jateng DIY Summary Row ditemukan:', jatengDiySummary);
+          console.log('📊 Jateng DIY Summary Row ditemukan:', jatengDiySummary);
           continue;
         }
 
         if (!rawProject) continue;
 
-        // â”€â”€â”€ WOK-BASED BRANCH CORRECTION â”€â”€â”€
-        // Prioritas: Jika WOK diketahui di peta relasi, gunakan Branch yang benar berdasarkan WOK
+        // ─── WOK-BASED BRANCH CORRECTION ───
+        // Prioritas: WOK menentukan Branch yang benar
         const wokNameUpper = rawWok.toString().trim().toUpperCase();
         let branchName = rawBranch.toString().trim().toUpperCase();
         
@@ -648,16 +657,15 @@ app.post('/api/admin/import-excel', requireAdmin, excelUpload.single('file'), as
         if (branchName === 'SMG') branchName = 'SEMARANG';
         if (branchName === 'MGL') branchName = 'MAGELANG';
 
-        // Koreksi Branch berdasarkan WOK (WOK lebih akurat daripada kolom Branch di Excel)
-        const correctBranch = WOK_TO_BRANCH[wokNameUpper];
+        // Koreksi Branch berdasarkan WOK (fleksibel untuk Yogya 2, Yogya2, dll.)
+        const correctBranch = getCorrectBranchForWok(rawWok);
         if (correctBranch && correctBranch !== branchName) {
-          console.log(`ðŸ”§ WOK Correction: "${rawOdp || rawProject}" Branch ${branchName} â†’ ${correctBranch} (WOK: ${wokNameUpper})`);
+          console.log(`🔧 WOK Correction: "${rawOdp || rawProject}" Branch ${branchName} → ${correctBranch} (WOK: ${wokNameUpper})`);
           branchName = correctBranch;
           wokBranchCorrections++;
         }
 
         // Simpan OCC BRANCH dan GAP WOW per Branch ORIGINAL dari Excel (sebelum WOK correction)
-        // Karena nilai OCC BRANCH di Excel sudah dihitung per branch asal, bukan per WOK
         const originalBranchForOcc = rawBranch.toString().trim().toUpperCase();
         let normalizedOriginalBranch = originalBranchForOcc;
         if (normalizedOriginalBranch === 'JOGJA' || normalizedOriginalBranch === 'YOGYA' || normalizedOriginalBranch === 'DIY') normalizedOriginalBranch = 'YOGYAKARTA';
@@ -715,10 +723,21 @@ app.post('/api/admin/import-excel', requireAdmin, excelUpload.single('file'), as
         let remainingUsed = used;
 
         for (let i = 1; i <= countToCreate; i++) {
-          const odpName = rawOdp 
-            ? rawOdp.toString().trim() 
+          let rawOdpStr = rawOdp ? rawOdp.toString().trim() : '';
+          let odpName = rawOdpStr 
+            ? rawOdpStr 
             : `${projectName}-${wokName !== '-' ? wokName : 'WOK'}-${totalRowsProcessed + 1}-${i}`;
           
+          let cleanOdpKey = odpName.toUpperCase();
+
+          // Jika nama ODP ini sudah pernah diproses di baris sebelumnya dalam file Excel yang sama (duplikat nama ODP):
+          // Tambahkan suffix unik (#row) agar data port dari kedua baris tersebut TIDAK saling tertimpa
+          if (rawOdpStr && seenOdpKeysInCurrentImport.has(cleanOdpKey)) {
+            odpName = `${rawOdpStr} (#${totalRowsProcessed + 1})`;
+            cleanOdpKey = odpName.toUpperCase();
+          }
+          seenOdpKeysInCurrentImport.add(cleanOdpKey);
+
           let subTotal = baseSubTotal;
           let subUsed = baseSubUsed;
           
@@ -732,7 +751,6 @@ app.post('/api/admin/import-excel', requireAdmin, excelUpload.single('file'), as
           }
           const subAvai = Math.max(0, subTotal - subUsed);
 
-          const cleanOdpKey = odpName.toUpperCase();
           const existingOdp = odpMap.get(cleanOdpKey);
           const coords = hasExplicitCoords 
             ? { lat: parsedLat, lon: parsedLon }
@@ -937,7 +955,7 @@ app.post('/api/admin/import-excel', requireAdmin, excelUpload.single('file'), as
 
     res.json({ 
       success: true, 
-      message: `Database berhasil diperbarui dalam ${durationSec} detik! (${totalRowsProcessed} baris diproses: ${odpsToCreate.length} baru, ${odpsToUpdate.length} diperbarui, ${staleOdpIds.length} dibersihkan, ${wokBranchCorrections} WOKâ†’Branch dikoreksi)`,
+      message: `Database berhasil diperbarui dalam ${durationSec} detik! (${totalRowsProcessed} baris diproses: ${odpsToCreate.length} baru, ${odpsToUpdate.length} diperbarui, ${staleOdpIds.length} dibersihkan, ${wokBranchCorrections} WOK -> Branch dikoreksi)`,
       stats: {
         durationSec,
         rows: totalRowsProcessed,
