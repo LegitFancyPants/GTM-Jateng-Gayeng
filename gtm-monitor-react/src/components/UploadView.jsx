@@ -1,14 +1,24 @@
-import { useState, useMemo, memo } from 'react';
+import { useState, useEffect, useMemo, memo } from 'react';
 import ProjectTable from './ProjectTable';
 import ReviewModal from './ReviewModal';
-import { formatBranch } from '../utils';
+import { formatBranch, computeStats } from '../utils';
 
 // UploadView dibungkus React.memo agar TIDAK re-render saat menu profile di header dibuka/ditutup.
-const UploadView = memo(function UploadView({ branches, updateActivityField, verifyActivity, uploadPhoto }) {
-  const [selectedBranch, setSelectedBranch] = useState('Semua Branch');
+const UploadView = memo(function UploadView({ branches, initialBranch, updateActivityField, verifyActivity, uploadPhoto }) {
+  const [selectedBranch, setSelectedBranch] = useState(() => {
+    if (branches?.length === 1) return branches[0].name;
+    return initialBranch || 'Semua Branch';
+  });
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [modalKey, setModalKey] = useState(null); // format: branchName||projectName
+
+  // Jika akun user biasa hanya memiliki akses 1 branch, kunci selectedBranch ke branch tersebut
+  useEffect(() => {
+    if (branches?.length === 1 && selectedBranch !== branches[0].name) {
+      setSelectedBranch(branches[0].name);
+    }
+  }, [branches, selectedBranch]);
 
   // 1. Filter Branches based on dropdown
   const totalProjects = useMemo(() => branches.reduce((s, b) => s + (b.projects?.length || 0), 0), [branches]);
@@ -18,7 +28,13 @@ const UploadView = memo(function UploadView({ branches, updateActivityField, ver
     return branches.filter(b => b.name === selectedBranch);
   }, [branches, selectedBranch]);
 
-  // 2. Filter Projects within those branches based on search text
+  // 2. Compute dynamic stats (KPI) for the selected branch filter
+  const stats = useMemo(() => computeStats(filteredBranches), [filteredBranches]);
+  const totalProjectsInFilter = useMemo(() => {
+    return filteredBranches.reduce((s, b) => s + (b.projects?.length || 0), 0);
+  }, [filteredBranches]);
+
+  // 3. Filter Projects within those branches based on search text
   const branchesWithFilteredProjects = useMemo(() => {
     const s = search.toLowerCase();
     return filteredBranches.map(b => {
@@ -27,7 +43,7 @@ const UploadView = memo(function UploadView({ branches, updateActivityField, ver
     }).filter(b => b.projects.length > 0);
   }, [filteredBranches, search]);
 
-  // 3. Memoize multi-branch flatMap so a new array reference isn't created on every render
+  // 4. Memoize multi-branch flatMap so a new array reference isn't created on every render
   const allProjectsMultiBranch = useMemo(() => {
     return branchesWithFilteredProjects.flatMap(b => b.projects.map(p => ({ ...p, branchName: b.name })));
   }, [branchesWithFilteredProjects]);
@@ -57,6 +73,26 @@ const UploadView = memo(function UploadView({ branches, updateActivityField, ver
 
   return (
     <div>
+      {/* KPI Row (Dynamic per branch filter) */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', margin: '0 0 20px' }}>
+        <div className="card-static" style={{ padding: '16px 18px' }}>
+          <div style={{ fontSize: '11.5px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Occupancy Rate</div>
+          <div style={{ fontSize: '24px', fontWeight: 800, color: '#0f172a', marginTop: '4px' }}>{stats.occRate}%</div>
+        </div>
+        <div className="card-static" style={{ padding: '16px 18px' }}>
+          <div style={{ fontSize: '11.5px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Port Avai / Used / Total</div>
+          <div style={{ fontSize: '20px', fontWeight: 800, color: '#0f172a', marginTop: '4px' }}>{stats.totalAvai} / {stats.totalUsed} / {stats.totalPort}</div>
+        </div>
+        <div className="card-static" style={{ padding: '16px 18px' }}>
+          <div style={{ fontSize: '11.5px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Jumlah Proyek / ODP</div>
+          <div style={{ fontSize: '20px', fontWeight: 800, color: '#0f172a', marginTop: '4px' }}>{totalProjectsInFilter} / {stats.odpCount}</div>
+        </div>
+        <div className="card-static" style={{ padding: '16px 18px' }}>
+          <div style={{ fontSize: '11.5px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Aktivitas GTM Selesai</div>
+          <div style={{ fontSize: '24px', fontWeight: 800, color: '#0f172a', marginTop: '4px' }}>{stats.actCompletionPct}%</div>
+        </div>
+      </div>
+
       {/* Header / Controls */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '14px', margin: '0 0 20px', position: 'relative', zIndex: 80 }}>
         {branches.length === 1 ? (

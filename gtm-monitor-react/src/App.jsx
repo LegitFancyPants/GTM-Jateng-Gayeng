@@ -570,6 +570,7 @@ function App() {
           {view === 'upload' && (
             <UploadView 
               branches={branches} 
+              initialBranch={activeBranch}
               updateActivityField={updateActivityField} 
               uploadPhoto={uploadPhoto}
               verifyActivity={isAdmin ? verifyActivity : null}
