@@ -53,17 +53,47 @@ cloudinary.config({
 app.use(cors());
 app.use(express.json());
 
-// Cloudinary Multer Storage for activity photos
-// PENTING: multer-storage-cloudinary v4 membutuhkan API v2
-const cloudinaryStorage = new CloudinaryStorage({
-  cloudinary: cloudinary.v2,
-  params: {
-    folder: 'gtm-activities',
-    allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
-    transformation: [{ quality: 'auto', fetch_format: 'auto' }],
+// Local Disk Storage for Activity Photos with Structured Folder Hierarchy:
+// uploads / [BRANCH] / [WOK] / [YYYY-MM] / [NAMA_PROYEK]_[TANGGAL (DDMMYYYY)]_[JENIS_KEGIATAN].[EXT]
+const localStorage = multer.diskStorage({
+  destination: async (req, file, cb) => {
+    try {
+      const rawBranch = (req.body.branchName || 'GENERAL').toString().trim().toUpperCase().replace(/[^A-Z0-9_-]/gi, '_');
+      const rawWok = (req.body.wokName || 'WOK').toString().trim().toUpperCase().replace(/[^A-Z0-9_-]/gi, '_');
+      
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const monthFolder = `${year}-${month}`; // e.g. 2026-07
+
+      const targetDir = path.join(__dirname, 'uploads', rawBranch, rawWok, monthFolder);
+      await fs.promises.mkdir(targetDir, { recursive: true });
+      cb(null, targetDir);
+    } catch (err) {
+      cb(err);
+    }
   },
+  filename: (req, file, cb) => {
+    const rawProject = (req.body.projectName || 'PROYEK').toString().trim().replace(/[^A-Z0-9_-]/gi, '_');
+    
+    const now = new Date();
+    const day = String(now.getDate()).padStart(2, '0');
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const year = now.getFullYear();
+    const dateStr = `${day}${month}${year}`; // e.g. 30072026
+
+    const typeStr = (req.body.type || 'kegiatan').toString().trim().replace(/[^A-Z0-9_-]/gi, '_');
+    const ext = path.extname(file.originalname) || '.jpg';
+    
+    // Format Penamaan: [NAMA_PROYEK]_[TANGGAL (DDMMYYYY)]_[JENIS_KEGIATAN].[EXT]
+    const filename = `${rawProject}_${dateStr}_${typeStr}${ext}`;
+    cb(null, filename);
+  }
 });
-const upload = multer({ storage: cloudinaryStorage });
+const upload = multer({ storage: localStorage });
+
+// Serve /uploads statically for frontend photo rendering
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Multer memory storage for Excel files (temp only)
 const excelUpload = multer({ storage: multer.memoryStorage() });
@@ -352,18 +382,19 @@ app.post('/api/activities', authenticateToken, upload.single('photo'), async (re
   try {
     const { projectName, branchName, type, status, planDate, actualDate, keterangan } = req.body;
     console.log(`[Activity POST] project: ${projectName}, type: ${type}, status: ${status}, keterangan:`, keterangan);
-    // Cloudinary returns the secure URL — coba berbagai properti sebagai fallback
-    let photoUrl = req.file
-      ? (req.file.path || req.file.secure_url || req.file.url || undefined)
-      : undefined;
-    console.log('[Upload] req.file info:', req.file ? { path: req.file.path, secure_url: req.file.secure_url, filename: req.file.filename, size: req.file.size } : 'no file');
+    // Local Disk Storage: Compute relative URL path /uploads/BRANCH/WOK/YYYY-MM/FILENAME
+    let photoUrl = undefined;
+    if (req.file) {
+      const relPath = path.relative(__dirname, req.file.path).replace(/\\/g, '/');
+      photoUrl = relPath.startsWith('/') ? relPath : '/' + relPath;
+    }
+    console.log('[Upload] req.file info:', req.file ? { path: req.file.path, filename: req.file.filename, size: req.file.size } : 'no file');
     console.log('[Upload] photoUrl resolved:', photoUrl);
 
     // Security Check: USER can only update their assigned branch
     if (req.user && req.user.role === 'USER' && req.user.branchName !== branchName) {
-      // If a file was uploaded to Cloudinary, delete it
-      if (req.file && req.file.filename) {
-        await cloudinary.v2.uploader.destroy(req.file.filename).catch(() => {});
+      if (req.file && req.file.path) {
+        await fs.promises.unlink(req.file.path).catch(() => {});
       }
       return res.status(403).json({ error: `Akses ditolak. Anda hanya berhak memodifikasi data di branch ${req.user.branchName}.` });
     }
@@ -371,8 +402,8 @@ app.post('/api/activities', authenticateToken, upload.single('photo'), async (re
     // Find the Project by name + branch
     const branch = await prisma.branch.findUnique({ where: { name: branchName } });
     if (!branch) {
-      if (req.file && req.file.filename) {
-        await cloudinary.v2.uploader.destroy(req.file.filename).catch(() => {});
+      if (req.file && req.file.path) {
+        await fs.promises.unlink(req.file.path).catch(() => {});
       }
       return res.status(404).json({ error: 'Branch not found' });
     }
@@ -382,8 +413,8 @@ app.post('/api/activities', authenticateToken, upload.single('photo'), async (re
     });
 
     if (!project) {
-      if (req.file && req.file.filename) {
-        await cloudinary.v2.uploader.destroy(req.file.filename).catch(() => {});
+      if (req.file && req.file.path) {
+        await fs.promises.unlink(req.file.path).catch(() => {});
       }
       return res.status(404).json({ error: 'Project not found' });
     }

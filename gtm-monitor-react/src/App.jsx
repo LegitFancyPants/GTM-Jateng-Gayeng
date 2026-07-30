@@ -426,6 +426,7 @@ function App() {
     const formData = new FormData();
     formData.append('branchName', branchName);
     formData.append('projectName', projectName);
+    formData.append('wokName', p?.wok || 'WOK');
     formData.append('type', actType);
     formData.append('status', targetStatus);
     formData.append('photo', file);
