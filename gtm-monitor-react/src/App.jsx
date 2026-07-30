@@ -522,7 +522,7 @@ function App() {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#f8fafc', color: '#64748b', gap: '16px' }}>
         <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: '#C8102E', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '20px', animation: 'pulse 1.5s infinite' }}>GTM</div>
-        <div style={{ fontWeight: 600, fontSize: '15px' }}>⏳ Memuat data dari server...</div>
+        <div style={{ fontWeight: 600, fontSize: '15px' }}>Memuat data dari server...</div>
       </div>
     );
   }
