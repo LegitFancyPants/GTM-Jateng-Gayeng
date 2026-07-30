@@ -83,14 +83,31 @@ const localStorage = multer.diskStorage({
     const dateStr = `${day}${month}${year}`; // e.g. 30072026
 
     const typeStr = (req.body.type || 'kegiatan').toString().trim().replace(/[^A-Z0-9_-]/gi, '_');
-    const ext = path.extname(file.originalname) || '.jpg';
+    let ext = path.extname(file.originalname).toLowerCase();
+    if (!['.jpg', '.jpeg', '.png', '.webp'].includes(ext)) ext = '.jpg';
     
-    // Format Penamaan: [NAMA_PROYEK]_[TANGGAL (DDMMYYYY)]_[JENIS_KEGIATAN].[EXT]
-    const filename = `${rawProject}_${dateStr}_${typeStr}${ext}`;
+    // Tambahkan suffix timestamp jam-menit-detik untuk mencegah timpa file jika re-upload di hari yang sama
+    const timeSuffix = `${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`;
+    
+    // Format Penamaan: [NAMA_PROYEK]_[TANGGAL (DDMMYYYY)]_[JENIS_KEGIATAN]_[HHMMSS].[EXT]
+    const filename = `${rawProject}_${dateStr}_${typeStr}_${timeSuffix}${ext}`;
     cb(null, filename);
   }
 });
-const upload = multer({ storage: localStorage });
+
+// Multer Upload Configuration dengan Keamanan File Filter & Limiting
+const upload = multer({
+  storage: localStorage,
+  limits: { fileSize: 10 * 1024 * 1024 }, // Maksimal 10 MB per foto
+  fileFilter: (req, file, cb) => {
+    // Keamanan: Hanya mengizinkan file gambar resmi (.jpg, .jpeg, .png, .webp)
+    if (file.mimetype.startsWith('image/') || /\.(jpg|jpeg|png|webp)$/i.test(file.originalname)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Hanya file gambar (.jpg, .jpeg, .png, .webp) yang diperbolehkan!'));
+    }
+  }
+});
 
 // Serve /uploads statically for frontend photo rendering
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
