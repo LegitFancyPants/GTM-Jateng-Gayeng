@@ -120,7 +120,7 @@ const UploadView = memo(function UploadView({ branches, initialBranch, updateAct
               <span style={{ flex: 1, whiteSpace: 'nowrap', fontWeight: 700, color: '#0f172a' }}>
                 {selectedBranch === 'Semua Branch' 
                   ? `Semua Branch (${totalProjects})` 
-                  : `${formatBranch(selectedBranch)} (${branches.find(x => x.name === selectedBranch)?.projects?.length || 0})`}
+                  : `${formatBranch(selectedBranch)} (${priorityBranches.find(x => x.name === selectedBranch)?.projects?.length || 0})`}
               </span>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: isDropdownOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>
                 <polyline points="6 9 12 15 18 9"></polyline>
@@ -134,7 +134,7 @@ const UploadView = memo(function UploadView({ branches, initialBranch, updateAct
                 >
                   Semua Branch ({totalProjects})
                 </div>
-                {branches.map(b => (
+                {priorityBranches.map(b => (
                   <div 
                     key={b.name}
                     className={`dropdown-item ${selectedBranch === b.name ? 'active' : ''}`}

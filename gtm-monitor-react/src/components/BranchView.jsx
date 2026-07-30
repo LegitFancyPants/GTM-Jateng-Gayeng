@@ -69,7 +69,7 @@ const BranchView = memo(function BranchView({ branches, activeBranch, verifyActi
         </div>
         <div className="card-static" style={{ padding: '16px 18px' }}>
           <div style={{ fontSize: '11.5px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Jumlah Proyek / ODP</div>
-          <div style={{ fontSize: '20px', fontWeight: 800, color: '#0f172a', marginTop: '4px' }}>{branch.projects.length} / {stats.odpCount}</div>
+          <div style={{ fontSize: '20px', fontWeight: 800, color: '#0f172a', marginTop: '4px' }}>{priorityProjects.length} / {stats.odpCount}</div>
         </div>
         <div className="card-static" style={{ padding: '16px 18px' }}>
           <div style={{ fontSize: '11.5px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Aktivitas GTM Selesai</div>

@@ -406,9 +406,15 @@ export default function ProjectTable({ projects, branchName, onReview, updateAct
   const odpGrid = '34px 210px 130px 80px 80px 80px';
 
   return (
-    <div className="card" style={{ overflow: 'hidden' }}>
+    <div className="card" style={{ overflow: 'hidden', position: 'relative' }}>
+      {filterPopup && (
+        <div
+          onClick={() => setFilterPopup(null)}
+          style={{ position: 'fixed', inset: 0, zIndex: 99 }}
+        />
+      )}
       <div style={{ overflowX: 'auto' }}>
-        <div style={{ minWidth: 'max-content', paddingBottom: filterPopup ? '280px' : '0' }}>
+        <div style={{ minWidth: 'max-content', paddingBottom: filterPopup ? '400px' : '0' }}>
           {/* Header */}
           <div className="table-header" style={{ gridTemplateColumns: tableGrid }}>
             <div></div>
@@ -451,6 +457,12 @@ export default function ProjectTable({ projects, branchName, onReview, updateAct
               odpGrid={odpGrid}
             />
           ))}
+
+          {paginatedProjects.length === 0 && (
+            <div style={{ padding: '32px 16px', textAlign: 'center', color: '#94a3b8', fontSize: '13.5px', borderBottom: '1px solid #f1f5f9' }}>
+              Tidak ada data proyek yang cocok dengan filter.
+            </div>
+          )}
         </div>
       </div>
 

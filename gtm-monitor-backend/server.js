@@ -307,15 +307,22 @@ app.get('/api/data', authenticateToken, async (req, res) => {
             };
           }),
           // Project-level activities
-          activities: p.activities.map(a => ({
-            id: a.id,
-            type: a.type,
-            status: a.status,
-            photoUrl: a.photoUrl,
-            planDate: a.planDate,
-            actualDate: a.actualDate,
-            keterangan: a.keterangan
-          }))
+          activities: p.activities.map(a => {
+            let status = a.status;
+            // Tsel Menyapa Warga (kind: date_photo) requires BOTH planDate AND photoUrl to be in 'upload' status
+            if (status === 'upload' && a.type === 'tsel_menyapa' && (!a.planDate || !a.photoUrl)) {
+              status = 'belum';
+            }
+            return {
+              id: a.id,
+              type: a.type,
+              status: status,
+              photoUrl: a.photoUrl,
+              planDate: a.planDate,
+              actualDate: a.actualDate,
+              keterangan: a.keterangan
+            };
+          })
         };
       })
     }));
@@ -345,7 +352,7 @@ app.post('/api/activities', authenticateToken, upload.single('photo'), async (re
   try {
     const { projectName, branchName, type, status, planDate, actualDate, keterangan } = req.body;
     console.log(`[Activity POST] project: ${projectName}, type: ${type}, status: ${status}, keterangan:`, keterangan);
-    // Cloudinary returns the secure URL â€” coba berbagai properti sebagai fallback
+    // Cloudinary returns the secure URL — coba berbagai properti sebagai fallback
     let photoUrl = req.file
       ? (req.file.path || req.file.secure_url || req.file.url || undefined)
       : undefined;
@@ -381,6 +388,35 @@ app.post('/api/activities', authenticateToken, upload.single('photo'), async (re
       return res.status(404).json({ error: 'Project not found' });
     }
 
+    // Find existing activity to compute correct status
+    const existingActivity = await prisma.projectActivity.findUnique({
+      where: {
+        projectId_type: {
+          projectId: project.id,
+          type: type
+        }
+      }
+    });
+
+    const effectivePlanDate = planDate ? new Date(planDate) : existingActivity?.planDate;
+    const effectivePhotoUrl = photoUrl || existingActivity?.photoUrl;
+    const effectiveKeterangan = keterangan !== undefined ? keterangan : existingActivity?.keterangan;
+    const currentStatus = existingActivity?.status || 'belum';
+
+    let finalStatus = status || currentStatus;
+    if (currentStatus !== 'verified' && status !== 'verified') {
+      if (type === 'tsel_menyapa') {
+        const hasDate = Boolean(effectivePlanDate);
+        const hasPhoto = Boolean(effectivePhotoUrl);
+        finalStatus = (hasDate && hasPhoto) ? 'upload' : 'belum';
+        console.log(`[DEBUG tsel_menyapa] effectivePlanDate: ${effectivePlanDate}, effectivePhotoUrl: ${effectivePhotoUrl}, hasDate: ${hasDate}, hasPhoto: ${hasPhoto}, finalStatus: ${finalStatus}`);
+      } else if (['branding_outlet', 'bumdes', 'open_table'].includes(type)) {
+        finalStatus = Boolean(effectivePhotoUrl) ? 'upload' : 'belum';
+      } else if (type === 'rekrutmen_sf') {
+        finalStatus = Boolean(effectiveKeterangan) ? 'upload' : 'belum';
+      }
+    }
+
     // Upsert project activity (dengan userId untuk tracking)
     const activity = await prisma.projectActivity.upsert({
       where: {
@@ -390,7 +426,7 @@ app.post('/api/activities', authenticateToken, upload.single('photo'), async (re
         }
       },
       update: {
-        status: status || undefined,
+        status: finalStatus,
         planDate: planDate ? new Date(planDate) : undefined,
         actualDate: actualDate ? new Date(actualDate) : undefined,
         ...(photoUrl && { photoUrl }),
@@ -400,7 +436,7 @@ app.post('/api/activities', authenticateToken, upload.single('photo'), async (re
       create: {
         projectId: project.id,
         type: type,
-        status: status || 'belum',
+        status: finalStatus,
         planDate: planDate ? new Date(planDate) : undefined,
         actualDate: actualDate ? new Date(actualDate) : undefined,
         photoUrl: photoUrl,

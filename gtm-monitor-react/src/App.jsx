@@ -297,27 +297,58 @@ function App() {
   }, [isAdmin, navigateTo]);
 
   // Update activity field at PROJECT level
+  // Update activity field at PROJECT level
   const updateActivityField = useCallback(async (branchName, projectName, actType, fieldKey, value) => {
+    let targetStatus = 'upload';
+    const b = branches.find(x => x.name === branchName);
+    const p = b?.projects.find(x => x.name === projectName);
+    let a = p?.activities?.find(x => x.type === actType);
+
+    let hasDate = false;
+    let hasPhoto = false;
+
+    if (a) {
+      hasDate = Boolean(a.planDate);
+      hasPhoto = Boolean(a.photoUrl && a.photoUrl !== 'uploading...');
+    }
+
+    if (fieldKey === 'planDate') {
+      hasDate = Boolean(value);
+    } else if (fieldKey === 'photoUrl') {
+      hasPhoto = Boolean(value && value !== 'uploading...');
+    }
+
+    if (a?.status === 'verified') {
+      targetStatus = 'verified';
+    } else if (actType === 'tsel_menyapa') {
+      targetStatus = (hasDate && hasPhoto) ? 'upload' : 'belum';
+    } else {
+      targetStatus = value ? 'upload' : 'belum';
+    }
+
     // Optimistic UI Update
     setBranches(prev => {
       const newBranches = JSON.parse(JSON.stringify(prev));
-      const b = newBranches.find(x => x.name === branchName);
-      const p = b?.projects.find(x => x.name === projectName);
-      if (p) {
-        if (!p.activities) p.activities = [];
-        let a = p.activities.find(x => x.type === actType);
-        if (!a) {
-          a = { type: actType, status: 'belum' };
-          p.activities.push(a);
+      const bDraft = newBranches.find(x => x.name === branchName);
+      const pDraft = bDraft?.projects.find(x => x.name === projectName);
+      if (pDraft) {
+        if (!pDraft.activities) pDraft.activities = [];
+        let aDraft = pDraft.activities.find(x => x.type === actType);
+        if (!aDraft) {
+          aDraft = { type: actType, status: 'belum' };
+          pDraft.activities.push(aDraft);
         }
-        if (a.status === 'belum' && value) a.status = 'upload';
         if (fieldKey === 'planDate') {
-          a.planDate = value;
+          aDraft.planDate = value;
         } else {
-          a[fieldKey] = value;
-          a.keterangan = value;
-          if (!a.fields) a.fields = {};
-          a.fields[fieldKey] = value;
+          aDraft[fieldKey] = value;
+          aDraft.keterangan = value;
+          if (!aDraft.fields) aDraft.fields = {};
+          aDraft.fields[fieldKey] = value;
+        }
+
+        if (aDraft.status !== 'verified') {
+          aDraft.status = targetStatus;
         }
       }
       return newBranches;
@@ -334,7 +365,7 @@ function App() {
           branchName,
           projectName,
           type: actType,
-          status: 'upload',
+          status: targetStatus,
           ...(fieldKey === 'planDate' ? { planDate: value } : { keterangan: value })
         })
       });
@@ -352,24 +383,42 @@ function App() {
       return false;
     }
     return true;
-  }, [token]);
+  }, [token, branches]);
 
   // Upload photo at PROJECT level
   const uploadPhoto = useCallback(async (branchName, projectName, actType, file) => {
+    let targetStatus = 'upload';
+    const b = branches.find(x => x.name === branchName);
+    const p = b?.projects.find(x => x.name === projectName);
+    let a = p?.activities?.find(x => x.type === actType);
+
+    let hasDate = Boolean(a?.planDate);
+    // Since we are uploading a photo, hasPhoto becomes true optimistically
+    
+    if (a?.status === 'verified') {
+      targetStatus = 'verified';
+    } else if (actType === 'tsel_menyapa') {
+      targetStatus = hasDate ? 'upload' : 'belum';
+    } else {
+      targetStatus = 'upload';
+    }
+
     // Optimistic UI Update
     setBranches(prev => {
       const newBranches = JSON.parse(JSON.stringify(prev));
-      const b = newBranches.find(x => x.name === branchName);
-      const p = b?.projects.find(x => x.name === projectName);
-      if (p) {
-        if (!p.activities) p.activities = [];
-        let a = p.activities.find(x => x.type === actType);
-        if (!a) {
-          a = { type: actType, status: 'belum' };
-          p.activities.push(a);
+      const bDraft = newBranches.find(x => x.name === branchName);
+      const pDraft = bDraft?.projects.find(x => x.name === projectName);
+      if (pDraft) {
+        if (!pDraft.activities) pDraft.activities = [];
+        let aDraft = pDraft.activities.find(x => x.type === actType);
+        if (!aDraft) {
+          aDraft = { type: actType, status: 'belum' };
+          pDraft.activities.push(aDraft);
         }
-        a.status = 'upload';
-        a.photoUrl = 'uploading...';
+        aDraft.photoUrl = 'uploading...';
+        if (aDraft.status !== 'verified') {
+          aDraft.status = targetStatus;
+        }
       }
       return newBranches;
     });
@@ -378,7 +427,7 @@ function App() {
     formData.append('branchName', branchName);
     formData.append('projectName', projectName);
     formData.append('type', actType);
-    formData.append('status', 'upload');
+    formData.append('status', targetStatus);
     formData.append('photo', file);
 
     try {
@@ -400,7 +449,15 @@ function App() {
             let a = p.activities?.find(x => x.type === actType);
             if (a) {
               a.photoUrl = realPhotoUrl || a.photoUrl;
-              a.status = 'upload';
+              if (a.status !== 'verified') {
+                if (actType === 'tsel_menyapa') {
+                  const hasDate = Boolean(a.planDate);
+                  const hasPhoto = Boolean(a.photoUrl && a.photoUrl !== 'uploading...');
+                  a.status = (hasDate && hasPhoto) ? 'upload' : 'belum';
+                } else {
+                  a.status = 'upload';
+                }
+              }
             }
           }
           return newBranches;
