@@ -262,6 +262,7 @@ export default function ProjectTable({ projects, branchName, onReview, updateAct
   const [expanded, setExpanded] = useState({});
   const [filterPopup, setFilterPopup] = useState(null);
   const [filters, setFilters] = useState({
+    wok: { sort: null, search: '', unchecked: [] },
     usedTotal: { sort: null, search: '', unchecked: [] },
     avaiTotal: { sort: null, search: '', unchecked: [] },
     totalPort: { sort: null, search: '', unchecked: [] }
@@ -281,6 +282,7 @@ export default function ProjectTable({ projects, branchName, onReview, updateAct
   const projectsWithTotals = useMemo(() => {
     return projects.map(p => ({
       ...p,
+      wok: p.wok || '-',
       // Gunakan nilai yang sudah ada dari server, fallback ke 0 jika tidak ada
       usedTotal: p.usedTotal ?? p.odps.reduce((s, o) => s + o.used, 0),
       avaiTotal: p.avaiTotal ?? p.odps.reduce((s, o) => s + o.avai, 0),
@@ -292,7 +294,7 @@ export default function ProjectTable({ projects, branchName, onReview, updateAct
     let list = [...projectsWithTotals];
 
     // Apply filtering
-    ['usedTotal', 'avaiTotal', 'totalPort'].forEach(col => {
+    ['wok', 'usedTotal', 'avaiTotal', 'totalPort'].forEach(col => {
       const f = filters[col];
       if (f.unchecked.length > 0) {
         list = list.filter(p => !f.unchecked.includes(p[col]));
@@ -300,10 +302,18 @@ export default function ProjectTable({ projects, branchName, onReview, updateAct
     });
 
     // Apply sorting
-    const sortCol = ['usedTotal', 'avaiTotal', 'totalPort'].find(col => filters[col].sort);
+    const sortCol = ['wok', 'usedTotal', 'avaiTotal', 'totalPort'].find(col => filters[col].sort);
     if (sortCol) {
       const sortDir = filters[sortCol].sort;
-      list.sort((a, b) => sortDir === 'asc' ? a[sortCol] - b[sortCol] : b[sortCol] - a[sortCol]);
+      if (sortCol === 'wok') {
+        list.sort((a, b) => {
+          const valA = String(a.wok || '');
+          const valB = String(b.wok || '');
+          return sortDir === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+        });
+      } else {
+        list.sort((a, b) => sortDir === 'asc' ? a[sortCol] - b[sortCol] : b[sortCol] - a[sortCol]);
+      }
     }
 
     return list;
@@ -324,7 +334,7 @@ export default function ProjectTable({ projects, branchName, onReview, updateAct
     setFilters(prev => {
       const newState = { ...prev };
       if (key === 'sort' && val !== null) {
-        ['usedTotal', 'avaiTotal', 'totalPort'].forEach(c => {
+        ['wok', 'usedTotal', 'avaiTotal', 'totalPort'].forEach(c => {
           if (c !== col) newState[c].sort = null;
         });
       }
@@ -338,11 +348,15 @@ export default function ProjectTable({ projects, branchName, onReview, updateAct
 
     const valueCounts = {};
     projectsWithTotals.forEach(p => {
-      const v = p[col];
+      const v = p[col] ?? '-';
       valueCounts[v] = (valueCounts[v] || 0) + 1;
     });
 
-    const allValues = Object.keys(valueCounts).map(Number).sort((a, b) => a - b);
+    const isStringCol = col === 'wok';
+    const allValues = isStringCol
+      ? Object.keys(valueCounts).sort((a, b) => a.localeCompare(b))
+      : Object.keys(valueCounts).map(Number).sort((a, b) => a - b);
+
     const searchLower = filters[col].search.toLowerCase();
     const visibleValues = allValues.filter(v => v.toString().toLowerCase().includes(searchLower));
 
@@ -351,18 +365,18 @@ export default function ProjectTable({ projects, branchName, onReview, updateAct
         <div
           onClick={() => { updateFilter(col, 'sort', 'asc'); setFilterPopup(null); }}
           style={{ padding: '6px 8px', cursor: 'pointer', borderRadius: '4px', backgroundColor: filters[col].sort === 'asc' ? '#f1f5f9' : 'transparent', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontSize: '14px' }}>↓</span> Sort A to Z (Kecil ke Besar)
+          <span style={{ fontSize: '14px' }}>↓</span> {isStringCol ? 'Sort A to Z' : 'Sort A to Z (Kecil ke Besar)'}
         </div>
         <div
           onClick={() => { updateFilter(col, 'sort', 'desc'); setFilterPopup(null); }}
           style={{ padding: '6px 8px', cursor: 'pointer', borderRadius: '4px', backgroundColor: filters[col].sort === 'desc' ? '#f1f5f9' : 'transparent', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontSize: '14px' }}>↑</span> Sort Z to A (Besar ke Kecil)
+          <span style={{ fontSize: '14px' }}>↑</span> {isStringCol ? 'Sort Z to A' : 'Sort Z to A (Besar ke Kecil)'}
         </div>
         <div style={{ height: '1px', background: '#e2e8f0', margin: '8px 0' }} />
 
         <input
           type="text"
-          placeholder="Search"
+          placeholder="Search WOK..."
           value={filters[col].search}
           onChange={e => updateFilter(col, 'search', e.target.value)}
           style={{ width: '100%', boxSizing: 'border-box', padding: '6px 12px', border: '1px solid #cbd5e1', borderRadius: '50px', marginBottom: '8px', fontSize: '12px' }}
@@ -381,9 +395,10 @@ export default function ProjectTable({ projects, branchName, onReview, updateAct
             (Select All)
           </label>
           {visibleValues.map(v => (
-            <label key={v} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 2px', cursor: 'pointer' }}>
+            <label key={v} style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', padding: '4px 2px', cursor: 'pointer' }}>
               <input
                 type="checkbox"
+                style={{ marginTop: '2px', flexShrink: 0 }}
                 checked={!filters[col].unchecked.includes(v)}
                 onChange={(e) => {
                   const u = filters[col].unchecked;
@@ -391,7 +406,9 @@ export default function ProjectTable({ projects, branchName, onReview, updateAct
                   else updateFilter(col, 'unchecked', [...u, v]);
                 }}
               />
-              {v} <span style={{ color: '#94a3b8', fontSize: '11px', fontWeight: 600 }}>({valueCounts[v]})</span>
+              <span style={{ lineHeight: '1.3' }}>
+                {v} <span style={{ color: '#94a3b8', fontSize: '11px', fontWeight: 600, whiteSpace: 'nowrap' }}>({valueCounts[v]})</span>
+              </span>
             </label>
           ))}
         </div>
@@ -419,7 +436,11 @@ export default function ProjectTable({ projects, branchName, onReview, updateAct
           <div className="table-header" style={{ gridTemplateColumns: tableGrid }}>
             <div></div>
             <div>Nama Proyek</div>
-            <div>Branch / WOK</div>
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+              <span style={{ display: 'flex', alignItems: 'center', paddingTop: '2px' }}>Branch / WOK</span>
+              <div onClick={() => setFilterPopup(filterPopup === 'wok' ? null : 'wok')} style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', color: filters.wok.sort || filters.wok.unchecked.length > 0 ? '#C8102E' : '#94a3b8' }}><FilterIcon /></div>
+              {renderFilterPopup('wok')}
+            </div>
             <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
               <span style={{ display: 'flex', alignItems: 'center', paddingTop: '2px' }}>Used</span>
               <div onClick={() => setFilterPopup(filterPopup === 'usedTotal' ? null : 'usedTotal')} style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', color: filters.usedTotal.sort || filters.usedTotal.unchecked.length > 0 ? '#C8102E' : '#94a3b8' }}><FilterIcon /></div>

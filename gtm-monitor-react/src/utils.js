@@ -78,6 +78,8 @@ export function flatOdps(branches, typeDesignFilter) {
 
 export function computeStats(branches, typeDesignFilter) {
   let totalAvai = 0, totalUsed = 0, totalPort = 0, odpCount = 0;
+  let totalProjCount = 0;
+  let verifiedProjCount = 0;
   const allActs = [];
 
   for (const b of (Array.isArray(branches) ? branches : [])) {
@@ -85,6 +87,10 @@ export function computeStats(branches, typeDesignFilter) {
     for (const p of projs) {
       if (typeDesignFilter && typeDesignFilter !== 'ALL' && (p.typeDesign || 'Greenfield') !== typeDesignFilter) {
         continue;
+      }
+      totalProjCount++;
+      if (p.activities?.some(a => a.status === 'verified')) {
+        verifiedProjCount++;
       }
       for (const o of (p.odps || [])) {
         totalAvai += o.avai;
@@ -103,11 +109,12 @@ export function computeStats(branches, typeDesignFilter) {
   const actVerified = allActs.filter(a => a.status === 'verified').length;
   const actUploaded = allActs.filter(a => a.status === 'upload').length;
   const actBelum = allActs.filter(a => a.status === 'belum').length;
-  const actCompletionPct = allActs.length ? Math.round((actVerified / allActs.length) * 100) : 0;
+  const actCompletionPct = totalProjCount ? Math.round((verifiedProjCount / totalProjCount) * 1000) / 10 : 0;
   
   return {
     totalAvai, totalUsed, totalPort, occRate,
-    actVerified, actUploaded, actBelum, actCompletionPct, odpCount
+    actVerified, actUploaded, actBelum, actCompletionPct, odpCount,
+    totalProjCount, verifiedProjCount
   };
 }
 
