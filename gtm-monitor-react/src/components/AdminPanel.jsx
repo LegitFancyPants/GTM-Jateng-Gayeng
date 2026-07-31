@@ -469,21 +469,34 @@ const AdminPanel = memo(function AdminPanel({ token, branches = [], onUpdate, go
         <button
           onClick={() => setIsExportModalOpen(true)}
           style={{
-            padding: '10px 20px',
-            borderRadius: '10px',
-            border: 'none',
-            background: 'transparent',
+            padding: '10px 24px',
+            borderRadius: '50px',
+            border: '1px solid #E2E8F0',
+            background: '#FFFFFF',
             color: '#475569',
-            fontWeight: 700,
-            fontSize: '14px',
+            fontWeight: 800,
+            fontSize: '13px',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
-            gap: '8px',
-            transition: 'all 0.2s'
+            gap: '10px',
+            boxShadow: '0 2px 6px rgba(0, 0, 0, 0.02)',
+            transition: 'all 0.25s ease'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = '#FF5E00';
+            e.currentTarget.style.color = '#C8102E';
+            e.currentTarget.style.transform = 'translateY(-1px)';
+            e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.06)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = '#E2E8F0';
+            e.currentTarget.style.color = '#475569';
+            e.currentTarget.style.transform = 'translateY(0px)';
+            e.currentTarget.style.boxShadow = '0 2px 6px rgba(0, 0, 0, 0.02)';
           }}
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
             <polyline points="7 10 12 15 17 10"></polyline>
             <line x1="12" y1="15" x2="12" y2="3"></line>

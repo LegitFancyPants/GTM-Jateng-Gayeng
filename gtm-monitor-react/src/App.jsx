@@ -531,14 +531,46 @@ function App() {
     }
   }, [isAdmin, token]);
 
+function LoadingScreen() {
+  const [dotsCount, setDotsCount] = useState(3);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setDotsCount(prev => (prev % 3) + 1);
+    }, 450);
+    return () => clearInterval(interval);
+  }, []);
+
+  const dots = '.'.repeat(dotsCount);
+
+  return (
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#FFFFFF', color: '#64748B', gap: '18px' }}>
+      <div style={{
+        width: '56px',
+        height: '56px',
+        borderRadius: '50%',
+        background: 'linear-gradient(135deg, #C8102E 0%, #FF5E00 100%)',
+        color: '#ffffff',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontWeight: 900,
+        fontSize: '18px',
+        boxShadow: '0 8px 24px rgba(200, 16, 46, 0.35)',
+        letterSpacing: '-0.5px'
+      }}>
+        GTM
+      </div>
+      <div style={{ fontWeight: 700, fontSize: '15px', color: '#0F172A', fontFamily: "'Outfit', sans-serif" }}>
+        Memuat data dari server<span style={{ display: 'inline-block', width: '24px', textAlign: 'left' }}>{dots}</span>
+      </div>
+    </div>
+  );
+}
+
   // 1. Loading screen
   if (loading && branches.length === 0) {
-    return (
-      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#FFFFFF', color: '#64748B', gap: '16px' }}>
-        <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'linear-gradient(135deg, #C8102E 0%, #FF5E00 100%)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '20px', boxShadow: '0 4px 20px rgba(200,16,46,0.4)' }}>GTM</div>
-        <div style={{ fontWeight: 600, fontSize: '15px', color: '#0F172A' }}>Memuat data dari server...</div>
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   // 2. Login Modal Overlay (when triggered by user)

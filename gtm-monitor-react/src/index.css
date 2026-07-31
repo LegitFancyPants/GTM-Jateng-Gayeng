@@ -80,6 +80,13 @@ select:focus, input:focus {
   border-color: #94a3b8 !important;
 }
 
+/* Disable native browser password reveal eye icon to prevent glitches */
+input::-ms-reveal,
+input::-ms-clear,
+input::-webkit-credentials-auto-fill-button {
+  display: none !important;
+}
+
 button {
   font-family: inherit;
   outline: none;

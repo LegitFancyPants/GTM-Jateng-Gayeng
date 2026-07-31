@@ -103,7 +103,7 @@ const LandingPage = memo(function LandingPage({ onExplore, onLogin, onGoDashboar
               margin: '0 auto 32px auto',
               lineHeight: 1.6
             }}>
-              Pemantauan Keterisian ODP dan Kinerja Kegiatan Regional
+              Pemantauan Okupansi ODP dan Kegiatan Regional
             </p>
 
             {/* CTA Link Minimalis */}
@@ -127,14 +127,14 @@ const LandingPage = memo(function LandingPage({ onExplore, onLogin, onGoDashboar
                 onMouseEnter={(e) => { e.currentTarget.style.color = '#FF5E00'; e.currentTarget.style.transform = 'translateX(4px)'; }}
                 onMouseLeave={(e) => { e.currentTarget.style.color = '#C8102E'; e.currentTarget.style.transform = 'translateX(0px)'; }}
               >
-                <span>EKSPLORASI DASHBOARD</span>
+                <span>AKSES PORTAL</span>
                 <span style={{ color: '#FF5E00' }}>→</span>
               </button>
             </div>
           </div>
         </div>
 
-        {/* ─── 3. STATS BLOCK (MEMANJANG FULL HINGGA UJUNG KIRI-KANAN, PERKECIL 25% VERTIKAL) ─── */}
+        {/* ─── 3. STATS BLOCK ─── */}
         <div style={{
           width: '100vw',
           margin: 0,
@@ -182,34 +182,14 @@ const LandingPage = memo(function LandingPage({ onExplore, onLogin, onGoDashboar
               </div>
             </div>
 
-            {/* Action Trigger */}
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <button
-                onClick={onExplore}
-                style={{
-                  background: '#FFFFFF',
-                  border: 'none',
-                  padding: '9px 22px',
-                  borderRadius: '50px',
-                  color: '#C8102E',
-                  fontSize: '11px',
-                  fontWeight: 900,
-                  letterSpacing: '1.5px',
-                  cursor: 'pointer',
-                  boxShadow: '0 4px 14px rgba(0, 0, 0, 0.15)',
-                  transition: 'all 0.25s ease'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = '0 6px 18px rgba(0, 0, 0, 0.25)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'translateY(0px)';
-                  e.currentTarget.style.boxShadow = '0 4px 14px rgba(0, 0, 0, 0.15)';
-                }}
-              >
-                Lihat Detail →
-              </button>
+            {/* Stat 4: Info WOK Regional */}
+            <div>
+              <div style={{ fontFamily: "'Outfit', sans-serif", fontSize: '28px', fontWeight: 900, color: '#FFFFFF', letterSpacing: '-0.5px' }}>
+                16 <span style={{ fontSize: '13px', fontWeight: 800, color: '#FFE600' }}>WOK</span>
+              </div>
+              <div style={{ fontSize: '10.5px', color: 'rgba(255, 255, 255, 0.88)', fontWeight: 800, letterSpacing: '1.5px', textTransform: 'uppercase', marginTop: '2px' }}>
+                Area WOK Regional
+              </div>
             </div>
           </div>
         </div>
@@ -252,22 +232,22 @@ const LandingPage = memo(function LandingPage({ onExplore, onLogin, onGoDashboar
               {
                 num: '01',
                 title: 'Occupancy Rate',
-                desc: 'Pemantauan persentase keterisian port ODP hingga tingkat proyek dan WOK secara akurat.'
+                desc: 'Pemantauan persentase keterisian port ODP pada setiap tingkat proyek dan WOK.'
               },
               {
                 num: '02',
                 title: 'Tipe Design',
-                desc: 'Pemisahan analisis jaringan Greenfield dan Brownfield untuk strategi efisiensi.'
+                desc: 'Pengelompokan data proyek berdasarkan tipe jaringan Greenfield dan Brownfield.'
               },
               {
                 num: '03',
                 title: 'Sebaran Geografis',
-                desc: 'Visualisasi presisi titik koordinat ODP pada peta interaktif regional.'
+                desc: 'Pemetaan lokasi dan koordinat ODP pada tampilan peta regional interaktif.'
               },
               {
                 num: '04',
                 title: 'Pelaporan Kegiatan',
-                desc: 'Dokumentasi foto lapangan dengan verifikasi status kegiatan terstruktur.'
+                desc: 'Pencatatan dokumentasi foto lapangan serta pembaruan status verifikasi kegiatan.'
               }
             ].map((item) => (
               <div
@@ -369,19 +349,6 @@ const LandingPage = memo(function LandingPage({ onExplore, onLogin, onGoDashboar
           </div>
         </div>
       </section>
-
-      {/* ─── 6. FOOTER ─── */}
-      <footer style={{
-        borderTop: '1px solid #E2E8F0',
-        padding: '32px 48px',
-        textAlign: 'center',
-        fontSize: '11.5px',
-        color: '#64748B',
-        background: '#FAFAFC',
-        letterSpacing: '0.5px'
-      }}>
-        <div>© 2026 GTM Activity Monitoring System · Telkomsel Regional Jateng DIY. All rights reserved.</div>
-      </footer>
     </div>
   );
 });
