@@ -4,7 +4,7 @@ import ReviewModal from './ReviewModal';
 import { formatBranch, computeStats } from '../utils';
 
 // UploadView dibungkus React.memo agar TIDAK re-render saat menu profile di header dibuka/ditutup.
-const UploadView = memo(function UploadView({ branches, initialBranch, updateActivityField, verifyActivity, uploadPhoto }) {
+const UploadView = memo(function UploadView({ branches, initialBranch, updateActivityField, verifyActivity, uploadPhoto, deletePhoto }) {
   // Halaman Upload Activity Wajib difilter: OCC < 35%, ODP > 1, DAN Type Design === Greenfield
   const priorityBranches = useMemo(() => {
     return (branches || []).map(b => ({
@@ -256,6 +256,7 @@ const UploadView = memo(function UploadView({ branches, initialBranch, updateAct
               uploadPhoto={uploadPhoto}
               onReview={openModal}
               verifyActivity={verifyActivity}
+              deletePhoto={deletePhoto}
             />
           </div>
         )
@@ -269,6 +270,7 @@ const UploadView = memo(function UploadView({ branches, initialBranch, updateAct
               uploadPhoto={uploadPhoto}
               onReview={openModal}
               verifyActivity={verifyActivity}
+              deletePhoto={deletePhoto}
             />
           </div>
         ))

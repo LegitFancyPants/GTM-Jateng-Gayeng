@@ -529,7 +529,32 @@ function App() {
     } catch (err) {
       console.error('Error verifying activity:', err);
     }
-  }, [isAdmin, token]);
+  }, [isAdmin, token, fetchData]);
+
+  const deletePhoto = useCallback(async (branchName, projectName, actType) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/activities/delete-photo`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ branchName, projectName, type: actType })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        fetchData();
+        return true;
+      } else {
+        alert(`❌ ${data.message || 'Gagal menghapus foto.'}`);
+        return false;
+      }
+    } catch (err) {
+      console.error('Error deleting photo:', err);
+      alert('❌ Terjadi kesalahan saat menghapus foto.');
+      return false;
+    }
+  }, [token, fetchData]);
 
 function LoadingScreen() {
   const [dotsCount, setDotsCount] = useState(3);
@@ -863,7 +888,8 @@ function LoadingScreen() {
                 activeBranch={activeBranch} 
                 updateActivityField={updateActivityField} 
                 uploadPhoto={uploadPhoto}
-                verifyActivity={verifyActivity} 
+                verifyActivity={verifyActivity}
+                deletePhoto={deletePhoto}
               />
             ) : (
               <Dashboard branches={branches} goBranch={goBranch} kpi={kpi} statusChips={statusChips} ranking={ranking} mapBounds={mapBounds} mapPoints={mapPoints} isAdmin={isAdmin} typeDesignFilter={typeDesignFilter} setTypeDesignFilter={setTypeDesignFilter} />
@@ -876,6 +902,7 @@ function LoadingScreen() {
               updateActivityField={updateActivityField} 
               uploadPhoto={uploadPhoto}
               verifyActivity={isAdmin ? verifyActivity : null}
+              deletePhoto={deletePhoto}
             />
           )}
           {view === 'admin' && (
@@ -888,6 +915,7 @@ function LoadingScreen() {
               verifyActivity={verifyActivity}
               updateActivityField={updateActivityField}
               uploadPhoto={uploadPhoto}
+              deletePhoto={deletePhoto}
               kpi={kpi}
             />
           )}

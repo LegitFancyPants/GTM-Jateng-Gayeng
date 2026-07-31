@@ -1,4 +1,5 @@
 import { useState, useMemo, memo, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { ACT_TYPES, actMeta, formatBranch } from '../utils';
 
 const FilterIcon = () => (
@@ -71,8 +72,245 @@ const ActivityTextInput = memo(({ a, actType, bName, p, updateActivityField }) =
   );
 });
 
+// ─── CUSTOM DELETE CONFIRMATION MODAL (PORTAL TO BODY) ───
+function DeleteConfirmModal({ projectName, onCancel, onConfirm }) {
+  return createPortal(
+    <div style={{
+      position: 'fixed',
+      top: 0, left: 0, width: '100vw', height: '100vh',
+      zIndex: 100000,
+      background: 'rgba(15, 23, 42, 0.75)',
+      backdropFilter: 'blur(8px)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      padding: '20px', boxSizing: 'border-box'
+    }}>
+      <div style={{
+        position: 'relative', width: '100%', maxWidth: '420px',
+        background: '#FFFFFF', borderRadius: '24px',
+        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.35)',
+        padding: '28px 24px', boxSizing: 'border-box',
+        textAlign: 'center', animation: 'fadeIn 0.2s ease-out'
+      }}>
+        {/* Warning Icon Badge */}
+        <div style={{
+          width: '54px', height: '54px', borderRadius: '50%',
+          background: '#FEF2F2', border: '1px solid #FECACA',
+          color: '#DC2626', display: 'flex', alignItems: 'center',
+          justifyContent: 'center', margin: '0 auto 16px auto'
+        }}>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="3 6 5 6 21 6" />
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+            <line x1="10" y1="11" x2="10" y2="17" />
+            <line x1="14" y1="11" x2="14" y2="17" />
+          </svg>
+        </div>
+
+        <h3 style={{ fontSize: '19px', fontWeight: 800, color: '#0F172A', margin: '0 0 10px 0', fontFamily: "'Outfit', sans-serif" }}>
+          Konfirmasi Hapus Foto
+        </h3>
+
+        <p style={{ fontSize: '13.5px', color: '#475569', lineHeight: 1.5, margin: '0 0 24px 0', fontWeight: 500 }}>
+          Apakah Anda yakin ingin menghapus foto kegiatan untuk proyek <strong style={{ color: '#0F172A', wordBreak: 'break-word' }}>"{projectName}"</strong>?
+        </p>
+
+        {/* Action Buttons */}
+        <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+          <button
+            type="button"
+            onClick={onCancel}
+            style={{
+              flex: 1, padding: '12px', borderRadius: '12px',
+              border: '1px solid #E2E8F0', background: '#F8FAFC',
+              color: '#475569', fontSize: '13.5px', fontWeight: 700,
+              cursor: 'pointer', transition: 'all 0.2s'
+            }}
+          >
+            Batal
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            style={{
+              flex: 1, padding: '12px', borderRadius: '12px',
+              border: 'none', background: 'linear-gradient(135deg, #DC2626 0%, #B91C1C 100%)',
+              color: '#FFFFFF', fontSize: '13.5px', fontWeight: 700,
+              cursor: 'pointer', boxShadow: '0 4px 14px rgba(220, 38, 38, 0.35)',
+              transition: 'all 0.2s'
+            }}
+          >
+            Ya, Hapus Foto
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+// ─── PHOTO PREVIEW & DELETE MODAL COMPONENT (PORTAL TO BODY) ───
+function PhotoPreviewModal({ photoData, onClose, onReplace, onDelete }) {
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  if (!photoData) return null;
+  const { branchName, projectName, actType, photoUrl, status } = photoData;
+  const isVerified = status === 'verified';
+
+  // Construct absolute URL for display
+  const displayUrl = photoUrl.startsWith('http')
+    ? photoUrl
+    : photoUrl.startsWith('/')
+    ? photoUrl
+    : '/' + photoUrl;
+
+  return createPortal(
+    <>
+      <div style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        width: '100vw',
+        height: '100vh',
+        zIndex: 99999,
+        background: 'rgba(15, 23, 42, 0.75)',
+        backdropFilter: 'blur(8px)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '20px',
+        boxSizing: 'border-box'
+      }}>
+        <div style={{
+          position: 'relative',
+          width: '100%',
+          maxWidth: '520px',
+          background: '#FFFFFF',
+          borderRadius: '24px',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.3)',
+          padding: '24px',
+          boxSizing: 'border-box',
+          animation: 'fadeIn 0.2s ease-out'
+        }}>
+          {/* Close Button */}
+          <button
+            onClick={onClose}
+            style={{
+              position: 'absolute', top: '16px', right: '16px',
+              width: '32px', height: '32px', borderRadius: '50%',
+              border: 'none', background: '#F1F5F9', color: '#64748B',
+              fontSize: '16px', fontWeight: 700, cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center'
+            }}
+          >
+            ✕
+          </button>
+
+          {/* Header */}
+          <div style={{ marginBottom: '16px' }}>
+            <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#0F172A', margin: '0 0 4px 0' }}>
+              {projectName}
+            </h3>
+            <div style={{ fontSize: '12.5px', color: '#64748B' }}>
+              Branch: {formatBranch(branchName)} · Tipe: {actType}
+            </div>
+          </div>
+
+          {/* Image Preview Container */}
+          <div style={{
+            width: '100%', height: '280px', borderRadius: '16px',
+            background: '#090A0F', overflow: 'hidden',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            marginBottom: '20px', border: '1px solid #E2E8F0',
+            position: 'relative'
+          }}>
+            <img
+              src={displayUrl}
+              alt="Preview Foto Kegiatan"
+              style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+              onError={(e) => {
+                e.target.style.display = 'none';
+                if (e.target.parentElement) {
+                  e.target.parentElement.innerHTML = '<div style="color:#ef4444;font-weight:700;font-size:13px;padding:20px;text-align:center">⚠️ File foto tidak ditemukan atau telah terhapus dari server.</div>';
+                }
+              }}
+            />
+            {/* Status Badge */}
+            <div style={{
+              position: 'absolute', top: '12px', left: '12px',
+              padding: '5px 14px', borderRadius: '50px', fontSize: '11px', fontWeight: 800,
+              background: isVerified ? '#10B981' : '#F59E0B', color: '#FFFFFF',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.2)', letterSpacing: '0.3px'
+            }}>
+              {isVerified ? 'Terverifikasi' : 'Menunggu Verifikasi'}
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+            {/* Ganti Foto Button */}
+            <label style={{
+              padding: '10px 18px', borderRadius: '10px',
+              background: '#F1F5F9', color: '#334155', border: '1px solid #CBD5E1',
+              fontSize: '13px', fontWeight: 700, cursor: 'pointer',
+              display: 'inline-flex', alignItems: 'center', gap: '6px'
+            }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="17 8 12 3 7 8" />
+                <line x1="12" y1="3" x2="12" y2="15" />
+              </svg>
+              <span>Ganti Foto</span>
+              <input
+                type="file"
+                accept="image/*"
+                style={{ display: 'none' }}
+                onChange={(e) => {
+                  if (e.target.files && e.target.files[0]) {
+                    onReplace(e.target.files[0]);
+                    onClose();
+                  }
+                }}
+              />
+            </label>
+
+            {/* Hapus Foto Button */}
+            <button
+              type="button"
+              onClick={() => setShowDeleteConfirm(true)}
+              style={{
+                padding: '10px 18px', borderRadius: '10px',
+                background: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA',
+                fontSize: '13px', fontWeight: 700, cursor: 'pointer',
+                display: 'inline-flex', alignItems: 'center', gap: '6px'
+              }}
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="3 6 5 6 21 6" />
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+              </svg>
+              <span>Hapus Foto</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {showDeleteConfirm && (
+        <DeleteConfirmModal
+          projectName={projectName}
+          onCancel={() => setShowDeleteConfirm(false)}
+          onConfirm={() => {
+            setShowDeleteConfirm(false);
+            onDelete();
+            onClose();
+          }}
+        />
+      )}
+    </>,
+    document.body
+  );
+}
+
 // ─── OPTIMASI 2: REACT RENDER OPTIMIZATION (MEMOIZED PROJECT ROW) ───
-const ProjectRow = memo(({ p, branchName, isExpanded, toggleProject, onReview, updateActivityField, uploadPhoto, verifyActivity, tableGrid, odpGrid }) => {
+const ProjectRow = memo(({ p, branchName, isExpanded, toggleProject, onReview, updateActivityField, uploadPhoto, verifyActivity, deletePhoto, onPreviewPhoto, tableGrid, odpGrid }) => {
   const pOdps = p.odps || [];
   const usedTotal = p.usedTotal;
   const avaiTotal = p.avaiTotal;
@@ -129,6 +367,7 @@ const ProjectRow = memo(({ p, branchName, isExpanded, toggleProject, onReview, u
           const a = projectActivities.find(x => x.type === actType.key);
           const status = a?.status || 'belum';
           const meta = actMeta(status);
+          const hasPhoto = Boolean(a?.photoUrl && a.photoUrl !== 'uploading...');
 
           return (
             <div key={actType.key} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', gap: '10px', alignSelf: 'flex-start' }}>
@@ -147,25 +386,75 @@ const ProjectRow = memo(({ p, branchName, isExpanded, toggleProject, onReview, u
                     readOnly={!updateActivityField}
                     title="Pilih tanggal rencana"
                   />
-                  <label style={{ width: '120px', height: '36px', borderRadius: '6px', border: a?.photoUrl ? '2px solid #22c55e' : '1px dashed #cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', background: a?.photoUrl ? '#f0fdf4' : '#f8fafc', fontSize: '11px', color: a?.photoUrl ? '#16a34a' : '#64748b', cursor: uploadPhoto ? 'pointer' : 'default', overflow: 'hidden', textAlign: 'center', padding: '2px 8px', boxSizing: 'border-box' }}>
-                    {a?.photoUrl && a.photoUrl !== 'uploading...' ? (
-                      <>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                          <polyline points="22 4 12 14.01 9 11.01"></polyline>
-                        </svg>
-                        <span style={{ fontWeight: 700, fontSize: '11px', color: '#16a34a' }}>Foto Terisi</span>
-                      </>
-                    ) : a?.photoUrl === 'uploading...' ? (
-                      <span style={{ fontSize: '11px', color: '#64748b' }}>Uploading...</span>
+                  {hasPhoto ? (
+                    <div
+                      onClick={() => onPreviewPhoto && onPreviewPhoto({ branchName: bName, projectName: p.name, actType: actType.key, photoUrl: a.photoUrl, status: a.status })}
+                      style={{ width: '120px', height: '36px', borderRadius: '6px', border: '2px solid #22c55e', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', background: '#f0fdf4', fontSize: '11px', color: '#16a34a', cursor: 'pointer', overflow: 'hidden', textAlign: 'center', padding: '2px 8px', boxSizing: 'border-box' }}
+                      title="Klik untuk melihat preview foto / ganti / hapus"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                        <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                      </svg>
+                      <span style={{ fontWeight: 700, fontSize: '11px', color: '#16a34a' }}>Foto Terisi</span>
+                    </div>
+                  ) : (
+                    <label style={{ width: '120px', height: '36px', borderRadius: '6px', border: '1px dashed #cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', background: '#f8fafc', fontSize: '11px', color: '#64748b', cursor: uploadPhoto ? 'pointer' : 'default', overflow: 'hidden', textAlign: 'center', padding: '2px 8px', boxSizing: 'border-box' }}>
+                      {a?.photoUrl === 'uploading...' ? (
+                        <span style={{ fontSize: '11px', color: '#64748b' }}>Uploading...</span>
+                      ) : (
+                        <>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                            <circle cx="8.5" cy="8.5" r="1.5" />
+                            <polyline points="21 15 16 10 5 21" />
+                          </svg>
+                          <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 600 }}>+ Upload Foto</span>
+                        </>
+                      )}
+                      {uploadPhoto && (
+                        <input
+                          type="file"
+                          accept="image/*"
+                          style={{ display: 'none' }}
+                          onChange={(e) => {
+                            if (e.target.files && e.target.files[0]) {
+                              uploadPhoto(bName, p.name, actType.key, e.target.files[0]);
+                            }
+                          }}
+                        />
+                      )}
+                    </label>
+                  )}
+                </div>
+              )}
+
+              {/* Photo Input */}
+              {actType.kind === 'photo' && (
+                hasPhoto ? (
+                  <div
+                    onClick={() => onPreviewPhoto && onPreviewPhoto({ branchName: bName, projectName: p.name, actType: actType.key, photoUrl: a.photoUrl, status: a.status })}
+                    style={{ width: '64px', height: '64px', borderRadius: '8px', border: '2px solid #22c55e', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#f0fdf4', fontSize: '10px', color: '#16a34a', cursor: 'pointer', overflow: 'hidden', textAlign: 'center', padding: '4px', boxSizing: 'border-box' }}
+                    title="Klik untuk melihat preview foto / ganti / hapus"
+                  >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                      <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                    </svg>
+                    <span style={{ fontWeight: 700, marginTop: '2px', fontSize: '10.5px', color: '#16a34a' }}>Terisi</span>
+                  </div>
+                ) : (
+                  <label style={{ width: '64px', height: '64px', borderRadius: '8px', border: '1px dashed #cbd5e1', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#f8fafc', fontSize: '10px', color: '#64748b', cursor: uploadPhoto ? 'pointer' : 'default', overflow: 'hidden', textAlign: 'center', padding: '4px', boxSizing: 'border-box' }}>
+                    {a?.photoUrl === 'uploading...' ? (
+                      <span style={{ fontSize: '11px', color: '#64748b' }}>Upload...</span>
                     ) : (
                       <>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
                           <circle cx="8.5" cy="8.5" r="1.5" />
                           <polyline points="21 15 16 10 5 21" />
                         </svg>
-                        <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 600 }}>+ Upload Foto</span>
+                        <span style={{ marginTop: '2px', fontSize: '10.5px', color: '#64748b', fontWeight: 600 }}>Foto</span>
                       </>
                     )}
                     {uploadPhoto && (
@@ -181,45 +470,7 @@ const ProjectRow = memo(({ p, branchName, isExpanded, toggleProject, onReview, u
                       />
                     )}
                   </label>
-                </div>
-              )}
-
-              {/* Photo Input */}
-              {actType.kind === 'photo' && (
-                <label style={{ width: '64px', height: '64px', borderRadius: '8px', border: a?.photoUrl ? '2px solid #22c55e' : '1px dashed #cbd5e1', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: a?.photoUrl ? '#f0fdf4' : '#f8fafc', fontSize: '10px', color: a?.photoUrl ? '#16a34a' : '#64748b', cursor: uploadPhoto ? 'pointer' : 'default', overflow: 'hidden', textAlign: 'center', padding: '4px', boxSizing: 'border-box' }}>
-                  {a?.photoUrl && a.photoUrl !== 'uploading...' ? (
-                    <>
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                        <polyline points="22 4 12 14.01 9 11.01"></polyline>
-                      </svg>
-                      <span style={{ fontWeight: 700, marginTop: '2px', fontSize: '10.5px', color: '#16a34a' }}>Terisi</span>
-                    </>
-                  ) : a?.photoUrl === 'uploading...' ? (
-                    <span style={{ fontSize: '11px', color: '#64748b' }}>Upload...</span>
-                  ) : (
-                    <>
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                        <circle cx="8.5" cy="8.5" r="1.5" />
-                        <polyline points="21 15 16 10 5 21" />
-                      </svg>
-                      <span style={{ marginTop: '2px', fontSize: '10.5px', color: '#64748b', fontWeight: 600 }}>Foto</span>
-                    </>
-                  )}
-                  {uploadPhoto && (
-                    <input
-                      type="file"
-                      accept="image/*"
-                      style={{ display: 'none' }}
-                      onChange={(e) => {
-                        if (e.target.files && e.target.files[0]) {
-                          uploadPhoto(bName, p.name, actType.key, e.target.files[0]);
-                        }
-                      }}
-                    />
-                  )}
-                </label>
+                )
               )}
 
               {/* Date Input */}
@@ -258,8 +509,9 @@ const ProjectRow = memo(({ p, branchName, isExpanded, toggleProject, onReview, u
   );
 });
 
-export default function ProjectTable({ projects, branchName, onReview, updateActivityField, uploadPhoto, verifyActivity }) {
+export default function ProjectTable({ projects, branchName, onReview, updateActivityField, uploadPhoto, verifyActivity, deletePhoto }) {
   const [expanded, setExpanded] = useState({});
+  const [previewPhotoData, setPreviewPhotoData] = useState(null);
   const [filterPopup, setFilterPopup] = useState(null);
   const [filters, setFilters] = useState({
     wok: { sort: null, search: '', unchecked: [] },
@@ -474,6 +726,8 @@ export default function ProjectTable({ projects, branchName, onReview, updateAct
               updateActivityField={updateActivityField}
               uploadPhoto={uploadPhoto}
               verifyActivity={verifyActivity}
+              deletePhoto={deletePhoto}
+              onPreviewPhoto={setPreviewPhotoData}
               tableGrid={tableGrid}
               odpGrid={odpGrid}
             />
@@ -486,6 +740,24 @@ export default function ProjectTable({ projects, branchName, onReview, updateAct
           )}
         </div>
       </div>
+
+      {/* Photo Preview Modal */}
+      {previewPhotoData && (
+        <PhotoPreviewModal
+          photoData={previewPhotoData}
+          onClose={() => setPreviewPhotoData(null)}
+          onReplace={(file) => {
+            if (uploadPhoto) {
+              uploadPhoto(previewPhotoData.branchName, previewPhotoData.projectName, previewPhotoData.actType, file);
+            }
+          }}
+          onDelete={() => {
+            if (deletePhoto) {
+              deletePhoto(previewPhotoData.branchName, previewPhotoData.projectName, previewPhotoData.actType);
+            }
+          }}
+        />
+      )}
 
       {/* Pagination Footer */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderTop: '1px solid #e2e8f0', background: '#f8fafc', flexWrap: 'wrap', gap: '10px' }}>
