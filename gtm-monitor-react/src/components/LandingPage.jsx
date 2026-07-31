@@ -77,7 +77,7 @@ const LandingPage = memo(function LandingPage({ onExplore, onLogin, onGoDashboar
               REGIONAL JATENG DIY
             </div>
 
-            <h1 style={{
+            <h1 className="hero-title-responsive" style={{
               fontFamily: "'Outfit', sans-serif",
               fontSize: 'clamp(68px, 12.5vw, 130px)',
               fontWeight: 900,
@@ -93,7 +93,7 @@ const LandingPage = memo(function LandingPage({ onExplore, onLogin, onGoDashboar
               GTM
             </h1>
 
-            <p style={{
+            <p className="hero-subtitle-responsive" style={{
               fontSize: 'clamp(13px, 1.2vw, 15px)',
               color: '#475569',
               letterSpacing: '2.5px',
@@ -135,7 +135,7 @@ const LandingPage = memo(function LandingPage({ onExplore, onLogin, onGoDashboar
         </div>
 
         {/* ─── 3. STATS BLOCK ─── */}
-        <div style={{
+        <div className="stats-block-container" style={{
           width: '100vw',
           margin: 0,
           background: 'linear-gradient(135deg, #C8102E 0%, #FF5E00 100%)',
@@ -144,7 +144,7 @@ const LandingPage = memo(function LandingPage({ onExplore, onLogin, onGoDashboar
           boxShadow: '0 8px 25px rgba(200, 16, 46, 0.2)',
           zIndex: 10
         }}>
-          <div style={{
+          <div className="stats-responsive-grid" style={{
             maxWidth: '1200px',
             margin: '0 auto',
             display: 'grid',
@@ -196,7 +196,7 @@ const LandingPage = memo(function LandingPage({ onExplore, onLogin, onGoDashboar
       </section>
 
       {/* ─── 4. FITUR UTAMA ─── */}
-      <section id="features" style={{
+      <section id="features" className="page-responsive-padding" style={{
         position: 'relative',
         background: '#FAFAFC',
         padding: '110px 48px 90px 48px',
@@ -223,7 +223,7 @@ const LandingPage = memo(function LandingPage({ onExplore, onLogin, onGoDashboar
             Kemampuan Utilitas Sistem
           </h2>
 
-          <div style={{
+          <div className="capabilities-responsive-grid" style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(4, 1fr)',
             gap: '24px'
@@ -294,7 +294,7 @@ const LandingPage = memo(function LandingPage({ onExplore, onLogin, onGoDashboar
       </section>
 
       {/* ─── 5. WILAYAH OPERASIONAL BRANCH ─── */}
-      <section id="branches" style={{
+      <section id="branches" className="page-responsive-padding" style={{
         position: 'relative',
         background: '#FFFFFF',
         padding: '30px 48px 110px 48px',
@@ -308,7 +308,7 @@ const LandingPage = memo(function LandingPage({ onExplore, onLogin, onGoDashboar
             6 Wilayah Branch
           </h2>
 
-          <div style={{
+          <div className="branches-responsive-grid" style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(6, 1fr)',
             gap: '16px'

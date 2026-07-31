@@ -655,7 +655,7 @@ function LoadingScreen() {
         </div>
 
         {/* Center: Nav Menu Options (OVERVIEW, MONITORING, ACTIVITY, CONTROL Sejajar Tengah) */}
-        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '44px', justifySelf: 'center', paddingBottom: '4px' }}>
+        <div className="nav-scroll-container" style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '44px', justifySelf: 'center', paddingBottom: '4px' }}>
           <button
             ref={overviewTabRef}
             type="button"

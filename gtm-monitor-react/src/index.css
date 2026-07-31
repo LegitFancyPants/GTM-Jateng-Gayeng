@@ -429,3 +429,91 @@ button {
   background: #fef2f2;
   color: #b91c1c;
 }
+
+/* ─── COMPREHENSIVE RESPONSIVE MOBILE STYLES (VERSATILE ACROSS ALL RESOLUTIONS) ─── */
+.table-responsive-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.nav-scroll-container {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  overflow-x: auto;
+  white-space: nowrap;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.nav-scroll-container::-webkit-scrollbar {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  nav {
+    padding: 12px 20px !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    gap: 16px !important;
+  }
+  
+  .nav-scroll-container {
+    gap: 20px !important;
+    padding-bottom: 2px !important;
+  }
+
+  .stats-responsive-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 18px !important;
+  }
+
+  .stats-block-container {
+    padding: 20px 24px !important;
+  }
+
+  .capabilities-responsive-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 16px !important;
+  }
+
+  .branches-responsive-grid {
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 12px !important;
+  }
+
+  .page-responsive-padding {
+    padding-left: 20px !important;
+    padding-right: 20px !important;
+  }
+}
+
+@media (max-width: 600px) {
+  .stats-responsive-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 12px !important;
+  }
+
+  .capabilities-responsive-grid {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+
+  .branches-responsive-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+  }
+
+  .hero-title-responsive {
+    font-size: clamp(42px, 15vw, 90px) !important;
+    letter-spacing: clamp(4px, 2vw, 16px) !important;
+  }
+
+  .hero-subtitle-responsive {
+    fontSize: 12px !important;
+    letterSpacing: 1.5px !important;
+    margin-bottom: 24px !important;
+  }
+}
