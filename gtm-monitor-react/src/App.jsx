@@ -250,7 +250,10 @@ function App() {
     navigateTo('dashboard', null, true);
   };
 
-  const executeLogout = () => {
+  const [sessionExpiredNotice, setSessionExpiredNotice] = useState(false);
+  const lastActivityRef = useRef(Date.now());
+
+  const executeLogout = useCallback((targetView = 'landing') => {
     setUser(null);
     setToken(null);
     setBranches([]);
@@ -258,12 +261,39 @@ function App() {
     sessionStorage.removeItem('gtm_token');
     localStorage.removeItem('gtm_user');
     localStorage.removeItem('gtm_token');
-    setView('dashboard');
+    setView(targetView);
     setActiveBranch(null);
     setShowProfileModal(false);
     setShowLogoutConfirmModal(false);
-    window.history.replaceState(null, '');
-  };
+    window.history.replaceState({ view: targetView, activeBranch: null }, '');
+  }, []);
+
+  // ─── 15-MINUTE INACTIVITY AUTO-LOGOUT EFFECT ───
+  useEffect(() => {
+    if (!token || !user) return;
+
+    const INACTIVITY_LIMIT = 15 * 60 * 1000; // 15 menit = 900.000 ms
+
+    const updateActivity = () => {
+      lastActivityRef.current = Date.now();
+    };
+
+    // Listen to user interaction events
+    const events = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart', 'pointerdown'];
+    events.forEach(evt => window.addEventListener(evt, updateActivity, { passive: true }));
+
+    const intervalId = setInterval(() => {
+      if (Date.now() - lastActivityRef.current >= INACTIVITY_LIMIT) {
+        executeLogout('landing'); // Terlogout otomatis & kembali ke menu overview (landing)
+        setSessionExpiredNotice(true);
+      }
+    }, 5000); // Evaluasi setiap 5 detik
+
+    return () => {
+      events.forEach(evt => window.removeEventListener(evt, updateActivity));
+      clearInterval(intervalId);
+    };
+  }, [token, user, executeLogout]);
 
   const handleLogout = (showAlert = true) => {
     if (typeof showAlert !== 'boolean') showAlert = true;
@@ -275,7 +305,7 @@ function App() {
       setShowLogoutConfirmModal(true);
       return;
     }
-    executeLogout();
+    executeLogout('landing');
   };
 
   const goDashboard = useCallback(() => {
@@ -1082,7 +1112,7 @@ function LoadingScreen() {
               </button>
 
               <button
-                onClick={executeLogout}
+                onClick={() => executeLogout('landing')}
                 style={{
                   flex: 1,
                   padding: '10px 16px',
@@ -1102,6 +1132,57 @@ function LoadingScreen() {
                 Ya, Log Out
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── SESSION EXPIRED (15 MIN INACTIVITY) POPUP MODAL ─── */}
+      {sessionExpiredNotice && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 100000,
+          background: 'rgba(15, 23, 42, 0.75)', backdropFilter: 'blur(8px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px'
+        }}>
+          <div style={{
+            position: 'relative', width: '100%', maxWidth: '420px',
+            background: '#FFFFFF', borderRadius: '24px',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.35)',
+            padding: '28px 24px', boxSizing: 'border-box',
+            textAlign: 'center', animation: 'fadeIn 0.2s ease-out'
+          }}>
+            <div style={{
+              width: '54px', height: '54px', borderRadius: '50%',
+              background: '#FFF7ED', border: '1px solid #FFEDD5',
+              color: '#F97316', display: 'flex', alignItems: 'center',
+              justifyContent: 'center', margin: '0 auto 16px auto'
+            }}>
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10" />
+                <polyline points="12 6 12 12 16 14" />
+              </svg>
+            </div>
+
+            <h3 style={{ fontSize: '19px', fontWeight: 800, color: '#0F172A', margin: '0 0 8px 0', fontFamily: "'Outfit', sans-serif" }}>
+              Sesi Berakhir (15 Menit)
+            </h3>
+
+            <p style={{ fontSize: '13.5px', color: '#475569', lineHeight: 1.5, margin: '0 0 24px 0', fontWeight: 500 }}>
+              Sesi Anda telah berakhir karena tidak ada aktivitas selama 15 menit. Anda telah ter-logout otomatis dan dikembalikan ke menu Overview.
+            </p>
+
+            <button
+              type="button"
+              onClick={() => setSessionExpiredNotice(false)}
+              style={{
+                width: '100%', padding: '12px', borderRadius: '12px',
+                border: 'none', background: 'linear-gradient(135deg, #C8102E 0%, #FF5E00 100%)',
+                color: '#FFFFFF', fontSize: '14px', fontWeight: 700,
+                cursor: 'pointer', boxShadow: '0 4px 14px rgba(200, 16, 46, 0.35)',
+                transition: 'all 0.2s'
+              }}
+            >
+              Mengerti
+            </button>
           </div>
         </div>
       )}
