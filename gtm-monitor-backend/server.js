@@ -1,10 +1,37 @@
+const fs = require('fs');
+const path = require('path');
+
+// Auto-load .env file if present
+const envPath = path.join(__dirname, '.env');
+if (fs.existsSync(envPath)) {
+  const envContent = fs.readFileSync(envPath, 'utf8');
+  envContent.split('\n').forEach(line => {
+    const trimmed = line.trim();
+    if (trimmed && !trimmed.startsWith('#')) {
+      const eqIndex = trimmed.indexOf('=');
+      if (eqIndex > -1) {
+        const key = trimmed.slice(0, eqIndex).trim();
+        let value = trimmed.slice(eqIndex + 1).trim();
+        if ((value.startsWith('"') && value.endsWith('"')) ||
+            (value.startsWith("'") && value.endsWith("'"))) {
+          value = value.slice(1, -1);
+        }
+        if (!process.env[key]) process.env[key] = value;
+      }
+    }
+  });
+}
+
+// Clean channel_binding=require if present in DATABASE_URL as it causes connection failure with Neon pooler
+if (process.env.DATABASE_URL) {
+  process.env.DATABASE_URL = process.env.DATABASE_URL.replace(/&channel_binding=require/g, '').replace(/\?channel_binding=require/g, '');
+}
+
 const express = require('express');
 const cors = require('cors');
 const multer = require('multer');
 const { PrismaClient } = require('@prisma/client');
 const xlsx = require('xlsx');
-const path = require('path');
-const fs = require('fs');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const cloudinary = require('cloudinary');

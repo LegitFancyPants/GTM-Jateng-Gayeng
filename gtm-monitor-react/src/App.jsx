@@ -279,25 +279,41 @@ function App() {
   };
 
   const goDashboard = useCallback(() => {
+    if (!user) {
+      setShowLoginModal(true);
+      return;
+    }
     navigateTo('dashboard', null);
-  }, [navigateTo]);
+  }, [user, navigateTo]);
 
   const goBranch = useCallback((name) => {
+    if (!user) {
+      setShowLoginModal(true);
+      return;
+    }
     if (!isAdmin) return;
     navigateTo('branch', name);
-  }, [isAdmin, navigateTo]);
+  }, [user, isAdmin, navigateTo]);
 
   const goUpload = useCallback(() => {
+    if (!user) {
+      setShowLoginModal(true);
+      return;
+    }
     navigateTo('upload', null);
-  }, [navigateTo]);
+  }, [user, navigateTo]);
 
   const goAdmin = useCallback(() => {
+    if (!user) {
+      setShowLoginModal(true);
+      return;
+    }
     if (!isAdmin) {
       alert('Akses ditolak. Hanya Administrator yang dapat membuka Admin Panel.');
       return;
     }
     navigateTo('admin', null);
-  }, [isAdmin, navigateTo]);
+  }, [user, isAdmin, navigateTo]);
 
   // Update activity field at PROJECT level
   // Update activity field at PROJECT level
@@ -674,27 +690,29 @@ function App() {
             ACTIVITY
           </button>
 
-          <button
-            ref={controlTabRef}
-            type="button"
-            onClick={goAdmin}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: view === 'admin' ? '#C8102E' : '#64748B',
-              fontSize: '12px',
-              fontWeight: 800,
-              letterSpacing: '2px',
-              cursor: 'pointer',
-              transition: 'color 0.25s ease',
-              padding: '6px 4px',
-              outline: 'none'
-            }}
-            onMouseEnter={(e) => { if (view !== 'admin') e.currentTarget.style.color = '#FF5E00'; }}
-            onMouseLeave={(e) => { if (view !== 'admin') e.currentTarget.style.color = '#64748B'; }}
-          >
-            CONTROL
-          </button>
+          {isAdmin && (
+            <button
+              ref={controlTabRef}
+              type="button"
+              onClick={goAdmin}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: view === 'admin' ? '#C8102E' : '#64748B',
+                fontSize: '12px',
+                fontWeight: 800,
+                letterSpacing: '2px',
+                cursor: 'pointer',
+                transition: 'color 0.25s ease',
+                padding: '6px 4px',
+                outline: 'none'
+              }}
+              onMouseEnter={(e) => { if (view !== 'admin') e.currentTarget.style.color = '#FF5E00'; }}
+              onMouseLeave={(e) => { if (view !== 'admin') e.currentTarget.style.color = '#64748B'; }}
+            >
+              CONTROL
+            </button>
+          )}
 
           {/* Continuous Smooth Sliding Active Underline Highlight Line */}
           <div 
@@ -774,10 +792,13 @@ function App() {
         <div className="fade-in" key={view}>
           {view === 'landing' && (
             <LandingPage
-              onExplore={() => setView('dashboard')}
+              onExplore={() => {
+                if (!user) setShowLoginModal(true);
+                else setView('dashboard');
+              }}
               onLogin={() => setShowLoginModal(true)}
-              onGoDashboard={() => setView('dashboard')}
-              onGoUpload={() => setView('upload')}
+              onGoDashboard={goDashboard}
+              onGoUpload={goUpload}
               kpi={kpi}
               importMeta={importMeta}
               branches={branches}
