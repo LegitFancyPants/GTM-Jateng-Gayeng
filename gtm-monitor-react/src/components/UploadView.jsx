@@ -118,7 +118,7 @@ const UploadView = memo(function UploadView({ branches, initialBranch, updateAct
       </div>
 
       {/* ─── 2. KPI SUMMARY GRID (DYNAMIC SPECTRUM COLORS 0-35% & 0-100%) ─── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '24px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px', marginBottom: '24px' }}>
         {/* Card 1: Occupancy Rate (Skala 0-35% Dinamis) */}
         <div style={{
           background: '#FFFFFF',
@@ -189,49 +189,23 @@ const UploadView = memo(function UploadView({ branches, initialBranch, updateAct
       </div>
 
       {/* ─── 3. CONTROLS BAR (FILTER BRANCH & SEARCH INPUT) ─── */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '24px', position: 'relative', zIndex: 80 }}>
+      <div className="controls-bar-container">
         {branches.length === 1 ? (
-          <div style={{
-            padding: '10px 20px',
-            borderRadius: '50px',
-            border: '1px solid rgba(200, 16, 46, 0.2)',
-            fontSize: '13px',
-            background: '#FFFFFF',
-            fontWeight: 800,
-            color: '#C8102E',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.02)'
-          }}>
-            <span>Branch: {formatBranch(branches[0].name)}</span>
+          <div className="branch-filter-capsule" style={{ minWidth: 'auto', border: '1px solid rgba(200, 16, 46, 0.2)', color: '#C8102E' }}>
+            <span className="branch-text-label" style={{ fontWeight: 800 }}>Branch: {formatBranch(branches[0].name)}</span>
           </div>
         ) : (
           <div style={{ position: 'relative' }}>
             <div 
+              className="branch-filter-capsule"
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-              style={{
-                padding: '10px 20px',
-                borderRadius: '50px',
-                border: '1px solid #E2E8F0',
-                fontSize: '13px',
-                background: '#FFFFFF',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '10px',
-                cursor: 'pointer',
-                minWidth: '220px',
-                userSelect: 'none',
-                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.02)',
-                transition: 'all 0.2s ease'
-              }}
             >
-              <span style={{ flex: 1, whiteSpace: 'nowrap', fontWeight: 800, color: '#0F172A' }}>
+              <span className="branch-text-label" style={{ flex: 1, fontWeight: 800, color: '#0F172A' }}>
                 {selectedBranch === 'Semua Branch' 
                   ? `Semua Branch (${totalProjects})` 
                   : `${formatBranch(selectedBranch)} (${priorityBranches.find(x => x.name === selectedBranch)?.projects?.length || 0})`}
               </span>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748B" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: isDropdownOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748B" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: isDropdownOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', flexShrink: 0 }}>
                 <polyline points="6 9 12 15 18 9" />
               </svg>
             </div>
@@ -260,24 +234,13 @@ const UploadView = memo(function UploadView({ branches, initialBranch, updateAct
         )}
         
         {/* Search Input */}
-        <div style={{ flex: 1 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
           <input 
             type="text" 
+            className="search-input-field"
             placeholder="Cari nama proyek atau WOK..." 
             value={search}
             onChange={e => setSearch(e.target.value)}
-            style={{
-              width: '100%',
-              padding: '10px 20px',
-              borderRadius: '50px',
-              border: '1px solid #E2E8F0',
-              fontSize: '13px',
-              fontWeight: 500,
-              background: '#FFFFFF',
-              boxSizing: 'border-box',
-              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.02)',
-              outline: 'none'
-            }}
           />
         </div>
       </div>

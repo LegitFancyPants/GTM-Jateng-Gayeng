@@ -609,20 +609,20 @@ function LoadingScreen() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: '#FFFFFF', color: '#0F172A' }}>
+    <div className="app-root-container">
       {renderLoginModal()}
 
       {/* ─── SINGLE UNIFIED PERSISTENT TOP NAVIGATION BAR (SEAMLESS ACROSS ALL PAGES) ─── */}
-      <nav style={{
+      <nav className="main-top-nav" style={{
         position: 'sticky',
         top: 0,
         left: 0,
         right: 0,
-        zIndex: 100,
-        background: 'rgba(255, 255, 255, 0.92)',
+        zIndex: 1000,
+        background: 'rgba(255, 255, 255, 0.94)',
         backdropFilter: 'blur(16px)',
         borderBottom: '1px solid #E2E8F0',
-        padding: '18px 48px',
+        padding: '16px 48px',
         display: 'grid',
         gridTemplateColumns: '1fr auto 1fr',
         alignItems: 'center'
@@ -645,7 +645,8 @@ function LoadingScreen() {
             fontSize: '13px',
             color: '#FFFFFF',
             boxShadow: '0 4px 18px rgba(200, 16, 46, 0.35)',
-            transition: 'transform 0.2s ease'
+            transition: 'transform 0.2s ease',
+            flexShrink: 0
           }}
           onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.08)'}
           onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
@@ -659,6 +660,7 @@ function LoadingScreen() {
           <button
             ref={overviewTabRef}
             type="button"
+            className="nav-tab-btn"
             onClick={() => setView('landing')}
             style={{
               background: 'none',
@@ -681,6 +683,7 @@ function LoadingScreen() {
           <button
             ref={monitoringTabRef}
             type="button"
+            className="nav-tab-btn"
             onClick={goDashboard}
             style={{
               background: 'none',
@@ -703,6 +706,7 @@ function LoadingScreen() {
           <button
             ref={activityTabRef}
             type="button"
+            className="nav-tab-btn"
             onClick={goUpload}
             style={{
               background: 'none',
@@ -726,6 +730,7 @@ function LoadingScreen() {
             <button
               ref={controlTabRef}
               type="button"
+              className="nav-tab-btn"
               onClick={goAdmin}
               style={{
                 background: 'none',
@@ -795,12 +800,13 @@ function LoadingScreen() {
             </button>
           ) : (
             <div 
-              onClick={() => setShowProfileModal(true)} 
+              onClick={() => setShowProfileModal(true)}
+              className="profile-badge-btn" 
               style={{ 
                 display: 'flex', 
                 alignItems: 'center', 
-                gap: '10px', 
-                padding: '6px 16px', 
+                gap: '8px', 
+                padding: '5px 14px', 
                 borderRadius: '50px', 
                 background: '#FAFAFC', 
                 cursor: 'pointer',
@@ -810,10 +816,10 @@ function LoadingScreen() {
               onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#FF5E00'; e.currentTarget.style.background = '#FFFFFF'; }}
               onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#E2E8F0'; e.currentTarget.style.background = '#FAFAFC'; }}
             >
-              <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'linear-gradient(135deg, #C8102E 0%, #FF5E00 100%)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '12px' }}>
+              <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'linear-gradient(135deg, #C8102E 0%, #FF5E00 100%)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '12px', flexShrink: 0 }}>
                 {user.fullName ? user.fullName[0].toUpperCase() : 'U'}
               </div>
-              <div style={{ fontSize: '12.5px', fontWeight: 800, color: '#0F172A' }}>{user.fullName || user.username}</div>
+              <div className="profile-badge-name" style={{ fontSize: '12.5px', fontWeight: 800, color: '#0F172A', whiteSpace: 'nowrap' }}>{user.fullName || user.username}</div>
             </div>
           )}
         </div>
@@ -894,7 +900,7 @@ function LoadingScreen() {
           {/* Transparent Backdrop Overlay to close on outside click */}
           <div 
             onClick={() => setShowProfileModal(false)} 
-            style={{ position: 'fixed', inset: 0, zIndex: 90 }}
+            style={{ position: 'fixed', inset: 0, zIndex: 9998 }}
           />
           
           <div className="profile-dropdown-card">

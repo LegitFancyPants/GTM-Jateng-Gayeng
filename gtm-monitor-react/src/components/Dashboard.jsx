@@ -44,7 +44,7 @@ const Dashboard = memo(function Dashboard({ branches, goBranch, kpi, statusChips
   const safeMapPoints = mapPoints || [];
 
   return (
-    <div style={{ maxWidth: '1240px', margin: '0 auto', padding: '32px 24px', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+    <div style={{ animation: 'fadeIn 0.3s ease-in-out' }}>
       {/* ─── 1. TOP HEADER & FILTER BAR (STYLE HARMONIZED WITH OVERVIEW) ─── */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '28px', flexWrap: 'wrap', gap: '16px' }}>
         <div>
@@ -306,14 +306,7 @@ const Dashboard = memo(function Dashboard({ branches, goBranch, kpi, statusChips
       </div>
 
       {/* ─── 3. RANKING BRANCH TABLE (STYLE HARMONIZED WITH OVERVIEW) ─── */}
-      <div style={{
-        background: '#FFFFFF',
-        border: '1px solid #E2E8F0',
-        borderRadius: '20px',
-        padding: '28px',
-        marginBottom: '28px',
-        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.03)'
-      }}>
+      <div className="dashboard-card">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', flexWrap: 'wrap', gap: '8px' }}>
           <div>
             <h2 style={{ fontFamily: "'Outfit', sans-serif", fontSize: '20px', fontWeight: 800, color: '#0F172A', margin: '0 0 4px 0', letterSpacing: '-0.3px' }}>
@@ -325,61 +318,57 @@ const Dashboard = memo(function Dashboard({ branches, goBranch, kpi, statusChips
           </div>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {safeRanking.map(b => (
-            <div
-              key={b.name}
-              onClick={() => isAdmin && goBranch && goBranch(b.name)}
-              style={{
-                display: 'grid',
-                gridTemplateColumns: '140px 1fr 70px 80px 100px 110px',
-                alignItems: 'center',
-                gap: '16px',
-                padding: '14px 18px',
-                borderRadius: '12px',
-                background: '#FAFAFC',
-                border: '1px solid #F1F5F9',
-                cursor: isAdmin ? 'pointer' : 'default',
-                transition: 'all 0.2s ease'
-              }}
-              onMouseEnter={(e) => {
-                if (isAdmin) {
-                  e.currentTarget.style.borderColor = b.color;
-                  e.currentTarget.style.background = '#FFFFFF';
-                  e.currentTarget.style.transform = 'translateX(4px)';
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (isAdmin) {
-                  e.currentTarget.style.borderColor = '#F1F5F9';
-                  e.currentTarget.style.background = '#FAFAFC';
-                  e.currentTarget.style.transform = 'translateX(0px)';
-                }
-              }}
-            >
-              <div style={{ fontWeight: 800, fontSize: '13.5px', color: '#0F172A', letterSpacing: '0.5px' }}>{b.name}</div>
-              <div style={{ height: '8px', background: '#E2E8F0', borderRadius: '4px', overflow: 'hidden' }}>
-                <div style={{ height: '100%', width: `${b.occRate}%`, background: b.color, borderRadius: '4px', transition: 'width 0.5s ease' }} />
+        <div className="table-responsive-wrapper">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', minWidth: '550px' }}>
+            {safeRanking.map(b => (
+              <div
+                key={b.name}
+                onClick={() => isAdmin && goBranch && goBranch(b.name)}
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '140px 1fr 70px 80px 100px 110px',
+                  alignItems: 'center',
+                  gap: '16px',
+                  padding: '14px 18px',
+                  borderRadius: '12px',
+                  background: '#FAFAFC',
+                  border: '1px solid #F1F5F9',
+                  cursor: isAdmin ? 'pointer' : 'default',
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseEnter={(e) => {
+                  if (isAdmin) {
+                    e.currentTarget.style.borderColor = b.color;
+                    e.currentTarget.style.background = '#FFFFFF';
+                    e.currentTarget.style.transform = 'translateX(4px)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (isAdmin) {
+                    e.currentTarget.style.borderColor = '#F1F5F9';
+                    e.currentTarget.style.background = '#FAFAFC';
+                    e.currentTarget.style.transform = 'translateX(0px)';
+                  }
+                }}
+              >
+                <div style={{ fontWeight: 800, fontSize: '13.5px', color: '#0F172A', letterSpacing: '0.5px' }}>{b.name}</div>
+                <div style={{ height: '8px', background: '#E2E8F0', borderRadius: '4px', overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${b.occRate}%`, background: b.color, borderRadius: '4px', transition: 'width 0.5s ease' }} />
+                </div>
+                <div style={{ fontSize: '14px', fontWeight: 800, color: '#0F172A', fontFamily: "'Outfit', sans-serif" }}>{b.occRate}%</div>
+                <div style={{ fontSize: '12.5px', fontWeight: 800, color: b.delta >= 0 ? '#16A34A' : '#DC2626' }}>
+                  {b.delta >= 0 ? `▲ +${b.delta}` : `▼ ${b.delta}`}%
+                </div>
+                <div style={{ fontSize: '12px', color: '#64748B', fontWeight: 600 }}>{b.projCount} proyek</div>
+                <div style={{ fontSize: '12px', color: '#64748B', fontWeight: 600 }}>{b.actPct}% GTM done</div>
               </div>
-              <div style={{ fontSize: '14px', fontWeight: 800, color: '#0F172A', fontFamily: "'Outfit', sans-serif" }}>{b.occRate}%</div>
-              <div style={{ fontSize: '12.5px', fontWeight: 800, color: b.delta >= 0 ? '#16A34A' : '#DC2626' }}>
-                {b.delta >= 0 ? `▲ +${b.delta}` : `▼ ${b.delta}`}%
-              </div>
-              <div style={{ fontSize: '12px', color: '#64748B', fontWeight: 600 }}>{b.projCount} proyek</div>
-              <div style={{ fontSize: '12px', color: '#64748B', fontWeight: 600 }}>{b.actPct}% GTM done</div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
 
       {/* ─── 4. PETA SEBARAN ODP (STYLE HARMONIZED WITH OVERVIEW) ─── */}
-      <div style={{
-        background: '#FFFFFF',
-        border: '1px solid #E2E8F0',
-        borderRadius: '20px',
-        padding: '28px',
-        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.03)'
-      }}>
+      <div className="dashboard-card">
         <div style={{ marginBottom: '18px' }}>
           <h2 style={{ fontFamily: "'Outfit', sans-serif", fontSize: '20px', fontWeight: 800, color: '#0F172A', margin: '0 0 4px 0', letterSpacing: '-0.3px' }}>
             Peta Sebaran ODP Regional

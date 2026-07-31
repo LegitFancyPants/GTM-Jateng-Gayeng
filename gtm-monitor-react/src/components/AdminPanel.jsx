@@ -346,7 +346,7 @@ const AdminPanel = memo(function AdminPanel({ token, branches = [], onUpdate, go
       </div>
 
       {/* ─── 2. KPI SUMMARY GRID (HARMONIZED STYLING) ─── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '24px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px', marginBottom: '24px' }}>
         {/* Card 1: Total Branch / Proyek */}
         <div style={{
           background: '#FFFFFF',
@@ -418,23 +418,15 @@ const AdminPanel = memo(function AdminPanel({ token, branches = [], onUpdate, go
       </div>
 
       {/* ─── 3. NAVIGATION TABS (SEAMLESS PILL TOGGLES) ─── */}
-      <div style={{ display: 'flex', gap: '12px', marginBottom: '24px' }}>
+      <div className="admin-tabs-container">
         <button
+          className="admin-tab-btn"
           onClick={() => setActiveTab('monitoring')}
           style={{
-            padding: '10px 24px',
-            borderRadius: '50px',
             border: activeTab === 'monitoring' ? 'none' : '1px solid #E2E8F0',
             background: activeTab === 'monitoring' ? 'linear-gradient(135deg, #C8102E 0%, #FF5E00 100%)' : '#FFFFFF',
             color: activeTab === 'monitoring' ? '#FFFFFF' : '#475569',
-            fontWeight: 800,
-            fontSize: '13px',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px',
-            boxShadow: activeTab === 'monitoring' ? '0 4px 16px rgba(200, 16, 46, 0.25)' : '0 2px 6px rgba(0, 0, 0, 0.02)',
-            transition: 'all 0.25s ease'
+            boxShadow: activeTab === 'monitoring' ? '0 4px 16px rgba(200, 16, 46, 0.25)' : '0 2px 6px rgba(0, 0, 0, 0.02)'
           }}
         >
           <span>Monitoring & Verifikasi Proyek</span>
@@ -446,42 +438,26 @@ const AdminPanel = memo(function AdminPanel({ token, branches = [], onUpdate, go
         </button>
 
         <button
+          className="admin-tab-btn"
           onClick={() => setActiveTab('excel')}
           style={{
-            padding: '10px 24px',
-            borderRadius: '50px',
             border: activeTab === 'excel' ? 'none' : '1px solid #E2E8F0',
             background: activeTab === 'excel' ? 'linear-gradient(135deg, #C8102E 0%, #FF5E00 100%)' : '#FFFFFF',
             color: activeTab === 'excel' ? '#FFFFFF' : '#475569',
-            fontWeight: 800,
-            fontSize: '13px',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px',
-            boxShadow: activeTab === 'excel' ? '0 4px 16px rgba(200, 16, 46, 0.25)' : '0 2px 6px rgba(0, 0, 0, 0.02)',
-            transition: 'all 0.25s ease'
+            boxShadow: activeTab === 'excel' ? '0 4px 16px rgba(200, 16, 46, 0.25)' : '0 2px 6px rgba(0, 0, 0, 0.02)'
           }}
         >
           <span>Update Data Mingguan</span>
         </button>
 
         <button
+          className="admin-tab-btn"
           onClick={() => setIsExportModalOpen(true)}
           style={{
-            padding: '10px 24px',
-            borderRadius: '50px',
             border: '1px solid #E2E8F0',
             background: '#FFFFFF',
             color: '#475569',
-            fontWeight: 800,
-            fontSize: '13px',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px',
             boxShadow: '0 2px 6px rgba(0, 0, 0, 0.02)',
-            transition: 'all 0.25s ease'
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.borderColor = '#FF5E00';
