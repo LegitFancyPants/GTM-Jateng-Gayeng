@@ -129,6 +129,20 @@ const authenticateToken = (req, res, next) => {
   });
 };
 
+const optionalAuthenticateToken = (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  const token = authHeader && authHeader.split(' ')[1];
+  if (!token) {
+    req.user = null;
+    return next();
+  }
+  jwt.verify(token, JWT_SECRET, (err, user) => {
+    if (err) req.user = null;
+    else req.user = user;
+    next();
+  });
+};
+
 const requireAdmin = (req, res, next) => {
   authenticateToken(req, res, () => {
     if (req.user && req.user.role === 'ADMIN') {
@@ -290,7 +304,7 @@ app.get('/api/auth/me', authenticateToken, (req, res) => {
 // --- Data Endpoints (Protected & Branch-Scoped) ---
 
 // 1. Get All Data (Both ADMIN and USER get all branches for Dashboard view)
-app.get('/api/data', authenticateToken, async (req, res) => {
+app.get('/api/data', optionalAuthenticateToken, async (req, res) => {
   try {
     const branches = await prisma.branch.findMany({
       include: {
@@ -382,7 +396,7 @@ app.get('/api/data', authenticateToken, async (req, res) => {
 });
 
 // 1b. Get Import Metadata (Jateng DIY Summary for Dashboard KPI cards)
-app.get('/api/import-meta', authenticateToken, async (req, res) => {
+app.get('/api/import-meta', optionalAuthenticateToken, async (req, res) => {
   try {
     const meta = await prisma.importMeta.findUnique({
       where: { key: 'jateng_diy_summary' }

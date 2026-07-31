@@ -1,4 +1,5 @@
 import { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback } from 'react';
+import LandingPage from './components/LandingPage';
 import Dashboard from './components/Dashboard';
 import BranchView from './components/BranchView';
 import UploadView from './components/UploadView';
@@ -11,7 +12,8 @@ import './index.css';
 function App() {
   const [branches, setBranches] = useState([]);
   const [importMeta, setImportMeta] = useState(null); // Jateng DIY summary dari ImportMeta
-  const [view, setView] = useState('dashboard'); // dashboard, branch, upload, admin
+  const [view, setView] = useState('landing'); // landing, dashboard, branch, upload, admin
+  const [showLoginModal, setShowLoginModal] = useState(false);
   const [activeBranch, setActiveBranch] = useState(null);
   const [loading, setLoading] = useState(true);
   const [typeDesignFilter, setTypeDesignFilter] = useState('ALL'); // ALL, Greenfield, Brownfield
@@ -26,16 +28,22 @@ function App() {
   const [showLogoutConfirmModal, setShowLogoutConfirmModal] = useState(false);
   const lastLoginTimestamp = useRef(0);
 
-  const dashboardTabRef = useRef(null);
-  const uploadTabRef = useRef(null);
+  const overviewTabRef = useRef(null);
+  const monitoringTabRef = useRef(null);
+  const activityTabRef = useRef(null);
+  const controlTabRef = useRef(null);
   const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0, opacity: 0 });
 
-  const updateIndicator = (targetView = view) => {
+  const updateIndicator = useCallback((targetView = view) => {
     let target = null;
-    if (targetView === 'dashboard' || targetView === 'branch') {
-      target = dashboardTabRef.current;
+    if (targetView === 'landing') {
+      target = overviewTabRef.current;
+    } else if (targetView === 'dashboard' || targetView === 'branch') {
+      target = monitoringTabRef.current;
     } else if (targetView === 'upload') {
-      target = uploadTabRef.current;
+      target = activityTabRef.current;
+    } else if (targetView === 'admin') {
+      target = controlTabRef.current;
     }
 
     if (target && target.offsetWidth > 0) {
@@ -47,7 +55,7 @@ function App() {
     } else {
       setIndicatorStyle(prev => ({ ...prev, opacity: 0 }));
     }
-  };
+  }, [view]);
 
   useLayoutEffect(() => {
     updateIndicator();
@@ -60,7 +68,7 @@ function App() {
       clearTimeout(timer2);
       window.removeEventListener('resize', updateIndicator);
     };
-  }, [view, loading, token, branches]);
+  }, [view, loading, token, branches, updateIndicator]);
 
   const isAdmin = user && user.role === 'ADMIN';
 
@@ -161,28 +169,23 @@ function App() {
   }, [allOdps]);
 
   const fetchData = async () => {
-    if (!token) {
-      setLoading(false);
-      return;
-    }
     try {
       setLoading(true);
+      const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
       const [dataRes, metaRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/api/data`, { headers: { 'Authorization': `Bearer ${token}` } }),
-        fetch(`${API_BASE_URL}/api/import-meta`, { headers: { 'Authorization': `Bearer ${token}` } }).catch(() => null)
+        fetch(`${API_BASE_URL}/api/data`, { headers }),
+        fetch(`${API_BASE_URL}/api/import-meta`, { headers }).catch(() => null)
       ]);
       if (dataRes.ok) {
         const data = await dataRes.json();
         setBranches(data);
-      } else if (dataRes.status === 401) {
-        handleLogout(false);
       }
       if (metaRes && metaRes.ok) {
         const meta = await metaRes.json();
         setImportMeta(meta);
       }
     } catch (err) {
-      console.error('Failed to fetch data from backend:', err);
+      console.error('Failed to fetch data:', err);
     } finally {
       setLoading(false);
     }
@@ -512,112 +515,197 @@ function App() {
     }
   }, [isAdmin, token]);
 
-  // 1. Auth Gate / Routing
-  if (!user || !token) {
-    return <LoginPage branches={branches} onLoginSuccess={handleLoginSuccess} />;
-  }
-
-  // 2. Loading screen when logged in
+  // 1. Loading screen
   if (loading && branches.length === 0) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#f8fafc', color: '#64748b', gap: '16px' }}>
-        <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: '#C8102E', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '20px', animation: 'pulse 1.5s infinite' }}>GTM</div>
-        <div style={{ fontWeight: 600, fontSize: '15px' }}>Memuat data dari server...</div>
+      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#FFFFFF', color: '#64748B', gap: '16px' }}>
+        <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'linear-gradient(135deg, #C8102E 0%, #FF5E00 100%)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '20px', boxShadow: '0 4px 20px rgba(200,16,46,0.4)' }}>GTM</div>
+        <div style={{ fontWeight: 600, fontSize: '15px', color: '#0F172A' }}>Memuat data dari server...</div>
       </div>
     );
   }
 
+  // 2. Login Modal Overlay (when triggered by user)
+  const renderLoginModal = () => {
+    if (!showLoginModal) return null;
+    return (
+      <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(15, 23, 42, 0.65)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+        <div style={{ position: 'relative', width: '100%', maxWidth: '440px', background: '#fff', borderRadius: '24px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', overflow: 'hidden' }}>
+          <button 
+            onClick={() => setShowLoginModal(false)}
+            style={{
+              position: 'absolute',
+              top: '16px',
+              right: '16px',
+              zIndex: 10,
+              width: '32px',
+              height: '32px',
+              borderRadius: '50%',
+              border: 'none',
+              background: '#f1f5f9',
+              color: '#64748b',
+              fontSize: '16px',
+              fontWeight: 700,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+          >
+            ✕
+          </button>
+          <LoginPage branches={branches} onLoginSuccess={(u, t) => { handleLoginSuccess(u, t); setShowLoginModal(false); }} />
+        </div>
+      </div>
+    );
+  };
+
   return (
-    <div>
-      {/* Top Bar Header */}
-      <div className="header-container" style={{ position: 'relative' }}>
-        {/* Left: Brand Logo & Title */}
+    <div style={{ minHeight: '100vh', background: '#FFFFFF', color: '#0F172A' }}>
+      {renderLoginModal()}
+
+      {/* ─── SINGLE UNIFIED PERSISTENT TOP NAVIGATION BAR (SEAMLESS ACROSS ALL PAGES) ─── */}
+      <nav style={{
+        position: 'sticky',
+        top: 0,
+        left: 0,
+        right: 0,
+        zIndex: 100,
+        background: 'rgba(255, 255, 255, 0.92)',
+        backdropFilter: 'blur(16px)',
+        borderBottom: '1px solid #E2E8F0',
+        padding: '18px 48px',
+        display: 'grid',
+        gridTemplateColumns: '1fr auto 1fr',
+        alignItems: 'center'
+      }}>
+        {/* Left: LOGO BADGE GTM SAJA (Tanpa Teks) */}
         <div 
-          onClick={goDashboard} 
-          title="Klik untuk kembali ke Halaman Awal (Dashboard)"
-          style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: '14px', 
-            cursor: 'pointer',
-            userSelect: 'none',
-            transition: 'opacity 0.15s ease'
-          }}
-          onMouseOver={e => e.currentTarget.style.opacity = '0.8'}
-          onMouseOut={e => e.currentTarget.style.opacity = '1'}
+          style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', justifySelf: 'start' }} 
+          onClick={() => setView('landing')}
+          title="Klik untuk kembali ke Halaman Overview"
         >
-          <div style={{ width: '42px', height: '42px', borderRadius: '12px', background: '#C8102E', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: '16px', letterSpacing: '-0.5px', boxShadow: '0 4px 10px rgba(200,16,46,0.3)' }}>GTM</div>
-          <div>
-            <div style={{ fontSize: '16px', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.3px' }}>GTM Activity Monitor</div>
-            <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 500 }}>
-              {isAdmin ? 'Administrator Control Panel' : `Branch: ${formatBranch(user.branchName)}`}
-            </div>
+          <div style={{
+            width: '38px',
+            height: '38px',
+            borderRadius: '99px',
+            background: 'linear-gradient(135deg, #C8102E 0%, #FF5E00 100%)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontWeight: 900,
+            fontSize: '13px',
+            color: '#FFFFFF',
+            boxShadow: '0 4px 18px rgba(200, 16, 46, 0.35)',
+            transition: 'transform 0.2s ease'
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.08)'}
+          onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+          >
+            GTM
           </div>
         </div>
 
-        {/* Center: Symmetrically Centered Navigation Tabs */}
-        <div 
-          style={{ 
-            position: 'absolute', 
-            left: '50%', 
-            transform: 'translateX(-50%)', 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: '32px',
-            height: '100%'
-          }}
-        >
-          <button 
+        {/* Center: Nav Menu Options (OVERVIEW, MONITORING, ACTIVITY, CONTROL Sejajar Tengah) */}
+        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '44px', justifySelf: 'center', paddingBottom: '4px' }}>
+          <button
+            ref={overviewTabRef}
             type="button"
-            ref={dashboardTabRef}
-            onClick={goDashboard} 
+            onClick={() => setView('landing')}
             style={{
               background: 'none',
               border: 'none',
-              padding: '8px 4px',
-              fontSize: '14.5px',
-              fontWeight: (view === 'dashboard' || view === 'branch') ? 700 : 500,
-              color: (view === 'dashboard' || view === 'branch') ? '#C8102E' : '#64748b',
+              color: view === 'landing' ? '#C8102E' : '#64748B',
+              fontSize: '12px',
+              fontWeight: 800,
+              letterSpacing: '2px',
               cursor: 'pointer',
-              transition: 'color 0.2s ease',
+              transition: 'color 0.25s ease',
+              padding: '6px 4px',
               outline: 'none'
             }}
-            onMouseOver={e => { if (view !== 'dashboard' && view !== 'branch') e.currentTarget.style.color = '#0f172a'; }}
-            onMouseOut={e => { if (view !== 'dashboard' && view !== 'branch') e.currentTarget.style.color = '#64748b'; }}
+            onMouseEnter={(e) => { if (view !== 'landing') e.currentTarget.style.color = '#FF5E00'; }}
+            onMouseLeave={(e) => { if (view !== 'landing') e.currentTarget.style.color = '#64748B'; }}
           >
-            Dashboard
+            OVERVIEW
           </button>
 
-          <button 
+          <button
+            ref={monitoringTabRef}
             type="button"
-            ref={uploadTabRef}
-            onClick={goUpload} 
+            onClick={goDashboard}
             style={{
               background: 'none',
               border: 'none',
-              padding: '8px 4px',
-              fontSize: '14.5px',
-              fontWeight: view === 'upload' ? 700 : 500,
-              color: view === 'upload' ? '#C8102E' : '#64748b',
+              color: (view === 'dashboard' || view === 'branch') ? '#C8102E' : '#64748B',
+              fontSize: '12px',
+              fontWeight: 800,
+              letterSpacing: '2px',
               cursor: 'pointer',
-              transition: 'color 0.2s ease',
+              transition: 'color 0.25s ease',
+              padding: '6px 4px',
               outline: 'none'
             }}
-            onMouseOver={e => { if (view !== 'upload') e.currentTarget.style.color = '#0f172a'; }}
-            onMouseOut={e => { if (view !== 'upload') e.currentTarget.style.color = '#64748b'; }}
+            onMouseEnter={(e) => { if (view !== 'dashboard' && view !== 'branch') e.currentTarget.style.color = '#FF5E00'; }}
+            onMouseLeave={(e) => { if (view !== 'dashboard' && view !== 'branch') e.currentTarget.style.color = '#64748B'; }}
           >
-            Upload Activity
+            MONITORING
           </button>
 
-          {/* Sliding underline highlight line */}
+          <button
+            ref={activityTabRef}
+            type="button"
+            onClick={goUpload}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: view === 'upload' ? '#C8102E' : '#64748B',
+              fontSize: '12px',
+              fontWeight: 800,
+              letterSpacing: '2px',
+              cursor: 'pointer',
+              transition: 'color 0.25s ease',
+              padding: '6px 4px',
+              outline: 'none'
+            }}
+            onMouseEnter={(e) => { if (view !== 'upload') e.currentTarget.style.color = '#FF5E00'; }}
+            onMouseLeave={(e) => { if (view !== 'upload') e.currentTarget.style.color = '#64748B'; }}
+          >
+            ACTIVITY
+          </button>
+
+          <button
+            ref={controlTabRef}
+            type="button"
+            onClick={goAdmin}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: view === 'admin' ? '#C8102E' : '#64748B',
+              fontSize: '12px',
+              fontWeight: 800,
+              letterSpacing: '2px',
+              cursor: 'pointer',
+              transition: 'color 0.25s ease',
+              padding: '6px 4px',
+              outline: 'none'
+            }}
+            onMouseEnter={(e) => { if (view !== 'admin') e.currentTarget.style.color = '#FF5E00'; }}
+            onMouseLeave={(e) => { if (view !== 'admin') e.currentTarget.style.color = '#64748B'; }}
+          >
+            CONTROL
+          </button>
+
+          {/* Continuous Smooth Sliding Active Underline Highlight Line */}
           <div 
             style={{
               position: 'absolute',
               bottom: 0,
               height: '3px',
-              backgroundColor: '#C8102E',
-              borderRadius: '3px 3px 0 0',
-              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              background: 'linear-gradient(90deg, #C8102E 0%, #FF5E00 100%)',
+              borderRadius: '99px',
+              boxShadow: '0 0 10px rgba(255, 94, 0, 0.5)',
+              transition: 'left 0.35s cubic-bezier(0.4, 0, 0.2, 1), width 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease',
               left: `${indicatorStyle.left}px`,
               width: `${indicatorStyle.width}px`,
               opacity: indicatorStyle.opacity
@@ -625,40 +713,90 @@ function App() {
           />
         </div>
 
-        {/* Right: Profile Button */}
-        <div style={{ display: 'flex', alignItems: 'center' }}>
-          <button
-            type="button"
-            onClick={() => setShowProfileModal(true)}
-            title="Informasi Akun & Logout"
-            style={{
-              width: '42px',
-              height: '42px',
-              borderRadius: '50%',
-              border: '1.5px solid #cbd5e1',
-              background: '#f8fafc',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
-            }}
-            onMouseOver={e => { e.currentTarget.style.borderColor = '#C8102E'; e.currentTarget.style.background = '#fff'; }}
-            onMouseOut={e => { e.currentTarget.style.borderColor = '#cbd5e1'; e.currentTarget.style.background = '#f8fafc'; }}
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-              <circle cx="12" cy="7" r="4" />
-            </svg>
-          </button>
+        {/* Right: Action Button "MASUK" / Profile Avatar */}
+        <div style={{ justifySelf: 'end' }}>
+          {!user ? (
+            <button
+              type="button"
+              onClick={() => setShowLoginModal(true)}
+              style={{
+                padding: '10px 28px',
+                borderRadius: '50px',
+                border: 'none',
+                background: 'linear-gradient(135deg, #C8102E 0%, #FF5E00 100%)',
+                color: '#FFFFFF',
+                fontSize: '12px',
+                fontWeight: 800,
+                letterSpacing: '1.5px',
+                cursor: 'pointer',
+                boxShadow: '0 4px 18px rgba(200, 16, 46, 0.3)',
+                transition: 'all 0.25s ease'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'translateY(-2px)';
+                e.currentTarget.style.boxShadow = '0 8px 24px rgba(255, 94, 0, 0.4)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translateY(0px)';
+                e.currentTarget.style.boxShadow = '0 4px 18px rgba(200, 16, 46, 0.3)';
+              }}
+            >
+              MASUK
+            </button>
+          ) : (
+            <div 
+              onClick={() => setShowProfileModal(true)} 
+              style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '10px', 
+                padding: '6px 16px', 
+                borderRadius: '50px', 
+                background: '#FAFAFC', 
+                cursor: 'pointer',
+                border: '1px solid #E2E8F0',
+                transition: 'all 0.25s ease'
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#FF5E00'; e.currentTarget.style.background = '#FFFFFF'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#E2E8F0'; e.currentTarget.style.background = '#FAFAFC'; }}
+            >
+              <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'linear-gradient(135deg, #C8102E 0%, #FF5E00 100%)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '12px' }}>
+                {user.fullName ? user.fullName[0].toUpperCase() : 'U'}
+              </div>
+              <div style={{ fontSize: '12.5px', fontWeight: 800, color: '#0F172A' }}>{user.fullName || user.username}</div>
+            </div>
+          )}
         </div>
-      </div>
+      </nav>
 
-      {/* Main Content */}
-      <div className="main-content">
+      {/* Main Content View Switcher */}
+      <div className={view === 'landing' ? 'main-content-full' : 'main-content'}>
         <div className="fade-in" key={view}>
-          {view === 'dashboard' && <Dashboard branches={branches} goBranch={goBranch} kpi={kpi} statusChips={statusChips} ranking={ranking} mapBounds={mapBounds} mapPoints={mapPoints} isAdmin={isAdmin} typeDesignFilter={typeDesignFilter} setTypeDesignFilter={setTypeDesignFilter} />}
+          {view === 'landing' && (
+            <LandingPage
+              onExplore={() => setView('dashboard')}
+              onLogin={() => setShowLoginModal(true)}
+              onGoDashboard={() => setView('dashboard')}
+              onGoUpload={() => setView('upload')}
+              kpi={kpi}
+              importMeta={importMeta}
+              branches={branches}
+            />
+          )}
+          {view === 'dashboard' && (
+            <Dashboard 
+              branches={branches} 
+              goBranch={goBranch} 
+              kpi={kpi} 
+              statusChips={statusChips} 
+              ranking={ranking} 
+              mapBounds={mapBounds} 
+              mapPoints={mapPoints} 
+              isAdmin={isAdmin} 
+              typeDesignFilter={typeDesignFilter} 
+              setTypeDesignFilter={setTypeDesignFilter} 
+            />
+          )}
           {view === 'branch' && (
             isAdmin ? (
               <BranchView 

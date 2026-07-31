@@ -14,7 +14,7 @@ const UploadView = memo(function UploadView({ branches, initialBranch, updateAct
         const isGreenfield = (p.typeDesign || 'Greenfield') === 'Greenfield';
         return isPriority && isGreenfield;
       })
-    }));
+    })).filter(b => b.projects && b.projects.length > 0);
   }, [branches]);
 
   const [selectedBranch, setSelectedBranch] = useState(() => {
@@ -83,54 +83,164 @@ const UploadView = memo(function UploadView({ branches, initialBranch, updateAct
     }
   }
 
+  // Helper function: Dynamic color scale from Red (0%) to Green (35%)
+  const getDynamicColor35 = (val) => {
+    const numeric = parseFloat(val) || 0;
+    const ratio = Math.min(Math.max(numeric / 35, 0), 1);
+    const hue = Math.round(ratio * 140); // 0 (Red) -> 140 (Green)
+    return `hsl(${hue}, 85%, 40%)`;
+  };
+
+  // Helper function: Dynamic color scale from Red (0%) to Green (100%)
+  const getDynamicColor100 = (val) => {
+    const numeric = parseFloat(val) || 0;
+    const ratio = Math.min(Math.max(numeric / 100, 0), 1);
+    const hue = Math.round(ratio * 140); // 0 (Red) -> 140 (Green)
+    return `hsl(${hue}, 85%, 40%)`;
+  };
+
+  const usedPct = useMemo(() => {
+    return stats.totalPort > 0 ? (stats.totalUsed / stats.totalPort) * 100 : 0;
+  }, [stats.totalUsed, stats.totalPort]);
+
   return (
-    <div>
-      {/* KPI Row (Dynamic per branch filter) */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', margin: '0 0 20px' }}>
-        <div className="card-static" style={{ padding: '16px 18px' }}>
-          <div style={{ fontSize: '11.5px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Occupancy Rate</div>
-          <div style={{ fontSize: '24px', fontWeight: 800, color: '#0f172a', marginTop: '4px' }}>{stats.occRate}%</div>
-        </div>
-        <div className="card-static" style={{ padding: '16px 18px' }}>
-          <div style={{ fontSize: '11.5px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Port Avai / Used / Total</div>
-          <div style={{ fontSize: '20px', fontWeight: 800, color: '#0f172a', marginTop: '4px' }}>{stats.totalAvai} / {stats.totalUsed} / {stats.totalPort}</div>
-        </div>
-        <div className="card-static" style={{ padding: '16px 18px' }}>
-          <div style={{ fontSize: '11.5px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Jumlah Proyek / ODP</div>
-          <div style={{ fontSize: '20px', fontWeight: 800, color: '#0f172a', marginTop: '4px' }}>{totalProjectsInFilter} / {stats.odpCount}</div>
-        </div>
-        <div className="card-static" style={{ padding: '16px 18px' }}>
-          <div style={{ fontSize: '11.5px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Aktivitas GTM Selesai</div>
-          <div style={{ fontSize: '24px', fontWeight: 800, color: '#0f172a', marginTop: '4px' }}>{stats.actCompletionPct}%</div>
+    <div style={{ animation: 'fadeIn 0.3s ease-in-out' }}>
+      {/* ─── 1. HEADER TITLE (MATCHING MONITORING PAGE STYLE) ─── */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
+        <div>
+          <div style={{ textTransform: 'uppercase', fontSize: '11px', letterSpacing: '3px', color: '#FF5E00', fontWeight: 800, marginBottom: '4px' }}>
+            KEGIATAN & PELAPORAN LAPANGAN
+          </div>
+          <h1 style={{ fontFamily: "'Outfit', sans-serif", fontSize: '28px', fontWeight: 900, color: '#0F172A', margin: 0, letterSpacing: '-0.5px' }}>
+            Aktivitas Proyek Greenfield
+          </h1>
         </div>
       </div>
 
-      {/* Header / Controls */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '14px', margin: '0 0 20px', position: 'relative', zIndex: 80 }}>
+      {/* ─── 2. KPI SUMMARY GRID (DYNAMIC SPECTRUM COLORS 0-35% & 0-100%) ─── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '24px' }}>
+        {/* Card 1: Occupancy Rate (Skala 0-35% Dinamis) */}
+        <div style={{
+          background: '#FFFFFF',
+          borderRadius: '18px',
+          border: '1px solid #E2E8F0',
+          padding: '20px 24px',
+          boxShadow: '0 4px 14px rgba(0, 0, 0, 0.02)',
+          transition: 'transform 0.2s ease, boxShadow 0.2s ease'
+        }}>
+          <div style={{ fontSize: '11px', color: '#64748B', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1.2px' }}>
+            Occupancy Rate
+          </div>
+          <div style={{ fontFamily: "'Outfit', sans-serif", fontSize: '26px', fontWeight: 900, color: getDynamicColor35(stats.occRate), marginTop: '6px', transition: 'color 0.3s ease' }}>
+            {stats.occRate}%
+          </div>
+        </div>
+
+        {/* Card 2: Port Avai / Used / Total (Used Skala 0-35% dari Total Port) */}
+        <div style={{
+          background: '#FFFFFF',
+          borderRadius: '18px',
+          border: '1px solid #E2E8F0',
+          padding: '20px 24px',
+          boxShadow: '0 4px 14px rgba(0, 0, 0, 0.02)',
+          transition: 'transform 0.2s ease, boxShadow 0.2s ease'
+        }}>
+          <div style={{ fontSize: '11px', color: '#64748B', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1.2px' }}>
+            Port Avai / Used / Total
+          </div>
+          <div style={{ fontFamily: "'Outfit', sans-serif", fontSize: '20px', fontWeight: 900, color: '#0F172A', marginTop: '8px' }}>
+            {stats.totalAvai} / <span style={{ color: getDynamicColor35(usedPct), transition: 'color 0.3s ease' }}>{stats.totalUsed}</span> / {stats.totalPort}
+          </div>
+        </div>
+
+        {/* Card 3: Jumlah Proyek / ODP (Teks Proyek & ODP Dihapus, Angka Hitam) */}
+        <div style={{
+          background: '#FFFFFF',
+          borderRadius: '18px',
+          border: '1px solid #E2E8F0',
+          padding: '20px 24px',
+          boxShadow: '0 4px 14px rgba(0, 0, 0, 0.02)',
+          transition: 'transform 0.2s ease, boxShadow 0.2s ease'
+        }}>
+          <div style={{ fontSize: '11px', color: '#64748B', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1.2px' }}>
+            Jumlah Proyek / ODP
+          </div>
+          <div style={{ fontFamily: "'Outfit', sans-serif", fontSize: '20px', fontWeight: 900, color: '#0F172A', marginTop: '8px' }}>
+            {totalProjectsInFilter} / {stats.odpCount}
+          </div>
+        </div>
+
+        {/* Card 4: Aktivitas GTM Selesai (Skala 0-100% Dinamis) */}
+        <div style={{
+          background: '#FFFFFF',
+          borderRadius: '18px',
+          border: '1px solid #E2E8F0',
+          padding: '20px 24px',
+          boxShadow: '0 4px 14px rgba(0, 0, 0, 0.02)',
+          transition: 'transform 0.2s ease, boxShadow 0.2s ease'
+        }}>
+          <div style={{ fontSize: '11px', color: '#64748B', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1.2px' }}>
+            Aktivitas GTM Selesai
+          </div>
+          <div style={{ fontFamily: "'Outfit', sans-serif", fontSize: '26px', fontWeight: 900, color: getDynamicColor100(stats.actCompletionPct), marginTop: '6px', transition: 'color 0.3s ease' }}>
+            {stats.actCompletionPct}%
+          </div>
+        </div>
+      </div>
+
+      {/* ─── 3. CONTROLS BAR (FILTER BRANCH & SEARCH INPUT) ─── */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '24px', position: 'relative', zIndex: 80 }}>
         {branches.length === 1 ? (
-          <div style={{ padding: '9px 16px', borderRadius: '50px', border: '1px solid #cbd5e1', fontSize: '13.5px', background: '#f8fafc', fontWeight: 700, color: '#059669', display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <div style={{
+            padding: '10px 20px',
+            borderRadius: '50px',
+            border: '1px solid rgba(200, 16, 46, 0.2)',
+            fontSize: '13px',
+            background: '#FFFFFF',
+            fontWeight: 800,
+            color: '#C8102E',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.02)'
+          }}>
             <span>Branch: {formatBranch(branches[0].name)}</span>
           </div>
         ) : (
           <div style={{ position: 'relative' }}>
             <div 
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-              style={{ padding: '9px 16px', borderRadius: '50px', border: '1px solid #e2e8f0', fontSize: '13.5px', background: '#fff', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', minWidth: '200px', userSelect: 'none' }}
+              style={{
+                padding: '10px 20px',
+                borderRadius: '50px',
+                border: '1px solid #E2E8F0',
+                fontSize: '13px',
+                background: '#FFFFFF',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                cursor: 'pointer',
+                minWidth: '220px',
+                userSelect: 'none',
+                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.02)',
+                transition: 'all 0.2s ease'
+              }}
             >
-              <span style={{ flex: 1, whiteSpace: 'nowrap', fontWeight: 700, color: '#0f172a' }}>
+              <span style={{ flex: 1, whiteSpace: 'nowrap', fontWeight: 800, color: '#0F172A' }}>
                 {selectedBranch === 'Semua Branch' 
                   ? `Semua Branch (${totalProjects})` 
                   : `${formatBranch(selectedBranch)} (${priorityBranches.find(x => x.name === selectedBranch)?.projects?.length || 0})`}
               </span>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: isDropdownOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>
-                <polyline points="6 9 12 15 18 9"></polyline>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748B" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: isDropdownOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>
+                <polyline points="6 9 12 15 18 9" />
               </svg>
             </div>
             {isDropdownOpen && (
-              <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: '8px', width: '230px', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '16px', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.12)', zIndex: 1000, overflow: 'hidden' }}>
+              <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: '8px', width: '240px', background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: '16px', boxShadow: '0 10px 30px -5px rgba(0, 0, 0, 0.12)', zIndex: 1000, overflow: 'hidden' }}>
                 <div 
                   className={`dropdown-item ${selectedBranch === 'Semua Branch' ? 'active' : ''}`}
                   onClick={() => { setSelectedBranch('Semua Branch'); setIsDropdownOpen(false); }}
+                  style={{ padding: '12px 18px', fontSize: '13px', fontWeight: selectedBranch === 'Semua Branch' ? 800 : 600, color: selectedBranch === 'Semua Branch' ? '#C8102E' : '#334155', cursor: 'pointer' }}
                 >
                   Semua Branch ({totalProjects})
                 </div>
@@ -139,6 +249,7 @@ const UploadView = memo(function UploadView({ branches, initialBranch, updateAct
                     key={b.name}
                     className={`dropdown-item ${selectedBranch === b.name ? 'active' : ''}`}
                     onClick={() => { setSelectedBranch(b.name); setIsDropdownOpen(false); }}
+                    style={{ padding: '12px 18px', fontSize: '13px', fontWeight: selectedBranch === b.name ? 800 : 600, color: selectedBranch === b.name ? '#C8102E' : '#334155', cursor: 'pointer' }}
                   >
                     {formatBranch(b.name)} ({b.projects?.length || 0})
                   </div>
@@ -155,11 +266,23 @@ const UploadView = memo(function UploadView({ branches, initialBranch, updateAct
             placeholder="Cari nama proyek atau WOK..." 
             value={search}
             onChange={e => setSearch(e.target.value)}
-            style={{ width: '100%', padding: '9px 18px', borderRadius: '50px', border: '1px solid #e2e8f0', fontSize: '13.5px', background: '#fff', boxSizing: 'border-box' }}
+            style={{
+              width: '100%',
+              padding: '10px 20px',
+              borderRadius: '50px',
+              border: '1px solid #E2E8F0',
+              fontSize: '13px',
+              fontWeight: 500,
+              background: '#FFFFFF',
+              boxSizing: 'border-box',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.02)',
+              outline: 'none'
+            }}
           />
         </div>
       </div>
 
+      {/* ─── 4. PROJECT TABLES & ACTIVITY CARDS ─── */}
       {selectedBranch === 'Semua Branch' ? (
         branchesWithFilteredProjects.length > 0 && (
           <div style={{ marginBottom: '32px' }}>
@@ -189,8 +312,17 @@ const UploadView = memo(function UploadView({ branches, initialBranch, updateAct
       )}
       
       {branchesWithFilteredProjects.length === 0 && (
-        <div style={{ textAlign: 'center', padding: '40px 0', color: '#94a3b8' }}>
-          Tidak ada proyek yang cocok dengan pencarian.
+        <div style={{
+          textAlign: 'center',
+          padding: '60px 20px',
+          background: '#FFFFFF',
+          borderRadius: '18px',
+          border: '1px solid #E2E8F0',
+          color: '#64748B',
+          fontSize: '14px',
+          fontWeight: 600
+        }}>
+          Tidak ada proyek Greenfield yang cocok dengan kriteria pencarian.
         </div>
       )}
 

@@ -23,7 +23,7 @@ const AdminPanel = memo(function AdminPanel({ token, branches = [], onUpdate, go
         const isGreenfield = (p.typeDesign || 'Greenfield') === 'Greenfield';
         return isPriority && isGreenfield;
       })
-    })).filter(b => b.projects.length > 0);
+    })).filter(b => b.projects && b.projects.length > 0);
   }, [branches]);
 
   // Monitoring Filters States
@@ -171,103 +171,113 @@ const AdminPanel = memo(function AdminPanel({ token, branches = [], onUpdate, go
 
   return (
     <div style={{ animation: 'fadeIn 0.3s ease-in-out' }}>
-      {/* Admin Header Banner */}
-      <div className="card-static" style={{ padding: '24px 28px', marginBottom: '24px', background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)', color: '#fff', border: '1px solid #334155', position: 'relative', overflow: 'hidden' }}>
-        {/* Full-height Seamless Fading Red GTM Block on the Right */}
-        <div 
-          style={{ 
-            position: 'absolute', 
-            top: 0, 
-            right: 0, 
-            bottom: 0, 
-            width: '240px', 
-            background: 'linear-gradient(to right, rgba(200, 16, 46, 0) 0%, rgba(200, 16, 46, 0.25) 30%, rgba(200, 16, 46, 0.75) 100%)', 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'flex-end', 
-            pointerEvents: 'none',
-            paddingRight: '32px',
-            overflow: 'hidden'
-          }}
-        >
-          <span 
-            style={{ 
-              fontSize: '56px', 
-              fontWeight: 900, 
-              color: '#ffffff', 
-              letterSpacing: '2px', 
-              opacity: 0.2,
-              filter: 'blur(2.5px)',
-              userSelect: 'none'
-            }}
-          >
-            GTM
-          </span>
-        </div>
-        
-        <div style={{ position: 'relative', zIndex: 1, paddingRight: '160px' }}>
-          <h2 style={{ fontSize: '22px', fontWeight: 800, margin: 0, color: '#f8fafc', letterSpacing: '-0.5px' }}>
-            Administrator Control Panel
-          </h2>
-          <p style={{ fontSize: '13.5px', color: '#94a3b8', margin: '6px 0 0', fontWeight: 500 }}>
-            Pusat verifikasi bukti kegiatan GTM lapangan dan pembaruan database kapasitas ODP mingguan.
-          </p>
-        </div>
-      </div>
-
-      {/* Admin KPI Summary Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '24px' }}>
-        <div className="card-static" style={{ padding: '18px 20px' }}>
-          <div style={{ fontSize: '11.5px', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Total Branch / Proyek</div>
-          <div style={{ fontSize: '24px', fontWeight: 800, color: '#0f172a', marginTop: '6px' }}>{branches.length} / {totalProjects}</div>
-          <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '4px' }}>Terkoneksi dalam sistem GTM</div>
-        </div>
-
-        <div className="card-static" style={{ padding: '18px 20px' }}>
-          <div style={{ fontSize: '11.5px', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Total ODP / Kapasitas</div>
-          <div style={{ fontSize: '24px', fontWeight: 800, color: '#0f172a', marginTop: '6px' }}>{stats.odpCount} <span style={{ fontSize: '16px', fontWeight: 600, color: '#64748b' }}>ODP</span></div>
-          <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '4px' }}>{stats.totalUsed} / {stats.totalPort} port terpakai ({stats.occRate}%)</div>
-        </div>
-
-        <div className="card-static" style={{ padding: '18px 20px' }}>
-          <div style={{ fontSize: '11.5px', color: '#64748b', fontWeight: 700, textTransform: 'uppercase', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span>Menunggu Verifikasi</span>
-            {stats.actUploaded > 0 && <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#f59e0b', display: 'inline-block' }} />}
+      {/* ─── 1. HEADER TITLE (MATCHING MONITORING & ACTIVITY PAGE STYLE) ─── */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
+        <div>
+          <div style={{ textTransform: 'uppercase', fontSize: '11px', letterSpacing: '3px', color: '#FF5E00', fontWeight: 800, marginBottom: '4px' }}>
+            PANEL KONTROL SISTEM
           </div>
-          <div style={{ fontSize: '24px', fontWeight: 800, color: '#0f172a', marginTop: '6px' }}>{stats.actUploaded} <span style={{ fontSize: '16px', fontWeight: 600, color: '#64748b' }}>kegiatan</span></div>
-          <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '4px' }}>Butuh tindakan review admin</div>
-        </div>
-
-        <div className="card-static" style={{ padding: '18px 20px' }}>
-          <div style={{ fontSize: '11.5px', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Progress Verifikasi GTM</div>
-          <div style={{ fontSize: '24px', fontWeight: 800, color: '#0f172a', marginTop: '6px' }}>{stats.actCompletionPct}%</div>
-          <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '4px' }}>{stats.actVerified} kegiatan sudah terverifikasi</div>
+          <h1 style={{ fontFamily: "'Outfit', sans-serif", fontSize: '28px', fontWeight: 900, color: '#0F172A', margin: 0, letterSpacing: '-0.5px' }}>
+            Administrator Control Panel
+          </h1>
         </div>
       </div>
 
-      {/* Navigation Tabs */}
-      <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', borderBottom: '2px solid #e2e8f0', paddingBottom: '12px' }}>
+      {/* ─── 2. KPI SUMMARY GRID (HARMONIZED STYLING) ─── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '24px' }}>
+        {/* Card 1: Total Branch / Proyek */}
+        <div style={{
+          background: '#FFFFFF',
+          borderRadius: '18px',
+          border: '1px solid #E2E8F0',
+          padding: '20px 24px',
+          boxShadow: '0 4px 14px rgba(0, 0, 0, 0.02)'
+        }}>
+          <div style={{ fontSize: '11px', color: '#64748B', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1.2px' }}>
+            Total Branch / Proyek
+          </div>
+          <div style={{ fontFamily: "'Outfit', sans-serif", fontSize: '26px', fontWeight: 900, color: '#0F172A', marginTop: '6px' }}>
+            {branches.length} / {totalProjects}
+          </div>
+          <div style={{ fontSize: '12px', color: '#94A3B8', marginTop: '4px', fontWeight: 500 }}>Terkoneksi dalam sistem GTM</div>
+        </div>
+
+        {/* Card 2: Total ODP / Kapasitas */}
+        <div style={{
+          background: '#FFFFFF',
+          borderRadius: '18px',
+          border: '1px solid #E2E8F0',
+          padding: '20px 24px',
+          boxShadow: '0 4px 14px rgba(0, 0, 0, 0.02)'
+        }}>
+          <div style={{ fontSize: '11px', color: '#64748B', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1.2px' }}>
+            Total ODP / Kapasitas
+          </div>
+          <div style={{ fontFamily: "'Outfit', sans-serif", fontSize: '26px', fontWeight: 900, color: '#0F172A', marginTop: '6px' }}>
+            {stats.odpCount} <span style={{ fontSize: '16px', color: '#64748B', fontWeight: 700 }}>ODP</span>
+          </div>
+          <div style={{ fontSize: '12px', color: '#94A3B8', marginTop: '4px', fontWeight: 500 }}>{stats.totalUsed} / {stats.totalPort} port ({stats.occRate}%)</div>
+        </div>
+
+        {/* Card 3: Menunggu Verifikasi */}
+        <div style={{
+          background: '#FFFFFF',
+          borderRadius: '18px',
+          border: '1px solid #E2E8F0',
+          padding: '20px 24px',
+          boxShadow: '0 4px 14px rgba(0, 0, 0, 0.02)'
+        }}>
+          <div style={{ fontSize: '11px', color: '#64748B', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1.2px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span>Menunggu Verifikasi</span>
+            {stats.actUploaded > 0 && <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#FF5E00' }} />}
+          </div>
+          <div style={{ fontFamily: "'Outfit', sans-serif", fontSize: '26px', fontWeight: 900, color: '#0F172A', marginTop: '6px' }}>
+            {stats.actUploaded} <span style={{ fontSize: '16px', color: '#64748B', fontWeight: 700 }}>Kegiatan</span>
+          </div>
+          <div style={{ fontSize: '12px', color: '#94A3B8', marginTop: '4px', fontWeight: 500 }}>Butuh tindakan review admin</div>
+        </div>
+
+        {/* Card 4: Progress Verifikasi GTM */}
+        <div style={{
+          background: '#FFFFFF',
+          borderRadius: '18px',
+          border: '1px solid #E2E8F0',
+          padding: '20px 24px',
+          boxShadow: '0 4px 14px rgba(0, 0, 0, 0.02)'
+        }}>
+          <div style={{ fontSize: '11px', color: '#64748B', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1.2px' }}>
+            Progress Verifikasi GTM
+          </div>
+          <div style={{ fontFamily: "'Outfit', sans-serif", fontSize: '26px', fontWeight: 900, color: '#0F172A', marginTop: '6px' }}>
+            {stats.actCompletionPct}%
+          </div>
+          <div style={{ fontSize: '12px', color: '#94A3B8', marginTop: '4px', fontWeight: 500 }}>{stats.actVerified} kegiatan terverifikasi</div>
+        </div>
+      </div>
+
+      {/* ─── 3. NAVIGATION TABS (SEAMLESS PILL TOGGLES) ─── */}
+      <div style={{ display: 'flex', gap: '12px', marginBottom: '24px' }}>
         <button
           onClick={() => setActiveTab('monitoring')}
           style={{
-            padding: '10px 20px',
-            borderRadius: '10px',
-            border: 'none',
-            background: activeTab === 'monitoring' ? '#C8102E' : 'transparent',
-            color: activeTab === 'monitoring' ? '#fff' : '#475569',
-            fontWeight: 700,
-            fontSize: '14px',
+            padding: '10px 24px',
+            borderRadius: '50px',
+            border: activeTab === 'monitoring' ? 'none' : '1px solid #E2E8F0',
+            background: activeTab === 'monitoring' ? 'linear-gradient(135deg, #C8102E 0%, #FF5E00 100%)' : '#FFFFFF',
+            color: activeTab === 'monitoring' ? '#FFFFFF' : '#475569',
+            fontWeight: 800,
+            fontSize: '13px',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
-            gap: '8px',
-            transition: 'all 0.2s',
-            boxShadow: activeTab === 'monitoring' ? '0 4px 12px rgba(200,16,46,0.25)' : 'none'
+            gap: '10px',
+            boxShadow: activeTab === 'monitoring' ? '0 4px 16px rgba(200, 16, 46, 0.25)' : '0 2px 6px rgba(0, 0, 0, 0.02)',
+            transition: 'all 0.25s ease'
           }}
         >
           <span>Monitoring & Verifikasi Proyek</span>
           {stats.actUploaded > 0 && (
-            <span style={{ background: activeTab === 'monitoring' ? '#fff' : '#f59e0b', color: activeTab === 'monitoring' ? '#C8102E' : '#fff', padding: '2px 8px', borderRadius: '50px', fontSize: '11px', fontWeight: 800 }}>
+            <span style={{ background: activeTab === 'monitoring' ? '#FFFFFF' : '#FF5E00', color: activeTab === 'monitoring' ? '#C8102E' : '#FFFFFF', padding: '2px 8px', borderRadius: '50px', fontSize: '11px', fontWeight: 900 }}>
               {stats.actUploaded}
             </span>
           )}
@@ -276,30 +286,30 @@ const AdminPanel = memo(function AdminPanel({ token, branches = [], onUpdate, go
         <button
           onClick={() => setActiveTab('excel')}
           style={{
-            padding: '10px 20px',
-            borderRadius: '10px',
-            border: 'none',
-            background: activeTab === 'excel' ? '#C8102E' : 'transparent',
-            color: activeTab === 'excel' ? '#fff' : '#475569',
-            fontWeight: 700,
-            fontSize: '14px',
+            padding: '10px 24px',
+            borderRadius: '50px',
+            border: activeTab === 'excel' ? 'none' : '1px solid #E2E8F0',
+            background: activeTab === 'excel' ? 'linear-gradient(135deg, #C8102E 0%, #FF5E00 100%)' : '#FFFFFF',
+            color: activeTab === 'excel' ? '#FFFFFF' : '#475569',
+            fontWeight: 800,
+            fontSize: '13px',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
-            gap: '8px',
-            transition: 'all 0.2s',
-            boxShadow: activeTab === 'excel' ? '0 4px 12px rgba(200,16,46,0.25)' : 'none'
+            gap: '10px',
+            boxShadow: activeTab === 'excel' ? '0 4px 16px rgba(200, 16, 46, 0.25)' : '0 2px 6px rgba(0, 0, 0, 0.02)',
+            transition: 'all 0.25s ease'
           }}
         >
           <span>Update Data Mingguan</span>
         </button>
       </div>
 
-      {/* TAB 1: MONITORING & VERIFIKASI PROYEK */}
+      {/* ─── TAB 1: MONITORING & VERIFIKASI PROYEK ─── */}
       {activeTab === 'monitoring' && (
         <div className="fade-in">
           {/* Filter Bar */}
-          <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '14px 20px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap', position: 'relative', zIndex: 80 }}>
+          <div style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: '18px', padding: '14px 20px', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap', position: 'relative', zIndex: 80, boxShadow: '0 2px 8px rgba(0, 0, 0, 0.02)' }}>
             {/* Branch Filter Capsule Dropdown */}
             <div style={{ position: 'relative' }}>
               <div 
@@ -308,35 +318,36 @@ const AdminPanel = memo(function AdminPanel({ token, branches = [], onUpdate, go
                   setIsStatusDropdownOpen(false);
                 }}
                 style={{ 
-                  padding: '9px 16px', 
+                  padding: '10px 20px', 
                   borderRadius: '50px', 
-                  border: '1px solid #e2e8f0', 
-                  fontSize: '13.5px', 
-                  background: '#fff', 
+                  border: '1px solid #E2E8F0', 
+                  fontSize: '13px', 
+                  background: '#FFFFFF', 
                   display: 'flex', 
                   alignItems: 'center', 
                   gap: '8px', 
                   cursor: 'pointer', 
-                  minWidth: '200px', 
+                  minWidth: '210px', 
                   userSelect: 'none' 
                 }}
               >
-                <span style={{ fontSize: '13px', fontWeight: 600, color: '#64748b' }}>Branch:</span>
-                <span style={{ flex: 1, whiteSpace: 'nowrap', fontWeight: 700, color: '#0f172a' }}>
+                <span style={{ fontSize: '12px', fontWeight: 600, color: '#64748B' }}>Branch:</span>
+                <span style={{ flex: 1, whiteSpace: 'nowrap', fontWeight: 800, color: '#0F172A' }}>
                   {selectedBranch === 'Semua Branch' 
                     ? `Semua Branch (${totalProjects})` 
                     : `${formatBranch(selectedBranch)} (${priorityBranches.find(x => x.name === selectedBranch)?.projects?.length || 0})`}
                 </span>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: isBranchDropdownOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>
-                  <polyline points="6 9 12 15 18 9"></polyline>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748B" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: isBranchDropdownOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>
+                  <polyline points="6 9 12 15 18 9" />
                 </svg>
               </div>
 
               {isBranchDropdownOpen && (
-                <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: '8px', width: '230px', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '16px', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.12)', zIndex: 1000, overflow: 'hidden' }}>
+                <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: '8px', width: '240px', background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: '16px', boxShadow: '0 10px 30px -5px rgba(0, 0, 0, 0.12)', zIndex: 1000, overflow: 'hidden' }}>
                   <div 
                     className={`dropdown-item ${selectedBranch === 'Semua Branch' ? 'active' : ''}`}
                     onClick={() => { setSelectedBranch('Semua Branch'); setIsBranchDropdownOpen(false); }}
+                    style={{ padding: '12px 18px', fontSize: '13px', fontWeight: selectedBranch === 'Semua Branch' ? 800 : 600, color: selectedBranch === 'Semua Branch' ? '#C8102E' : '#334155', cursor: 'pointer' }}
                   >
                     Semua Branch ({totalProjects})
                   </div>
@@ -345,6 +356,7 @@ const AdminPanel = memo(function AdminPanel({ token, branches = [], onUpdate, go
                       key={b.name}
                       className={`dropdown-item ${selectedBranch === b.name ? 'active' : ''}`}
                       onClick={() => { setSelectedBranch(b.name); setIsBranchDropdownOpen(false); }}
+                      style={{ padding: '12px 18px', fontSize: '13px', fontWeight: selectedBranch === b.name ? 800 : 600, color: selectedBranch === b.name ? '#C8102E' : '#334155', cursor: 'pointer' }}
                     >
                       {formatBranch(b.name)} ({b.projects?.length || 0})
                     </div>
@@ -361,21 +373,21 @@ const AdminPanel = memo(function AdminPanel({ token, branches = [], onUpdate, go
                   setIsBranchDropdownOpen(false);
                 }}
                 style={{ 
-                  padding: '9px 16px', 
+                  padding: '10px 20px', 
                   borderRadius: '50px', 
-                  border: '1px solid #e2e8f0', 
-                  fontSize: '13.5px', 
-                  background: '#fff', 
+                  border: '1px solid #E2E8F0', 
+                  fontSize: '13px', 
+                  background: '#FFFFFF', 
                   display: 'flex', 
                   alignItems: 'center', 
                   gap: '8px', 
                   cursor: 'pointer', 
-                  minWidth: '200px', 
+                  minWidth: '220px', 
                   userSelect: 'none' 
                 }}
               >
-                <span style={{ fontSize: '13px', fontWeight: 600, color: '#64748b' }}>Status:</span>
-                <span style={{ flex: 1, whiteSpace: 'nowrap', fontWeight: 700, color: '#0f172a' }}>
+                <span style={{ fontSize: '12px', fontWeight: 600, color: '#64748B' }}>Status:</span>
+                <span style={{ flex: 1, whiteSpace: 'nowrap', fontWeight: 800, color: '#0F172A' }}>
                   {statusFilter === 'all' 
                     ? `Semua Status (${statusCounts.all})` 
                     : statusFilter === 'need_review' 
@@ -384,34 +396,38 @@ const AdminPanel = memo(function AdminPanel({ token, branches = [], onUpdate, go
                     ? `Sudah Terverifikasi (${statusCounts.verified})` 
                     : `Belum Dikerjakan (${statusCounts.pending})`}
                 </span>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: isStatusDropdownOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>
-                  <polyline points="6 9 12 15 18 9"></polyline>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748B" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: isStatusDropdownOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>
+                  <polyline points="6 9 12 15 18 9" />
                 </svg>
               </div>
 
               {isStatusDropdownOpen && (
-                <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: '8px', width: '240px', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '16px', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.12)', zIndex: 1000, overflow: 'hidden' }}>
+                <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: '8px', width: '250px', background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: '16px', boxShadow: '0 10px 30px -5px rgba(0, 0, 0, 0.12)', zIndex: 1000, overflow: 'hidden' }}>
                   <div 
                     className={`dropdown-item ${statusFilter === 'all' ? 'active' : ''}`}
                     onClick={() => { setStatusFilter('all'); setIsStatusDropdownOpen(false); }}
+                    style={{ padding: '12px 18px', fontSize: '13px', fontWeight: statusFilter === 'all' ? 800 : 600, color: statusFilter === 'all' ? '#C8102E' : '#334155', cursor: 'pointer' }}
                   >
                     Semua Status ({statusCounts.all})
                   </div>
                   <div 
                     className={`dropdown-item ${statusFilter === 'need_review' ? 'active' : ''}`}
                     onClick={() => { setStatusFilter('need_review'); setIsStatusDropdownOpen(false); }}
+                    style={{ padding: '12px 18px', fontSize: '13px', fontWeight: statusFilter === 'need_review' ? 800 : 600, color: statusFilter === 'need_review' ? '#C8102E' : '#334155', cursor: 'pointer' }}
                   >
                     Menunggu Verifikasi ({statusCounts.need_review})
                   </div>
                   <div 
                     className={`dropdown-item ${statusFilter === 'verified' ? 'active' : ''}`}
                     onClick={() => { setStatusFilter('verified'); setIsStatusDropdownOpen(false); }}
+                    style={{ padding: '12px 18px', fontSize: '13px', fontWeight: statusFilter === 'verified' ? 800 : 600, color: statusFilter === 'verified' ? '#C8102E' : '#334155', cursor: 'pointer' }}
                   >
                     Sudah Terverifikasi ({statusCounts.verified})
                   </div>
                   <div 
                     className={`dropdown-item ${statusFilter === 'pending' ? 'active' : ''}`}
                     onClick={() => { setStatusFilter('pending'); setIsStatusDropdownOpen(false); }}
+                    style={{ padding: '12px 18px', fontSize: '13px', fontWeight: statusFilter === 'pending' ? 800 : 600, color: statusFilter === 'pending' ? '#C8102E' : '#334155', cursor: 'pointer' }}
                   >
                     Belum Dikerjakan ({statusCounts.pending})
                   </div>
@@ -426,7 +442,7 @@ const AdminPanel = memo(function AdminPanel({ token, branches = [], onUpdate, go
                 placeholder="Cari nama proyek atau WOK..."
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                style={{ width: '100%', boxSizing: 'border-box', padding: '9px 18px', borderRadius: '50px', border: '1px solid #e2e8f0', fontSize: '13.5px', background: '#fff' }}
+                style={{ width: '100%', boxSizing: 'border-box', padding: '10px 20px', borderRadius: '50px', border: '1px solid #E2E8F0', fontSize: '13px', background: '#FFFFFF', outline: 'none' }}
               />
             </div>
           </div>
@@ -459,49 +475,50 @@ const AdminPanel = memo(function AdminPanel({ token, branches = [], onUpdate, go
               ))
             )
           ) : (
-            <div className="card" style={{ padding: '60px 20px', textAlign: 'center', color: '#64748b' }}>
-              <div style={{ fontSize: '40px', marginBottom: '12px' }}>🔍</div>
-              <div style={{ fontSize: '16px', fontWeight: 700, color: '#334155' }}>Tidak ada proyek yang sesuai filter</div>
-              <p style={{ fontSize: '13px', color: '#94a3b8', margin: '4px 0 0' }}>Coba ganti filter branch, status verifikasi, atau kata kunci pencarian Anda.</p>
+            <div style={{ padding: '60px 20px', textAlign: 'center', background: '#FFFFFF', borderRadius: '18px', border: '1px solid #E2E8F0', color: '#64748B' }}>
+              <div style={{ fontSize: '16px', fontWeight: 800, color: '#0F172A' }}>Tidak ada proyek yang sesuai filter</div>
+              <p style={{ fontSize: '13px', color: '#64748B', margin: '4px 0 0' }}>Coba ganti filter branch, status verifikasi, atau kata kunci pencarian Anda.</p>
             </div>
           )}
         </div>
-      )}      {/* TAB 2: UPDATE DATABASE MINGGUAN (EXCEL) */}
+      )}
+
+      {/* ─── TAB 2: UPDATE DATABASE MINGGUAN (EXCEL) ─── */}
       {activeTab === 'excel' && (
         <div className="fade-in">
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr', gap: '24px', alignItems: 'stretch' }}>
             {/* Left Column: Instructions */}
-            <div className="card" style={{ padding: '28px 28px', background: '#f8fafc', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+            <div style={{ padding: '28px', background: '#FFFFFF', borderRadius: '18px', border: '1px solid #E2E8F0', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', boxShadow: '0 4px 14px rgba(0, 0, 0, 0.02)' }}>
               <div>
-                <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#0f172a', marginTop: 0, marginBottom: '12px' }}>
+                <h3 style={{ fontFamily: "'Outfit', sans-serif", fontSize: '18px', fontWeight: 900, color: '#0F172A', marginTop: 0, marginBottom: '12px' }}>
                   Panduan Pembaruan Database
                 </h3>
-                <p style={{ fontSize: '13.5px', color: '#475569', lineHeight: 1.6, marginBottom: '20px' }}>
+                <p style={{ fontSize: '13px', color: '#475569', lineHeight: 1.6, marginBottom: '20px' }}>
                   Sistem dirancang untuk memperbarui kapasitas port ODP mingguan secara otomatis tanpa mengganggu data kegiatan lapangan yang sudah ada.
                 </p>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', fontSize: '13px' }}>
                   <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
-                    <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: '#e2e8f0', color: '#475569', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '12px', flexShrink: 0 }}>1</div>
+                    <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: '#F1F5F9', color: '#C8102E', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '12px', flexShrink: 0 }}>1</div>
                     <div>
-                      <b style={{ color: '#0f172a' }}>Persiapkan File Excel (.xlsx / .csv)</b>
-                      <p style={{ margin: '2px 0 0', color: '#64748b', lineHeight: 1.5 }}>Pastikan kolom memiliki header baku: <code>Branch</code>, <code>Project</code>, <code>WOK</code>, <code>ODP</code>, <code>Avai</code>, <code>Used</code>, dan <code>Total</code>.</p>
+                      <b style={{ color: '#0F172A' }}>Persiapkan File Excel (.xlsx / .csv)</b>
+                      <p style={{ margin: '2px 0 0', color: '#64748B', lineHeight: 1.5 }}>Pastikan kolom memiliki header baku: <code>Branch</code>, <code>Project</code>, <code>WOK</code>, <code>ODP</code>, <code>Avai</code>, <code>Used</code>, dan <code>Total</code>.</p>
                     </div>
                   </div>
 
                   <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
-                    <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: '#e2e8f0', color: '#475569', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '12px', flexShrink: 0 }}>2</div>
+                    <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: '#F1F5F9', color: '#C8102E', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '12px', flexShrink: 0 }}>2</div>
                     <div>
-                      <b style={{ color: '#0f172a' }}>Pencocokan ODP Otomatis (Upsert)</b>
-                      <p style={{ margin: '2px 0 0', color: '#64748b', lineHeight: 1.5 }}>Sistem akan mencocokkan nama ODP. Jika sudah ada, angka kapasitas akan diupdate. Jika ODP baru, akan otomatis ditambahkan.</p>
+                      <b style={{ color: '#0F172A' }}>Pencocokan ODP Otomatis (Upsert)</b>
+                      <p style={{ margin: '2px 0 0', color: '#64748B', lineHeight: 1.5 }}>Sistem akan mencocokkan nama ODP. Jika sudah ada, angka kapasitas akan diupdate. Jika ODP baru, akan otomatis ditambahkan.</p>
                     </div>
                   </div>
 
                   <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
-                    <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: '#e2e8f0', color: '#475569', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '12px', flexShrink: 0 }}>3</div>
+                    <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: '#F1F5F9', color: '#C8102E', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '12px', flexShrink: 0 }}>3</div>
                     <div>
-                      <b style={{ color: '#0f172a' }}>Riwayat Kegiatan Tetap Aman</b>
-                      <p style={{ margin: '2px 0 0', color: '#64748b', lineHeight: 1.5 }}>Foto bukti kegiatan, tanggal rencana/aktual, dan status verifikasi mingguan sebelumnya <b>tidak akan terhapus atau reset</b>.</p>
+                      <b style={{ color: '#0F172A' }}>Keamanan Data Kegiatan</b>
+                      <p style={{ margin: '2px 0 0', color: '#64748B', lineHeight: 1.5 }}>Bukti foto, catatan, dan status verifikasi kegiatan GTM yang sudah diisi pengguna tidak akan terhapus atau terpengaruh.</p>
                     </div>
                   </div>
                 </div>
@@ -509,15 +526,10 @@ const AdminPanel = memo(function AdminPanel({ token, branches = [], onUpdate, go
             </div>
 
             {/* Right Column: Upload Box */}
-            <div className="card" style={{ padding: '28px 32px', border: '1px solid #cbd5e1', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-              <div>
-                <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#0f172a', marginTop: 0, marginBottom: '6px' }}>
-                  Upload Berkas Update Mingguan
-                </h3>
-                <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '22px' }}>
-                  Pilih file dari komputer Anda lalu tekan tombol pembaruan di bawah.
-                </p>
-              </div>
+            <div style={{ padding: '28px', background: '#FFFFFF', borderRadius: '18px', border: '1px solid #E2E8F0', boxShadow: '0 4px 14px rgba(0, 0, 0, 0.02)' }}>
+              <h3 style={{ fontFamily: "'Outfit', sans-serif", fontSize: '18px', fontWeight: 900, color: '#0F172A', marginTop: 0, marginBottom: '16px' }}>
+                Upload File Excel Data ODP
+              </h3>
 
               <form onSubmit={handleUpload}>
                 <div style={{ marginBottom: '22px' }}>
@@ -529,9 +541,9 @@ const AdminPanel = memo(function AdminPanel({ token, branches = [], onUpdate, go
                       alignItems: 'center', 
                       justifyContent: 'center', 
                       padding: '36px 20px', 
-                      border: file ? '2px solid #10b981' : '2px dashed #94a3b8', 
-                      borderRadius: '12px', 
-                      background: file ? '#f0fdf4' : '#f8fafc', 
+                      border: file ? '2px solid #059669' : '2px dashed #CBD5E1', 
+                      borderRadius: '16px', 
+                      background: file ? '#ECFDF5' : '#FFFFFF', 
                       cursor: 'pointer',
                       transition: 'all 0.2s',
                       textAlign: 'center'
@@ -539,15 +551,15 @@ const AdminPanel = memo(function AdminPanel({ token, branches = [], onUpdate, go
                   >
                     {file ? (
                       <div onClick={e => e.stopPropagation()}>
-                        <div style={{ fontSize: '15px', fontWeight: 700, color: '#166534', wordBreak: 'break-all' }}>{file.name}</div>
-                        <div style={{ fontSize: '12px', color: '#15803d', marginTop: '4px' }}>{(file.size / 1024).toFixed(1)} KB · Siap diunggah</div>
+                        <div style={{ fontSize: '14px', fontWeight: 800, color: '#065F46', wordBreak: 'break-all' }}>{file.name}</div>
+                        <div style={{ fontSize: '12px', color: '#047857', marginTop: '4px' }}>{(file.size / 1024).toFixed(1)} KB · Siap diunggah</div>
                         
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px', marginTop: '14px' }}>
                           <label 
                             htmlFor="excel-upload-input"
                             style={{ 
                               fontSize: '12.5px', 
-                              fontWeight: 700, 
+                              fontWeight: 800, 
                               color: '#059669', 
                               cursor: 'pointer',
                               textDecoration: 'underline'
@@ -556,7 +568,7 @@ const AdminPanel = memo(function AdminPanel({ token, branches = [], onUpdate, go
                             Ganti File
                           </label>
 
-                          <span style={{ color: '#cbd5e1' }}>•</span>
+                          <span style={{ color: '#CBD5E1' }}>•</span>
 
                           <button
                             type="button"
@@ -568,16 +580,14 @@ const AdminPanel = memo(function AdminPanel({ token, branches = [], onUpdate, go
                             style={{
                               border: 'none',
                               background: 'transparent',
-                              color: '#dc2626',
+                              color: '#C8102E',
                               fontSize: '12.5px',
-                              fontWeight: 700,
+                              fontWeight: 800,
                               cursor: 'pointer',
                               padding: 0,
                               textDecoration: 'underline',
                               transition: 'color 0.15s'
                             }}
-                            onMouseOver={e => e.currentTarget.style.color = '#991b1b'}
-                            onMouseOut={e => e.currentTarget.style.color = '#dc2626'}
                           >
                             Hapus File
                           </button>
@@ -585,9 +595,8 @@ const AdminPanel = memo(function AdminPanel({ token, branches = [], onUpdate, go
                       </div>
                     ) : (
                       <div>
-                        <div style={{ fontSize: '36px', marginBottom: '8px' }}>📁</div>
-                        <div style={{ fontSize: '15px', fontWeight: 700, color: '#334155' }}>Klik untuk memilih file Excel</div>
-                        <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>Mendukung format .xlsx, .xls, atau .csv</div>
+                        <div style={{ fontSize: '15px', fontWeight: 800, color: '#0F172A' }}>Upload File</div>
+                        <div style={{ fontSize: '12px', color: '#64748B', marginTop: '4px' }}>Mendukung format .xlsx, .xls, atau .csv</div>
                       </div>
                     )}
                     <input 
@@ -601,16 +610,14 @@ const AdminPanel = memo(function AdminPanel({ token, branches = [], onUpdate, go
                 </div>
 
                 {message && (
-                  <div style={{ padding: '14px 16px', background: '#dcfce7', color: '#166534', border: '1px solid #bbf7d0', borderRadius: '10px', fontSize: '13.5px', fontWeight: 600, marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px', animation: 'fadeIn 0.2s' }}>
-                    <span style={{ fontSize: '18px' }}>✅</span>
-                    <span>{message}</span>
+                  <div style={{ padding: '12px 16px', borderRadius: '12px', background: '#ECFDF5', border: '1px solid #A7F3D0', color: '#065F46', fontSize: '13px', fontWeight: 700, marginBottom: '16px' }}>
+                    ✓ {message}
                   </div>
                 )}
 
                 {error && (
-                  <div style={{ padding: '14px 16px', background: '#fee2e2', color: '#991b1b', border: '1px solid #fecaca', borderRadius: '10px', fontSize: '13.5px', fontWeight: 600, marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px', animation: 'fadeIn 0.2s' }}>
-                    <span style={{ fontSize: '18px' }}>❌</span>
-                    <span>{error}</span>
+                  <div style={{ padding: '12px 16px', borderRadius: '12px', background: '#FEF2F2', border: '1px solid #FCA5A5', color: '#991B1B', fontSize: '13px', fontWeight: 700, marginBottom: '16px' }}>
+                    ⚠️ {error}
                   </div>
                 )}
 
@@ -619,30 +626,24 @@ const AdminPanel = memo(function AdminPanel({ token, branches = [], onUpdate, go
                   disabled={loading || !file}
                   style={{ 
                     width: '100%', 
-                    padding: '14px', 
-                    background: loading || !file ? '#94a3b8' : '#C8102E', 
-                    color: '#fff', 
+                    padding: '12px 24px', 
+                    background: loading || !file ? '#CBD5E1' : 'linear-gradient(135deg, #C8102E 0%, #FF5E00 100%)', 
+                    color: '#FFFFFF', 
                     border: 'none', 
-                    borderRadius: '10px', 
+                    borderRadius: '50px', 
                     fontWeight: 800, 
-                    fontSize: '15px', 
+                    fontSize: '13px', 
+                    letterSpacing: '1px',
                     cursor: loading || !file ? 'not-allowed' : 'pointer',
-                    transition: 'all 0.2s',
-                    boxShadow: loading || !file ? 'none' : '0 10px 15px -3px rgba(200,16,46,0.3)',
+                    transition: 'all 0.25s ease',
+                    boxShadow: loading || !file ? 'none' : '0 4px 16px rgba(200, 16, 46, 0.3)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: '8px'
                   }}
                 >
-                  {loading ? (
-                    <>
-                      <span>⏳</span>
-                      <span>Sedang Membaca & Memperbarui Database...</span>
-                    </>
-                  ) : (
-                    <span>Proses Update Database Mingguan</span>
-                  )}
+                  {loading ? 'Sedang Membaca & Memperbarui Database...' : 'Proses Update Database Mingguan'}
                 </button>
               </form>
             </div>
