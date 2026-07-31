@@ -1,5 +1,5 @@
 import { useState, useMemo, memo, useCallback } from 'react';
-import * as XLSX from 'xlsx-js-style';
+import * as XLSX from 'xlsx';
 import ProjectTable from './ProjectTable';
 import ReviewModal from './ReviewModal';
 import { formatBranch, computeStats } from '../utils';
