@@ -40,8 +40,6 @@ const LandingPage = memo(function LandingPage({ onExplore, onLogin, onGoDashboar
         zIndex: 0
       }} />
 
-
-
       {/* ─── 2. HERO MAIN SECTION (HERO TEXT PERFECTLY CENTERED VERTICALLY & HORIZONTALLY) ─── */}
       <section id="overview" style={{
         position: 'relative',

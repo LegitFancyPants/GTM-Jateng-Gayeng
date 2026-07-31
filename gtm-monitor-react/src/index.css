@@ -240,6 +240,55 @@ button {
   overflow-x: hidden;
 }
 
+/* Internet Network Mesh Background Animations */
+.mesh-beam {
+  stroke-dasharray: 100, 500;
+  animation: meshFlow 4.5s linear infinite;
+}
+
+.mesh-beam-slow {
+  stroke-dasharray: 140, 600;
+  animation: meshFlow 6.5s linear infinite;
+}
+
+.mesh-beam-reverse {
+  stroke-dasharray: 100, 500;
+  animation: meshFlowRev 5s linear infinite;
+}
+
+.mesh-node {
+  animation: meshNodePulse 2.5s ease-in-out infinite alternate;
+}
+
+@keyframes meshFlow {
+  0% {
+    stroke-dashoffset: 600;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes meshFlowRev {
+  0% {
+    stroke-dashoffset: 0;
+  }
+  100% {
+    stroke-dashoffset: 600;
+  }
+}
+
+@keyframes meshNodePulse {
+  0% {
+    r: 2;
+    opacity: 0.35;
+  }
+  100% {
+    r: 5;
+    opacity: 0.95;
+  }
+}
+
 .table-header {
   display: grid;
   gap: 8px;
