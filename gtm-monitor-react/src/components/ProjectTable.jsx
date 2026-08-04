@@ -1,4 +1,4 @@
-import { useState, useMemo, memo, useEffect, useCallback } from 'react';
+import { useState, useMemo, memo, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { ACT_TYPES, actMeta, formatBranch } from '../utils';
 import UploadModal from './UploadModal';
@@ -472,6 +472,27 @@ export default function ProjectTable({ projects, branchName, onReview, updateAct
     totalPort: { sort: null, search: '', unchecked: [] }
   });
 
+  // ─── FILTER POPUP REF & CLICK OUTSIDE LISTENER ───
+  const popupRef = useRef(null);
+
+  useEffect(() => {
+    if (!filterPopup) return;
+    const handleClickOutside = (event) => {
+      if (popupRef.current && !popupRef.current.contains(event.target)) {
+        setFilterPopup(null);
+      }
+    };
+    const timer = setTimeout(() => {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('touchstart', handleClickOutside);
+    }, 0);
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [filterPopup]);
+
   // ─── OPTIMASI 1: PAGINATION STATE ───
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
@@ -507,13 +528,14 @@ export default function ProjectTable({ projects, branchName, onReview, updateAct
     // Apply filtering
     ['wok', 'usedTotal', 'avaiTotal', 'totalPort'].forEach(col => {
       const f = filters[col];
-      if (f.unchecked.length > 0) {
-        list = list.filter(p => !f.unchecked.includes(p[col]));
+      if (f && f.unchecked && f.unchecked.length > 0) {
+        const uncheckedStr = f.unchecked.map(String);
+        list = list.filter(p => !uncheckedStr.includes(String(p[col] ?? '-')));
       }
     });
 
     // Apply sorting
-    const sortCol = ['wok', 'usedTotal', 'avaiTotal', 'totalPort'].find(col => filters[col].sort);
+    const sortCol = ['wok', 'usedTotal', 'avaiTotal', 'totalPort'].find(col => filters[col]?.sort);
     if (sortCol) {
       const sortDir = filters[sortCol].sort;
       if (sortCol === 'wok') {
@@ -523,7 +545,11 @@ export default function ProjectTable({ projects, branchName, onReview, updateAct
           return sortDir === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
         });
       } else {
-        list.sort((a, b) => sortDir === 'asc' ? a[sortCol] - b[sortCol] : b[sortCol] - a[sortCol]);
+        list.sort((a, b) => {
+          const numA = Number(a[sortCol]) || 0;
+          const numB = Number(b[sortCol]) || 0;
+          return sortDir === 'asc' ? numA - numB : numB - numA;
+        });
       }
     }
 
@@ -568,63 +594,113 @@ export default function ProjectTable({ projects, branchName, onReview, updateAct
       ? Object.keys(valueCounts).sort((a, b) => a.localeCompare(b))
       : Object.keys(valueCounts).map(Number).sort((a, b) => a - b);
 
-    const searchLower = filters[col].search.toLowerCase();
+    const searchLower = (filters[col].search || '').toLowerCase();
     const visibleValues = allValues.filter(v => v.toString().toLowerCase().includes(searchLower));
+    const currentUncheckedStr = (filters[col].unchecked || []).map(String);
 
     return (
-      <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: '4px', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', zIndex: 100, width: '200px', padding: '8px', fontSize: '12px', color: '#334155', fontWeight: 400, textAlign: 'left', textTransform: 'none', letterSpacing: 'normal' }}>
+      <div
+        ref={popupRef}
+        onClick={e => e.stopPropagation()}
+        style={{
+          position: 'absolute',
+          top: '100%',
+          right: 0,
+          marginTop: '6px',
+          background: '#FFFFFF',
+          border: '1px solid #E2E8F0',
+          borderRadius: '14px',
+          boxShadow: '0 10px 30px -5px rgba(0,0,0,0.22)',
+          zIndex: 99999,
+          width: '210px',
+          padding: '12px',
+          fontSize: '12px',
+          color: '#334155',
+          fontWeight: 500,
+          textAlign: 'left',
+          textTransform: 'none',
+          letterSpacing: 'normal'
+        }}
+      >
         <div
-          onClick={() => { updateFilter(col, 'sort', 'asc'); setFilterPopup(null); }}
-          style={{ padding: '6px 8px', cursor: 'pointer', borderRadius: '4px', backgroundColor: filters[col].sort === 'asc' ? '#f1f5f9' : 'transparent', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontSize: '14px' }}>↓</span> {isStringCol ? 'Sort A to Z' : 'Sort A to Z (Kecil ke Besar)'}
+          onClick={() => { updateFilter(col, 'sort', filters[col].sort === 'asc' ? null : 'asc'); setFilterPopup(null); }}
+          style={{ padding: '6px 10px', cursor: 'pointer', borderRadius: '6px', backgroundColor: filters[col].sort === 'asc' ? '#F1F5F9' : 'transparent', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600, color: filters[col].sort === 'asc' ? '#C8102E' : '#334155' }}
+        >
+          <span style={{ fontSize: '14px' }}>↓</span> {isStringCol ? 'Sort A to Z' : 'Sort Kecil ke Besar'}
         </div>
         <div
-          onClick={() => { updateFilter(col, 'sort', 'desc'); setFilterPopup(null); }}
-          style={{ padding: '6px 8px', cursor: 'pointer', borderRadius: '4px', backgroundColor: filters[col].sort === 'desc' ? '#f1f5f9' : 'transparent', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontSize: '14px' }}>↑</span> {isStringCol ? 'Sort Z to A' : 'Sort Z to A (Besar ke Kecil)'}
+          onClick={() => { updateFilter(col, 'sort', filters[col].sort === 'desc' ? null : 'desc'); setFilterPopup(null); }}
+          style={{ padding: '6px 10px', cursor: 'pointer', borderRadius: '6px', backgroundColor: filters[col].sort === 'desc' ? '#F1F5F9' : 'transparent', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600, color: filters[col].sort === 'desc' ? '#C8102E' : '#334155' }}
+        >
+          <span style={{ fontSize: '14px' }}>↑</span> {isStringCol ? 'Sort Z to A' : 'Sort Besar ke Kecil'}
         </div>
-        <div style={{ height: '1px', background: '#e2e8f0', margin: '8px 0' }} />
+
+        <div style={{ height: '1px', background: '#E2E8F0', margin: '8px 0' }} />
 
         <input
           type="text"
-          placeholder="Search WOK..."
+          placeholder={`Cari ${col === 'wok' ? 'WOK' : 'nilai'}...`}
           value={filters[col].search}
           onChange={e => updateFilter(col, 'search', e.target.value)}
-          style={{ width: '100%', boxSizing: 'border-box', padding: '6px 12px', border: '1px solid #cbd5e1', borderRadius: '50px', marginBottom: '8px', fontSize: '12px' }}
+          style={{ width: '100%', boxSizing: 'border-box', padding: '6px 12px', border: '1px solid #CBD5E1', borderRadius: '50px', marginBottom: '8px', fontSize: '11.5px', outline: 'none' }}
         />
 
-        <div style={{ maxHeight: '150px', overflowY: 'auto' }}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 2px', cursor: 'pointer' }}>
+        <div style={{ maxHeight: '160px', overflowY: 'auto', paddingRight: '2px' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 2px', cursor: 'pointer', fontWeight: 700, borderBottom: '1px solid #F1F5F9', marginBottom: '4px' }}>
             <input
               type="checkbox"
-              checked={filters[col].unchecked.length === 0}
+              checked={currentUncheckedStr.length === 0}
               onChange={(e) => {
                 if (e.target.checked) updateFilter(col, 'unchecked', []);
-                else updateFilter(col, 'unchecked', [...allValues]);
+                else updateFilter(col, 'unchecked', allValues.map(String));
               }}
             />
-            (Select All)
+            (Pilih Semua)
           </label>
-          {visibleValues.map(v => (
-            <label key={v} style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', padding: '4px 2px', cursor: 'pointer' }}>
-              <input
-                type="checkbox"
-                style={{ marginTop: '2px', flexShrink: 0 }}
-                checked={!filters[col].unchecked.includes(v)}
-                onChange={(e) => {
-                  const u = filters[col].unchecked;
-                  if (e.target.checked) updateFilter(col, 'unchecked', u.filter(x => x !== v));
-                  else updateFilter(col, 'unchecked', [...u, v]);
-                }}
-              />
-              <span style={{ lineHeight: '1.3' }}>
-                {v} <span style={{ color: '#94a3b8', fontSize: '11px', fontWeight: 600, whiteSpace: 'nowrap' }}>({valueCounts[v]})</span>
-              </span>
-            </label>
-          ))}
+          {visibleValues.map(v => {
+            const strVal = String(v);
+            const isChecked = !currentUncheckedStr.includes(strVal);
+            return (
+              <label key={strVal} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 2px', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  style={{ flexShrink: 0 }}
+                  checked={isChecked}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      updateFilter(col, 'unchecked', currentUncheckedStr.filter(x => x !== strVal));
+                    } else {
+                      updateFilter(col, 'unchecked', [...currentUncheckedStr, strVal]);
+                    }
+                  }}
+                />
+                <span style={{ lineHeight: '1.3', fontSize: '11.5px', color: '#0F172A' }}>
+                  {strVal} <span style={{ color: '#94A3B8', fontSize: '10.5px', fontWeight: 600 }}>({valueCounts[v]})</span>
+                </span>
+              </label>
+            );
+          })}
         </div>
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '6px', marginTop: '8px' }}>
-          <button onClick={() => setFilterPopup(null)} style={{ padding: '4px 8px', border: '1px solid #cbd5e1', borderRadius: '4px', background: '#fff', cursor: 'pointer', fontSize: '11px', fontWeight: 600 }}>OK</button>
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '6px', marginTop: '10px', paddingTop: '6px', borderTop: '1px solid #F1F5F9' }}>
+          <button
+            type="button"
+            onClick={() => {
+              updateFilter(col, 'unchecked', []);
+              updateFilter(col, 'search', '');
+              updateFilter(col, 'sort', null);
+            }}
+            style={{ padding: '4px 8px', border: 'none', background: 'transparent', color: '#64748B', cursor: 'pointer', fontSize: '11px', fontWeight: 600 }}
+          >
+            Reset
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilterPopup(null)}
+            style={{ padding: '4px 12px', border: 'none', borderRadius: '6px', background: '#0F172A', color: '#FFFFFF', cursor: 'pointer', fontSize: '11px', fontWeight: 700 }}
+          >
+            Terapkan
+          </button>
         </div>
       </div>
     );
@@ -634,14 +710,8 @@ export default function ProjectTable({ projects, branchName, onReview, updateAct
   const odpGrid = '34px 210px 130px 80px 80px 80px';
 
   return (
-    <div className="card" style={{ position: 'relative', overflow: 'hidden' }}>
-      {filterPopup && (
-        <div
-          onClick={() => setFilterPopup(null)}
-          style={{ position: 'fixed', inset: 0, zIndex: 99 }}
-        />
-      )}
-      <div style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: '75vh' }}>
+    <div className="card" style={{ position: 'relative', overflow: filterPopup ? 'visible' : 'hidden' }}>
+      <div style={{ overflowX: 'auto', overflowY: filterPopup ? 'visible' : 'auto', maxHeight: '75vh' }}>
         <div style={{ minWidth: 'max-content', paddingBottom: filterPopup ? '400px' : '0' }}>
           {/* Header */}
           <div className="table-header" style={{ gridTemplateColumns: tableGrid }}>
@@ -649,22 +719,22 @@ export default function ProjectTable({ projects, branchName, onReview, updateAct
             <div>Nama Proyek</div>
             <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
               <span style={{ display: 'flex', alignItems: 'center', paddingTop: '2px' }}>Branch / WOK</span>
-              <div onClick={() => setFilterPopup(filterPopup === 'wok' ? null : 'wok')} style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', color: filters.wok.sort || filters.wok.unchecked.length > 0 ? '#C8102E' : '#94a3b8' }}><FilterIcon /></div>
+              <div onClick={(e) => { e.stopPropagation(); setFilterPopup(filterPopup === 'wok' ? null : 'wok'); }} style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', color: filters.wok.sort || filters.wok.unchecked.length > 0 ? '#C8102E' : '#94a3b8', padding: '2px' }}><FilterIcon /></div>
               {renderFilterPopup('wok')}
             </div>
             <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
               <span style={{ display: 'flex', alignItems: 'center', paddingTop: '2px' }}>Used</span>
-              <div onClick={() => setFilterPopup(filterPopup === 'usedTotal' ? null : 'usedTotal')} style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', color: filters.usedTotal.sort || filters.usedTotal.unchecked.length > 0 ? '#C8102E' : '#94a3b8' }}><FilterIcon /></div>
+              <div onClick={(e) => { e.stopPropagation(); setFilterPopup(filterPopup === 'usedTotal' ? null : 'usedTotal'); }} style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', color: filters.usedTotal.sort || filters.usedTotal.unchecked.length > 0 ? '#C8102E' : '#94a3b8', padding: '2px' }}><FilterIcon /></div>
               {renderFilterPopup('usedTotal')}
             </div>
             <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
               <span style={{ display: 'flex', alignItems: 'center', paddingTop: '2px' }}>Available</span>
-              <div onClick={() => setFilterPopup(filterPopup === 'avaiTotal' ? null : 'avaiTotal')} style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', color: filters.avaiTotal.sort || filters.avaiTotal.unchecked.length > 0 ? '#C8102E' : '#94a3b8' }}><FilterIcon /></div>
+              <div onClick={(e) => { e.stopPropagation(); setFilterPopup(filterPopup === 'avaiTotal' ? null : 'avaiTotal'); }} style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', color: filters.avaiTotal.sort || filters.avaiTotal.unchecked.length > 0 ? '#C8102E' : '#94a3b8', padding: '2px' }}><FilterIcon /></div>
               {renderFilterPopup('avaiTotal')}
             </div>
             <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
               <span style={{ display: 'flex', alignItems: 'center', paddingTop: '2px' }}>Total</span>
-              <div onClick={() => setFilterPopup(filterPopup === 'totalPort' ? null : 'totalPort')} style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', color: filters.totalPort.sort || filters.totalPort.unchecked.length > 0 ? '#C8102E' : '#94a3b8' }}><FilterIcon /></div>
+              <div onClick={(e) => { e.stopPropagation(); setFilterPopup(filterPopup === 'totalPort' ? null : 'totalPort'); }} style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', color: filters.totalPort.sort || filters.totalPort.unchecked.length > 0 ? '#C8102E' : '#94a3b8', padding: '2px' }}><FilterIcon /></div>
               {renderFilterPopup('totalPort')}
             </div>
             {ACT_TYPES.map(t => (

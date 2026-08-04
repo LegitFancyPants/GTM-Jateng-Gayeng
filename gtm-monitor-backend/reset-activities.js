@@ -1,12 +1,11 @@
 /**
  * Script untuk reset semua data aktivitas GTM
- * Menghapus semua ProjectActivity dan Activity,
- * sehingga status kembali ke "belum" (kosong)
+ * Menghapus semua ProjectActivityPhoto, ProjectActivity, dan Activity,
+ * sehingga semua kegiatan GTM kembali ke 0 / "belum dikerjakan".
  *
  * Jalankan: node reset-activities.js
  */
 
-// Load .env manual tanpa dotenv package
 const fs = require('fs');
 const path = require('path');
 
@@ -20,7 +19,6 @@ if (fs.existsSync(envPath)) {
       if (eqIndex > -1) {
         const key = trimmed.slice(0, eqIndex).trim();
         let value = trimmed.slice(eqIndex + 1).trim();
-        // Remove surrounding quotes if any
         if ((value.startsWith('"') && value.endsWith('"')) ||
             (value.startsWith("'") && value.endsWith("'"))) {
           value = value.slice(1, -1);
@@ -38,18 +36,22 @@ const prisma = new PrismaClient();
 
 async function resetActivities() {
   try {
-    console.log('🔄 Memulai reset data aktivitas GTM...\n');
+    console.log('🔄 Memulai reset semua data aktivitas GTM...\n');
 
-    // Hapus semua ProjectActivity (aktivitas level project)
+    // 1. Hapus semua foto / upload kegiatan dari ProjectActivityPhoto
+    const deletedPhotos = await prisma.projectActivityPhoto.deleteMany({});
+    console.log(`✅ ProjectActivityPhoto dihapus: ${deletedPhotos.count} record`);
+
+    // 2. Hapus semua ProjectActivity (aktivitas level project)
     const deletedProjectActivities = await prisma.projectActivity.deleteMany({});
     console.log(`✅ ProjectActivity dihapus: ${deletedProjectActivities.count} record`);
 
-    // Hapus semua Activity (aktivitas level ODP)
+    // 3. Hapus semua Activity (aktivitas level ODP)
     const deletedActivities = await prisma.activity.deleteMany({});
     console.log(`✅ Activity (ODP-level) dihapus: ${deletedActivities.count} record`);
 
-    console.log('\n🎉 Reset selesai! Semua data aktivitas GTM sudah kosong.');
-    console.log('   Status semua kegiatan sekarang: belum dikerjakan');
+    console.log('\n🎉 Reset selesai! Semua data aktivitas GTM telah dikosongkan.');
+    console.log('   Status semua kegiatan sekarang kembali dari 0 (Belum Dikerjakan).');
   } catch (error) {
     console.error('❌ Error saat reset:', error);
   } finally {

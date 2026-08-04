@@ -385,9 +385,9 @@ app.get('/api/data', optionalAuthenticateToken, async (req, res) => {
           let typePhotos = (p.photos || []).filter(ph => ph.type === actKey);
           const legacyAct = (p.activities || []).find(a => a.type === actKey);
 
-          // Jika ada data legacy di ProjectActivity tapi belum ada di ProjectActivityPhoto
-          if (legacyAct && (legacyAct.photoUrl || legacyAct.planDate || legacyAct.keterangan)) {
-            const existsInPhotos = typePhotos.some(ph => ph.photoUrl === legacyAct.photoUrl);
+          // Jika ada data di ProjectActivity tapi belum ada di ProjectActivityPhoto
+          if (legacyAct && legacyAct.status && legacyAct.status !== 'belum' && (legacyAct.photoUrl || legacyAct.planDate || legacyAct.keterangan || legacyAct.kodeSf)) {
+            const existsInPhotos = typePhotos.some(ph => ph.photoUrl && ph.photoUrl === legacyAct.photoUrl);
             if (!existsInPhotos) {
               typePhotos.push({
                 id: legacyAct.id,
@@ -611,40 +611,57 @@ app.post('/api/activities/delete-photo', authenticateToken, async (req, res) => 
       return res.status(403).json({ success: false, message: `Akses ditolak. Anda hanya berhak memodifikasi data di branch ${req.user.branchName}.` });
     }
 
-    const branch = await prisma.branch.findUnique({ where: { name: branchName } });
-    if (!branch) return res.status(404).json({ success: false, message: 'Branch tidak ditemukan' });
+    let branch = await prisma.branch.findUnique({ where: { name: branchName } }).catch(() => null);
+    if (!branch) {
+      branch = await prisma.branch.findFirst({
+        where: { name: { equals: branchName, mode: 'insensitive' } }
+      }).catch(() => null);
+    }
+    if (!branch) return res.status(404).json({ success: false, message: `Branch "${branchName}" tidak ditemukan.` });
 
-    const project = await prisma.project.findFirst({
+    let project = await prisma.project.findFirst({
       where: { name: projectName, branchId: branch.id }
-    });
-    if (!project) return res.status(404).json({ success: false, message: 'Proyek tidak ditemukan' });
+    }).catch(() => null);
+    if (!project) {
+      project = await prisma.project.findFirst({
+        where: { name: { equals: projectName, mode: 'insensitive' }, branchId: branch.id }
+      }).catch(() => null);
+    }
+    if (!project) return res.status(404).json({ success: false, message: `Proyek "${projectName}" tidak ditemukan.` });
 
     let targetPhoto = null;
-    if (photoId) {
-      targetPhoto = await prisma.projectActivityPhoto.findUnique({ where: { id: photoId } });
-    } else {
+    if (photoId && typeof photoId === 'string' && photoId !== type) {
+      targetPhoto = await prisma.projectActivityPhoto.findUnique({ where: { id: photoId } }).catch(() => null);
+    }
+    if (!targetPhoto) {
       targetPhoto = await prisma.projectActivityPhoto.findFirst({
         where: { projectId: project.id, type: type },
         orderBy: { createdAt: 'desc' }
-      });
+      }).catch(() => null);
     }
 
-    if (targetPhoto && targetPhoto.photoUrl) {
-      if (targetPhoto.photoUrl.includes('res.cloudinary.com')) {
-        await deleteFromCloudinary(targetPhoto.photoUrl);
-      } else if (targetPhoto.photoUrl.startsWith('/uploads/')) {
-        const localP = path.join(__dirname, targetPhoto.photoUrl);
-        if (fs.existsSync(localP)) {
-          await fs.promises.unlink(localP).catch(err => console.error('Unlink error:', err.message));
+    if (targetPhoto) {
+      if (targetPhoto.photoUrl) {
+        if (targetPhoto.photoUrl.includes('res.cloudinary.com')) {
+          await deleteFromCloudinary(targetPhoto.photoUrl).catch(err => console.error('Cloudinary error:', err.message));
+        } else if (targetPhoto.photoUrl.startsWith('/uploads/')) {
+          const localP = path.join(__dirname, targetPhoto.photoUrl);
+          if (fs.existsSync(localP)) {
+            await fs.promises.unlink(localP).catch(err => console.error('Unlink error:', err.message));
+          }
         }
       }
       await prisma.projectActivityPhoto.delete({ where: { id: targetPhoto.id } }).catch(() => null);
+    } else {
+      await prisma.projectActivityPhoto.deleteMany({
+        where: { projectId: project.id, type: type }
+      }).catch(() => null);
     }
 
     // Update status ProjectActivity
     const remainingPhotos = await prisma.projectActivityPhoto.findMany({
       where: { projectId: project.id, type: type }
-    });
+    }).catch(() => []);
     let newStatus = 'belum';
     if (remainingPhotos.some(p => p.status === 'upload')) {
       newStatus = 'upload';
@@ -653,23 +670,38 @@ app.post('/api/activities/delete-photo', authenticateToken, async (req, res) => 
     }
 
     const latest = remainingPhotos[remainingPhotos.length - 1];
-    await prisma.projectActivity.upsert({
-      where: { projectId_type: { projectId: project.id, type: type } },
-      update: {
-        status: newStatus,
-        photoUrl: latest?.photoUrl || null,
-        planDate: latest?.planDate || null,
-        keterangan: latest?.keterangan || null
-      },
-      create: {
-        projectId: project.id,
-        type: type,
-        status: newStatus,
-        photoUrl: latest?.photoUrl || null
-      }
-    });
 
-    res.json({ success: true, message: 'Foto berhasil dihapus' });
+    if (remainingPhotos.length === 0) {
+      await prisma.projectActivityPhoto.deleteMany({
+        where: { projectId: project.id, type: type }
+      }).catch(() => null);
+
+      await prisma.projectActivity.updateMany({
+        where: { projectId: project.id, type: type },
+        data: {
+          status: 'belum',
+          photoUrl: null,
+          planDate: null,
+          keterangan: null,
+          namaOutlet: null,
+          kodeSf: null
+        }
+      }).catch(() => null);
+    } else {
+      await prisma.projectActivity.updateMany({
+        where: { projectId: project.id, type: type },
+        data: {
+          status: newStatus,
+          photoUrl: latest?.photoUrl || null,
+          planDate: latest?.planDate || null,
+          keterangan: latest?.keterangan || null,
+          namaOutlet: latest?.namaOutlet || null,
+          kodeSf: latest?.kodeSf || null
+        }
+      }).catch(() => null);
+    }
+
+    res.json({ success: true, message: 'Kegiatan berhasil dihapus' });
   } catch (error) {
     console.error('Delete photo error:', error);
     res.status(500).json({ success: false, message: 'Gagal menghapus foto' });
@@ -782,33 +814,45 @@ app.post('/api/reject', requireAdmin, async (req, res) => {
   try {
     const { projectName, branchName, type, photoId } = req.body;
 
-    const branch = await prisma.branch.findUnique({ where: { name: branchName } });
+    let branch = await prisma.branch.findUnique({ where: { name: branchName } }).catch(() => null);
     if (!branch) {
-      return res.status(404).json({ success: false, message: 'Branch not found' });
+      branch = await prisma.branch.findFirst({
+        where: { name: { equals: branchName, mode: 'insensitive' } }
+      }).catch(() => null);
     }
+    if (!branch) return res.status(404).json({ success: false, message: `Branch "${branchName}" tidak ditemukan.` });
 
-    const project = await prisma.project.findFirst({
+    let project = await prisma.project.findFirst({
       where: { name: projectName, branchId: branch.id }
-    });
-
+    }).catch(() => null);
     if (!project) {
-      return res.status(404).json({ success: false, message: 'Project not found' });
+      project = await prisma.project.findFirst({
+        where: { name: { equals: projectName, mode: 'insensitive' }, branchId: branch.id }
+      }).catch(() => null);
     }
+    if (!project) return res.status(404).json({ success: false, message: `Proyek "${projectName}" tidak ditemukan.` });
 
     let targetPhoto = null;
-    if (photoId) {
-      targetPhoto = await prisma.projectActivityPhoto.findUnique({ where: { id: photoId } });
-    } else {
+    if (photoId && typeof photoId === 'string' && photoId !== type) {
+      targetPhoto = await prisma.projectActivityPhoto.findUnique({ where: { id: photoId } }).catch(() => null);
+    }
+    if (!targetPhoto) {
       targetPhoto = await prisma.projectActivityPhoto.findFirst({
         where: { projectId: project.id, type: type, status: 'upload' },
         orderBy: { createdAt: 'desc' }
-      });
+      }).catch(() => null);
+    }
+    if (!targetPhoto) {
+      targetPhoto = await prisma.projectActivityPhoto.findFirst({
+        where: { projectId: project.id, type: type },
+        orderBy: { createdAt: 'desc' }
+      }).catch(() => null);
     }
 
     if (targetPhoto) {
       if (targetPhoto.photoUrl) {
         if (targetPhoto.photoUrl.includes('res.cloudinary.com')) {
-          await deleteFromCloudinary(targetPhoto.photoUrl);
+          await deleteFromCloudinary(targetPhoto.photoUrl).catch(err => console.error('Cloudinary error:', err.message));
         } else if (targetPhoto.photoUrl.startsWith('/uploads/')) {
           const localP = path.join(__dirname, targetPhoto.photoUrl);
           if (fs.existsSync(localP)) {
@@ -817,12 +861,16 @@ app.post('/api/reject', requireAdmin, async (req, res) => {
         }
       }
       await prisma.projectActivityPhoto.delete({ where: { id: targetPhoto.id } }).catch(() => null);
+    } else {
+      await prisma.projectActivityPhoto.deleteMany({
+        where: { projectId: project.id, type: type }
+      }).catch(() => null);
     }
 
     // Recalculate status ProjectActivity
     const remaining = await prisma.projectActivityPhoto.findMany({
       where: { projectId: project.id, type: type }
-    });
+    }).catch(() => []);
 
     let overallStatus = 'belum';
     if (remaining.some(ph => ph.status === 'upload')) {
@@ -833,19 +881,35 @@ app.post('/api/reject', requireAdmin, async (req, res) => {
 
     const latest = remaining[remaining.length - 1];
 
-    const updatedActivity = await prisma.projectActivity.upsert({
-      where: { projectId_type: { projectId: project.id, type: type } },
-      update: {
-        status: overallStatus,
-        photoUrl: latest?.photoUrl || null
-      },
-      create: {
-        projectId: project.id,
-        type: type,
-        status: overallStatus,
-        photoUrl: latest?.photoUrl || null
-      }
-    });
+    if (remaining.length === 0) {
+      await prisma.projectActivityPhoto.deleteMany({
+        where: { projectId: project.id, type: type }
+      }).catch(() => null);
+
+      await prisma.projectActivity.updateMany({
+        where: { projectId: project.id, type: type },
+        data: {
+          status: 'belum',
+          photoUrl: null,
+          planDate: null,
+          keterangan: null,
+          namaOutlet: null,
+          kodeSf: null
+        }
+      }).catch(() => null);
+    } else {
+      await prisma.projectActivity.updateMany({
+        where: { projectId: project.id, type: type },
+        data: {
+          status: overallStatus,
+          photoUrl: latest?.photoUrl || null,
+          planDate: latest?.planDate || null,
+          keterangan: latest?.keterangan || null,
+          namaOutlet: latest?.namaOutlet || null,
+          kodeSf: latest?.kodeSf || null
+        }
+      }).catch(() => null);
+    }
 
     res.json({ success: true, message: 'Verifikasi berhasil ditolak. Foto telah dihapus.', activity: updatedActivity });
   } catch (error) {
@@ -854,7 +918,25 @@ app.post('/api/reject', requireAdmin, async (req, res) => {
   }
 });
 
-// 4. Import Excel (Admin only) â€” updates ODP data and creates Projects/Branches robustly & super fast
+// 3c. Reset All Activities (Admin only — resets all GTM activities to 0 / 'belum')
+app.post('/api/admin/reset-activities', requireAdmin, async (req, res) => {
+  try {
+    const deletedPhotos = await prisma.projectActivityPhoto.deleteMany({});
+    const deletedProjectActivities = await prisma.projectActivity.deleteMany({});
+    const deletedActivities = await prisma.activity.deleteMany({});
+
+    res.json({
+      success: true,
+      message: `Reset selesai. Semua data aktivitas GTM telah dikosongkan (${deletedPhotos.count} foto, ${deletedProjectActivities.count} aktivitas proyek).`,
+      count: deletedProjectActivities.count
+    });
+  } catch (error) {
+    console.error('Reset activities error:', error);
+    res.status(500).json({ success: false, message: 'Gagal mereset data aktivitas GTM' });
+  }
+});
+
+// 4. Import Excel (Admin only) — updates ODP data and creates Projects/Branches robustly & super fast
 app.post('/api/admin/import-excel', requireAdmin, excelUpload.single('file'), async (req, res) => {
   try {
     if (!req.file) {

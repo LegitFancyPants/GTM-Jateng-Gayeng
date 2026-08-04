@@ -1,9 +1,15 @@
 import { useState, useEffect } from 'react';
 import { ACT_TYPES, actMeta } from '../utils';
+import ConfirmRejectModal from './ConfirmRejectModal';
+import ConfirmDeleteModal from './ConfirmDeleteModal';
 
-export default function ReviewModal({ modalData, closeModal, verifyActivity, rejectActivity }) {
+export default function ReviewModal({ modalData, closeModal, verifyActivity, rejectActivity, deletePhoto }) {
   const [previewPhoto, setPreviewPhoto] = useState(null);
   const [localActivities, setLocalActivities] = useState(modalData?.activities || []);
+  const [rejectTarget, setRejectTarget] = useState(null);
+  const [isRejecting, setIsRejecting] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     if (modalData?.activities) {
@@ -25,17 +31,81 @@ export default function ReviewModal({ modalData, closeModal, verifyActivity, rej
     }
   };
 
-  const handleReject = async (actKey, photoId) => {
-    if (rejectActivity) {
-      const confirmReject = window.confirm("Apakah Anda yakin ingin menolak verifikasi ini? Foto tersebut akan dihapus dan user perlu melakukan upload ulang.");
-      if (!confirmReject) return;
+  const triggerRejectConfirm = (actKey, photoId, actLabel, photoIndex) => {
+    setRejectTarget({
+      actKey,
+      photoId,
+      actLabel,
+      photoIndex,
+      pName: modalData.pName,
+      bName: modalData.bName
+    });
+  };
+
+  const handleExecuteReject = async () => {
+    if (!rejectTarget || !rejectActivity) return;
+    setIsRejecting(true);
+    try {
+      const { actKey, photoId } = rejectTarget;
       await rejectActivity(modalData.bName, modalData.pName, actKey, photoId);
       setLocalActivities(prev => prev.map(a => {
         if (a.type !== actKey) return a;
         const updatedPhotos = (a.photos || []).filter(ph => ph.id !== photoId);
         const newStatus = updatedPhotos.some(ph => ph.status === 'upload') ? 'upload' : updatedPhotos.some(ph => ph.status === 'verified') ? 'verified' : 'belum';
-        return { ...a, status: newStatus, photos: updatedPhotos };
+        const isCleared = updatedPhotos.length === 0;
+        return {
+          ...a,
+          status: newStatus,
+          photos: updatedPhotos,
+          ...(isCleared ? { keterangan: null, kodeSf: null, namaOutlet: null, planDate: null, photoUrl: null } : {})
+        };
       }));
+      setRejectTarget(null);
+    } catch (err) {
+      console.error('Error rejecting activity:', err);
+    } finally {
+      setIsRejecting(false);
+    }
+  };
+
+  const triggerDeleteConfirm = (actKey, photoId, actLabel, photoIndex) => {
+    setDeleteTarget({
+      actKey,
+      photoId,
+      actLabel,
+      photoIndex,
+      pName: modalData.pName,
+      bName: modalData.bName
+    });
+  };
+
+  const handleExecuteDelete = async () => {
+    if (!deleteTarget) return;
+    setIsDeleting(true);
+    try {
+      const { actKey, photoId, bName, pName } = deleteTarget;
+      if (deletePhoto) {
+        await deletePhoto(bName, pName, actKey, photoId);
+      } else if (rejectActivity) {
+        await rejectActivity(bName, pName, actKey, photoId);
+      }
+      setLocalActivities(prev => prev.map(a => {
+        if (a.type !== actKey) return a;
+        const updatedPhotos = (a.photos || []).filter(ph => ph.id !== photoId);
+        const newStatus = updatedPhotos.some(ph => ph.status === 'upload') ? 'upload' : updatedPhotos.some(ph => ph.status === 'verified') ? 'verified' : 'belum';
+        const isCleared = updatedPhotos.length === 0;
+        return {
+          ...a,
+          status: newStatus,
+          photos: updatedPhotos,
+          ...(isCleared ? { keterangan: null, kodeSf: null, namaOutlet: null, planDate: null, photoUrl: null } : {})
+        };
+      }));
+      setDeleteTarget(null);
+    } catch (err) {
+      console.error('Error deleting activity:', err);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -90,10 +160,10 @@ export default function ReviewModal({ modalData, closeModal, verifyActivity, rej
           {ACT_TYPES.map(actType => {
             const a = localActivities.find(x => x.type === actType.key);
 
-            // Foto yang ditolak (status 'belum') dihapus dari tampilan — user perlu upload ulang
+            // Foto / kegiatan yang ditolak (status 'belum') dihapus dari tampilan — user perlu upload ulang
             const allPhotos = a?.photos && a.photos.length > 0
               ? a.photos
-              : (a?.photoUrl && a?.status !== 'belum' ? [{ id: a.id, photoUrl: a.photoUrl, status: a.status, planDate: a.planDate, keterangan: a.keterangan, namaOutlet: a.namaOutlet, kodeSf: a.kodeSf }] : []);
+              : (a && a.status && a.status !== 'belum' ? [{ id: a.id, photoUrl: a.photoUrl, status: a.status, planDate: a.planDate, keterangan: a.keterangan, namaOutlet: a.namaOutlet, kodeSf: a.kodeSf }] : []);
             const photoList = allPhotos.filter(ph => ph.status !== 'belum');
 
             // Hitung status dari foto yang valid saja
@@ -154,28 +224,57 @@ export default function ReviewModal({ modalData, closeModal, verifyActivity, rej
                             {(ph.kodeSf || ph.keterangan) && <div><b>{actType.key === 'rekrutmen_sf' ? 'Kode SF' : 'Kode SF/Ket'}:</b> {ph.kodeSf || ph.keterangan}</div>}
                           </div>
 
-                          {ph.status === 'upload' && (verifyActivity || rejectActivity) && (
-                            <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
-                              {rejectActivity && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleReject(actType.key, ph.id)}
-                                  style={{ padding: '6px 12px', borderRadius: '6px', border: 'none', background: '#dc2626', color: '#fff', fontSize: '11.5px', fontWeight: 700, cursor: 'pointer' }}
-                                >
-                                  Tolak
-                                </button>
-                              )}
-                              {verifyActivity && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleVerify(actType.key, ph.id)}
-                                  style={{ padding: '6px 12px', borderRadius: '6px', border: 'none', background: '#16a34a', color: '#fff', fontSize: '11.5px', fontWeight: 700, cursor: 'pointer' }}
-                                >
-                                  Verifikasi
-                                </button>
-                              )}
-                            </div>
-                          )}
+                          <div style={{ display: 'flex', gap: '6px', flexShrink: 0, alignItems: 'center' }}>
+                            {ph.status === 'upload' && (
+                              <>
+                                {rejectActivity && (
+                                  <button
+                                    type="button"
+                                    onClick={() => triggerRejectConfirm(actType.key, ph.id, actType.label, idx)}
+                                    style={{ padding: '6px 12px', borderRadius: '6px', border: 'none', background: '#dc2626', color: '#fff', fontSize: '11.5px', fontWeight: 700, cursor: 'pointer' }}
+                                  >
+                                    Tolak
+                                  </button>
+                                )}
+                                {verifyActivity && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleVerify(actType.key, ph.id)}
+                                    style={{ padding: '6px 12px', borderRadius: '6px', border: 'none', background: '#16a34a', color: '#fff', fontSize: '11.5px', fontWeight: 700, cursor: 'pointer' }}
+                                  >
+                                    Verifikasi
+                                  </button>
+                                )}
+                              </>
+                            )}
+
+                            {(deletePhoto || rejectActivity) && (
+                              <button
+                                type="button"
+                                onClick={() => triggerDeleteConfirm(actType.key, ph.id, actType.label, idx)}
+                                style={{
+                                  padding: '6px 12px',
+                                  borderRadius: '6px',
+                                  border: '1px solid #fca5a5',
+                                  background: '#fff1f2',
+                                  color: '#e11d48',
+                                  fontSize: '11.5px',
+                                  fontWeight: 700,
+                                  cursor: 'pointer',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px'
+                                }}
+                                title="Hapus kegiatan ini"
+                              >
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                  <polyline points="3 6 5 6 21 6"></polyline>
+                                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                </svg>
+                                Hapus
+                              </button>
+                            )}
+                          </div>
                         </div>
                       );
                     })}
@@ -245,6 +344,24 @@ export default function ReviewModal({ modalData, closeModal, verifyActivity, rej
           </div>
         </div>
       )}
+
+      {/* Custom Reject Confirmation Modal */}
+      <ConfirmRejectModal
+        isOpen={!!rejectTarget}
+        data={rejectTarget}
+        onConfirm={handleExecuteReject}
+        onCancel={() => setRejectTarget(null)}
+        isRejecting={isRejecting}
+      />
+
+      {/* Custom Delete Confirmation Modal */}
+      <ConfirmDeleteModal
+        isOpen={!!deleteTarget}
+        data={deleteTarget}
+        onConfirm={handleExecuteDelete}
+        onCancel={() => setDeleteTarget(null)}
+        isDeleting={isDeleting}
+      />
     </div>
   );
 }

@@ -124,3 +124,100 @@ export function formatBranch(name) {
   if (!name || name === 'Semua Branch' || name === 'Multi Branch') return name;
   return name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
 }
+
+export function exportProjectsToExcel(branches, selectedBranchName = null) {
+  import('xlsx').then(XLSX => {
+    let targetBranches = Array.isArray(branches) ? branches : [];
+    if (selectedBranchName && selectedBranchName !== 'Semua Branch' && selectedBranchName !== 'Multi Branch') {
+      targetBranches = targetBranches.filter(b => b.name === selectedBranchName || b.name.toLowerCase() === selectedBranchName.toLowerCase());
+    }
+
+    const getActStatusLabel = (act, actTypeKey) => {
+      if (!act || !act.status || act.status === 'belum') return 'Belum Dikerjakan';
+      let label = act.status === 'verified' ? 'Terverifikasi' : 'Menunggu Verifikasi';
+      if (actTypeKey === 'tsel_menyapa' && act.planDate) {
+        const dStr = new Date(act.planDate).toLocaleDateString('id-ID');
+        label += ` (Tgl: ${dStr})`;
+      } else if (actTypeKey === 'rekrutmen_sf' && (act.keterangan || act.kodeSf)) {
+        label += ` (${act.kodeSf || act.keterangan})`;
+      }
+      return label;
+    };
+
+    const getOverallProjectStatus = (acts) => {
+      if (acts.some(a => a.status === 'upload')) return 'Menunggu Verifikasi';
+      if (acts.some(a => a.status === 'verified')) return 'Terverifikasi';
+      return 'Belum Dikerjakan';
+    };
+
+    const dataRows = [];
+
+    targetBranches.forEach(b => {
+      const bName = formatBranch(b.name);
+      (b.projects || []).forEach(p => {
+        const used = p.usedTotal ?? (p.odps || []).reduce((s, o) => s + (o.used || 0), 0);
+        const avai = p.avaiTotal ?? (p.odps || []).reduce((s, o) => s + (o.avai || 0), 0);
+        const total = p.totalPort ?? (p.odps || []).reduce((s, o) => s + (o.total || 0), 0);
+        const occ = total > 0 ? (used / total * 100).toFixed(1) + '%' : '0%';
+
+        const acts = p.activities || [];
+        const tselAct = acts.find(a => a.type === 'tsel_menyapa');
+        const brandingAct = acts.find(a => a.type === 'branding_outlet');
+        const bumdesAct = acts.find(a => a.type === 'bumdes');
+        const rekrutmenAct = acts.find(a => a.type === 'rekrutmen_sf');
+        const openTableAct = acts.find(a => a.type === 'open_table');
+
+        dataRows.push({
+          'Branch': bName,
+          'WOK': p.wok || '-',
+          'Nama Proyek': p.name,
+          'Type Design': p.typeDesign || 'Greenfield',
+          'Used Port': used,
+          'Available Port': avai,
+          'Total Port': total,
+          'Occupancy Rate': occ,
+          'Tsel Menyapa Warga': getActStatusLabel(tselAct, 'tsel_menyapa'),
+          'Branding Downline/Outlet': getActStatusLabel(brandingAct, 'branding_outlet'),
+          'Kerjasama BUMDes': getActStatusLabel(bumdesAct, 'bumdes'),
+          'Rekrutmen SF AKAMSI': getActStatusLabel(rekrutmenAct, 'rekrutmen_sf'),
+          'Always ON Open Table': getActStatusLabel(openTableAct, 'open_table'),
+          'Overall Status Proyek': getOverallProjectStatus(acts)
+        });
+      });
+    });
+
+    if (dataRows.length === 0) {
+      alert('⚠️ Tidak ada data proyek untuk diexport.');
+      return;
+    }
+
+    const ws = XLSX.utils.json_to_sheet(dataRows);
+
+    ws['!cols'] = [
+      { wch: 15 }, // Branch
+      { wch: 15 }, // WOK
+      { wch: 38 }, // Nama Proyek
+      { wch: 14 }, // Type Design
+      { wch: 10 }, // Used Port
+      { wch: 14 }, // Available Port
+      { wch: 10 }, // Total Port
+      { wch: 16 }, // Occupancy Rate
+      { wch: 25 }, // Tsel Menyapa
+      { wch: 25 }, // Branding
+      { wch: 25 }, // BUMDes
+      { wch: 25 }, // Rekrutmen SF
+      { wch: 25 }, // Open Table
+      { wch: 22 }  // Overall Status
+    ];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Rekap GTM Activity');
+
+    const cleanName = selectedBranchName && selectedBranchName !== 'Semua Branch'
+      ? formatBranch(selectedBranchName).replace(/\s+/g, '_')
+      : 'Semua_Branch';
+    
+    const today = new Date().toISOString().split('T')[0];
+    XLSX.writeFile(wb, `Rekap_GTM_Activity_${cleanName}_${today}.xlsx`);
+  });
+}

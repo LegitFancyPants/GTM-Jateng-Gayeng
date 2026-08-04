@@ -920,19 +920,16 @@ function LoadingScreen() {
             />
           )}
           {view === 'branch' && (
-            isAdmin ? (
-              <BranchView 
-                branches={branches} 
-                activeBranch={activeBranch} 
-                updateActivityField={updateActivityField} 
-                uploadPhoto={uploadPhoto}
-                verifyActivity={verifyActivity}
-                rejectActivity={rejectActivity}
-                deletePhoto={deletePhoto}
-              />
-            ) : (
-              <Dashboard branches={branches} goBranch={goBranch} kpi={kpi} statusChips={statusChips} ranking={ranking} mapBounds={mapBounds} mapPoints={mapPoints} isAdmin={isAdmin} typeDesignFilter={typeDesignFilter} setTypeDesignFilter={setTypeDesignFilter} />
-            )
+            <BranchView 
+              branches={branches} 
+              activeBranch={activeBranch} 
+              goDashboard={goDashboard}
+              updateActivityField={updateActivityField} 
+              uploadPhoto={uploadPhoto}
+              verifyActivity={isAdmin ? verifyActivity : null}
+              rejectActivity={isAdmin ? rejectActivity : null}
+              deletePhoto={deletePhoto}
+            />
           )}
           {view === 'upload' && (
             <UploadView 

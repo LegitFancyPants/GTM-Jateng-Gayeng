@@ -371,7 +371,7 @@ const Dashboard = memo(function Dashboard({ branches, goBranch, kpi, importMeta,
             {safeRanking.map(b => (
               <div
                 key={b.name}
-                onClick={() => isAdmin && goBranch && goBranch(b.name)}
+                onClick={() => goBranch && goBranch(b.name)}
                 style={{
                   display: 'grid',
                   gridTemplateColumns: '140px 1fr 70px 80px 100px 110px',
@@ -381,22 +381,18 @@ const Dashboard = memo(function Dashboard({ branches, goBranch, kpi, importMeta,
                   borderRadius: '12px',
                   background: '#FAFAFC',
                   border: '1px solid #F1F5F9',
-                  cursor: isAdmin ? 'pointer' : 'default',
+                  cursor: 'pointer',
                   transition: 'all 0.2s ease'
                 }}
                 onMouseEnter={(e) => {
-                  if (isAdmin) {
-                    e.currentTarget.style.borderColor = b.color;
-                    e.currentTarget.style.background = '#FFFFFF';
-                    e.currentTarget.style.transform = 'translateX(4px)';
-                  }
+                  e.currentTarget.style.borderColor = b.color;
+                  e.currentTarget.style.background = '#FFFFFF';
+                  e.currentTarget.style.transform = 'translateX(4px)';
                 }}
                 onMouseLeave={(e) => {
-                  if (isAdmin) {
-                    e.currentTarget.style.borderColor = '#F1F5F9';
-                    e.currentTarget.style.background = '#FAFAFC';
-                    e.currentTarget.style.transform = 'translateX(0px)';
-                  }
+                  e.currentTarget.style.borderColor = '#F1F5F9';
+                  e.currentTarget.style.background = '#FAFAFC';
+                  e.currentTarget.style.transform = 'translateX(0px)';
                 }}
               >
                 <div style={{ fontWeight: 800, fontSize: '13.5px', color: '#0F172A', letterSpacing: '0.5px' }}>{b.name}</div>
