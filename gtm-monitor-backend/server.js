@@ -621,9 +621,19 @@ app.post('/api/activities/delete-photo', authenticateToken, async (req, res) => 
     const cleanBName = (branchName || '').trim();
     const cleanPName = (projectName || '').trim();
 
-    if (req.user && req.user.role === 'USER' && req.user.branchName) {
+    if (req.user && req.user.role === 'USER' && req.user.branchName && cleanBName) {
       if (req.user.branchName.trim().toUpperCase() !== cleanBName.toUpperCase()) {
-        return res.status(403).json({ success: false, message: `Akses ditolak. Anda hanya berhak memodifikasi data di branch ${req.user.branchName}.` });
+        const userBranch = await prisma.branch.findFirst({
+          where: { name: { equals: req.user.branchName, mode: 'insensitive' } }
+        }).catch(() => null);
+        
+        const projInUserBranch = userBranch ? await prisma.project.findFirst({
+          where: { name: cleanPName, branchId: userBranch.id }
+        }).catch(() => null) : null;
+
+        if (!projInUserBranch) {
+          return res.status(403).json({ success: false, message: `Akses ditolak. Anda hanya berhak memodifikasi data di branch ${req.user.branchName}.` });
+        }
       }
     }
 
@@ -633,20 +643,32 @@ app.post('/api/activities/delete-photo', authenticateToken, async (req, res) => 
         where: { name: { equals: cleanBName, mode: 'insensitive' } }
       }).catch(() => null);
     }
-    if (!branch) return res.status(404).json({ success: false, message: `Branch "${branchName}" tidak ditemukan.` });
 
-    let project = await prisma.project.findFirst({
-      where: { name: cleanPName, branchId: branch.id }
-    }).catch(() => null);
+    let project = null;
+    if (branch) {
+      project = await prisma.project.findFirst({
+        where: { name: cleanPName, branchId: branch.id }
+      }).catch(() => null);
+      if (!project) {
+        project = await prisma.project.findFirst({
+          where: { name: { equals: cleanPName, mode: 'insensitive' }, branchId: branch.id }
+        }).catch(() => null);
+      }
+    }
     if (!project) {
       project = await prisma.project.findFirst({
-        where: { name: { equals: cleanPName, mode: 'insensitive' }, branchId: branch.id }
+        where: { name: cleanPName }
       }).catch(() => null);
+      if (!project) {
+        project = await prisma.project.findFirst({
+          where: { name: { equals: cleanPName, mode: 'insensitive' } }
+        }).catch(() => null);
+      }
     }
     if (!project) return res.status(404).json({ success: false, message: `Proyek "${projectName}" tidak ditemukan.` });
 
     let targetPhoto = null;
-    if (photoId && typeof photoId === 'string' && photoId.length > 20) {
+    if (photoId && typeof photoId === 'string' && photoId.length > 15) {
       targetPhoto = await prisma.projectActivityPhoto.findUnique({ where: { id: photoId } }).catch(() => null);
     }
     if (!targetPhoto) {
@@ -738,20 +760,32 @@ app.post('/api/verify', requireAdmin, async (req, res) => {
         where: { name: { equals: cleanBName, mode: 'insensitive' } }
       }).catch(() => null);
     }
-    if (!branch) return res.status(404).json({ success: false, message: `Branch "${branchName}" tidak ditemukan.` });
 
-    let project = await prisma.project.findFirst({
-      where: { name: cleanPName, branchId: branch.id }
-    }).catch(() => null);
+    let project = null;
+    if (branch) {
+      project = await prisma.project.findFirst({
+        where: { name: cleanPName, branchId: branch.id }
+      }).catch(() => null);
+      if (!project) {
+        project = await prisma.project.findFirst({
+          where: { name: { equals: cleanPName, mode: 'insensitive' }, branchId: branch.id }
+        }).catch(() => null);
+      }
+    }
     if (!project) {
       project = await prisma.project.findFirst({
-        where: { name: { equals: cleanPName, mode: 'insensitive' }, branchId: branch.id }
+        where: { name: cleanPName }
       }).catch(() => null);
+      if (!project) {
+        project = await prisma.project.findFirst({
+          where: { name: { equals: cleanPName, mode: 'insensitive' } }
+        }).catch(() => null);
+      }
     }
     if (!project) return res.status(404).json({ success: false, message: `Proyek "${projectName}" tidak ditemukan.` });
 
     let targetPhoto = null;
-    if (photoId && typeof photoId === 'string' && photoId.length > 20) {
+    if (photoId && typeof photoId === 'string' && photoId.length > 15) {
       targetPhoto = await prisma.projectActivityPhoto.findUnique({ where: { id: photoId } }).catch(() => null);
     }
     if (!targetPhoto) {
@@ -782,8 +816,21 @@ app.post('/api/verify', requireAdmin, async (req, res) => {
 
     const newStatus = remainingPending > 0 ? 'upload' : 'verified';
 
-    // (Code logic truncated for brevity as per instructions)
-    res.json({ success: true, activity: 'verified' });
+    const activity = await prisma.projectActivity.upsert({
+      where: { projectId_type: { projectId: project.id, type: type } },
+      update: {
+        status: newStatus,
+        photoUrl: finalPhotoUrl || targetPhoto?.photoUrl || undefined
+      },
+      create: {
+        projectId: project.id,
+        type: type,
+        status: newStatus,
+        photoUrl: finalPhotoUrl || targetPhoto?.photoUrl || null
+      }
+    });
+
+    res.json({ success: true, activity });
   } catch (error) {
     console.error('Error verifying activity:', error);
     res.status(500).json({ success: false, message: 'Failed to verify activity: ' + error.message });
@@ -803,20 +850,32 @@ app.post('/api/reject', requireAdmin, async (req, res) => {
         where: { name: { equals: cleanBName, mode: 'insensitive' } }
       }).catch(() => null);
     }
-    if (!branch) return res.status(404).json({ success: false, message: `Branch "${branchName}" tidak ditemukan.` });
 
-    let project = await prisma.project.findFirst({
-      where: { name: cleanPName, branchId: branch.id }
-    }).catch(() => null);
+    let project = null;
+    if (branch) {
+      project = await prisma.project.findFirst({
+        where: { name: cleanPName, branchId: branch.id }
+      }).catch(() => null);
+      if (!project) {
+        project = await prisma.project.findFirst({
+          where: { name: { equals: cleanPName, mode: 'insensitive' }, branchId: branch.id }
+        }).catch(() => null);
+      }
+    }
     if (!project) {
       project = await prisma.project.findFirst({
-        where: { name: { equals: cleanPName, mode: 'insensitive' }, branchId: branch.id }
+        where: { name: cleanPName }
       }).catch(() => null);
+      if (!project) {
+        project = await prisma.project.findFirst({
+          where: { name: { equals: cleanPName, mode: 'insensitive' } }
+        }).catch(() => null);
+      }
     }
     if (!project) return res.status(404).json({ success: false, message: `Proyek "${projectName}" tidak ditemukan.` });
 
     let targetPhoto = null;
-    if (photoId && typeof photoId === 'string' && photoId.length > 20) {
+    if (photoId && typeof photoId === 'string' && photoId.length > 15) {
       targetPhoto = await prisma.projectActivityPhoto.findUnique({ where: { id: photoId } }).catch(() => null);
     }
     if (!targetPhoto) {
