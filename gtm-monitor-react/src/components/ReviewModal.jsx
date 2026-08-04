@@ -1,14 +1,37 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ACT_TYPES, actMeta } from '../utils';
 
-export default function ReviewModal({ modalData, closeModal, verifyActivity }) {
+export default function ReviewModal({ modalData, closeModal, verifyActivity, rejectActivity }) {
   const [previewPhoto, setPreviewPhoto] = useState(null);
+  const [localActivities, setLocalActivities] = useState(modalData?.activities || []);
+
+  useEffect(() => {
+    if (modalData?.activities) {
+      setLocalActivities(modalData.activities);
+    }
+  }, [modalData]);
 
   if (!modalData) return null;
 
+  const handleVerify = async (actKey) => {
+    if (verifyActivity) {
+      await verifyActivity(modalData.bName, modalData.pName, actKey);
+      setLocalActivities(prev => prev.map(a => a.type === actKey ? { ...a, status: 'verified' } : a));
+    }
+  };
+
+  const handleReject = async (actKey) => {
+    if (rejectActivity) {
+      const confirmReject = window.confirm("Apakah Anda yakin ingin menolak verifikasi ini? Foto bukti akan dihapus dan user perlu melakukan upload ulang.");
+      if (!confirmReject) return;
+      await rejectActivity(modalData.bName, modalData.pName, actKey);
+      setLocalActivities(prev => prev.map(a => a.type === actKey ? { ...a, status: 'belum', photoUrl: null } : a));
+    }
+  };
+
   return (
-    <div onClick={closeModal} style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: '24px' }}>
-      <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: '14px', width: '100%', maxWidth: '720px', maxHeight: '88vh', overflowY: 'auto' }}>
+    <div onClick={closeModal} style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.55)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 99999, padding: '24px' }}>
+      <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: '14px', width: '100%', maxWidth: '720px', maxHeight: '85vh', overflowY: 'auto' }}>
         <div style={{ padding: '22px 26px', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div>
             <div style={{ fontSize: '17px', fontWeight: 800, color: '#0f172a' }}>{modalData.pName}</div>
@@ -55,7 +78,7 @@ export default function ReviewModal({ modalData, closeModal, verifyActivity }) {
           <div style={{ fontSize: '13.5px', fontWeight: 700, color: '#0f172a', marginBottom: '12px' }}>Detail Activity GTM</div>
           
           {ACT_TYPES.map(actType => {
-            const a = modalData.activities.find(x => x.type === actType.key);
+            const a = localActivities.find(x => x.type === actType.key);
             const status = a?.status || 'belum';
             const meta = actMeta(status);
             return (
@@ -125,14 +148,24 @@ export default function ReviewModal({ modalData, closeModal, verifyActivity }) {
                   )}
                 </div>
                 
-                {status === 'upload' && verifyActivity && (
-                  <div style={{ textAlign: 'right', marginTop: '10px' }}>
-                    <button 
-                      onClick={() => verifyActivity(modalData.bName, modalData.pName, actType.key)}
-                      style={{ padding: '7px 14px', borderRadius: '7px', border: 'none', background: '#16a34a', color: '#fff', fontSize: '12.5px', fontWeight: 700, cursor: 'pointer' }}
-                    >
-                      Verifikasi
-                    </button>
+                {status === 'upload' && (verifyActivity || rejectActivity) && (
+                  <div style={{ textAlign: 'right', marginTop: '10px', display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                    {rejectActivity && (
+                      <button 
+                        onClick={() => handleReject(actType.key)}
+                        style={{ padding: '7px 14px', borderRadius: '7px', border: 'none', background: '#dc2626', color: '#fff', fontSize: '12.5px', fontWeight: 700, cursor: 'pointer' }}
+                      >
+                        Tolak
+                      </button>
+                    )}
+                    {verifyActivity && (
+                      <button 
+                        onClick={() => handleVerify(actType.key)}
+                        style={{ padding: '7px 14px', borderRadius: '7px', border: 'none', background: '#16a34a', color: '#fff', fontSize: '12.5px', fontWeight: 700, cursor: 'pointer' }}
+                      >
+                        Verifikasi
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
@@ -153,7 +186,7 @@ export default function ReviewModal({ modalData, closeModal, verifyActivity }) {
             flexDirection: 'column',
             alignItems: 'center', 
             justifyContent: 'center', 
-            zIndex: 200, 
+            zIndex: 100000, 
             padding: '20px' 
           }}
         >

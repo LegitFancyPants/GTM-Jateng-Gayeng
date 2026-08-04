@@ -561,6 +561,44 @@ function App() {
     }
   }, [isAdmin, token, fetchData]);
 
+  // Reject activity verification at PROJECT level (Admin only)
+  const rejectActivity = useCallback(async (branchName, projectName, actType) => {
+    if (!isAdmin) return;
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/reject`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          branchName,
+          projectName,
+          type: actType
+        })
+      });
+      if (res.ok) {
+        setBranches(prev => {
+          const newBranches = JSON.parse(JSON.stringify(prev));
+          const b = newBranches.find(x => x.name === branchName);
+          const p = b?.projects.find(x => x.name === projectName);
+          if (p && p.activities) {
+            const a = p.activities.find(x => x.type === actType);
+            if (a) {
+              a.status = 'belum';
+              a.photoUrl = null;
+            }
+          }
+          return newBranches;
+        });
+        fetchData();
+      }
+    } catch (err) {
+      console.error('Error rejecting activity:', err);
+    }
+  }, [isAdmin, token, fetchData]);
+
   const deletePhoto = useCallback(async (branchName, projectName, actType) => {
     try {
       const res = await fetch(`${API_BASE_URL}/api/activities/delete-photo`, {
@@ -919,6 +957,7 @@ function LoadingScreen() {
                 updateActivityField={updateActivityField} 
                 uploadPhoto={uploadPhoto}
                 verifyActivity={verifyActivity}
+                rejectActivity={rejectActivity}
                 deletePhoto={deletePhoto}
               />
             ) : (
@@ -932,6 +971,7 @@ function LoadingScreen() {
               updateActivityField={updateActivityField} 
               uploadPhoto={uploadPhoto}
               verifyActivity={isAdmin ? verifyActivity : null}
+              rejectActivity={isAdmin ? rejectActivity : null}
               deletePhoto={deletePhoto}
             />
           )}
@@ -943,6 +983,7 @@ function LoadingScreen() {
               goDashboard={goDashboard} 
               onLogout={() => handleLogout(true)}
               verifyActivity={verifyActivity}
+              rejectActivity={rejectActivity}
               updateActivityField={updateActivityField}
               uploadPhoto={uploadPhoto}
               deletePhoto={deletePhoto}

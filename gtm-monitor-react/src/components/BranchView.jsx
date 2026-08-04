@@ -4,7 +4,7 @@ import ReviewModal from './ReviewModal';
 import { computeStats } from '../utils';
 
 // BranchView dibungkus React.memo agar TIDAK re-render saat menu profile di header dibuka/ditutup.
-const BranchView = memo(function BranchView({ branches, activeBranch, verifyActivity, updateActivityField, uploadPhoto }) {
+const BranchView = memo(function BranchView({ branches, activeBranch, verifyActivity, rejectActivity, updateActivityField, uploadPhoto }) {
   const [search, setSearch] = useState('');
   const [modalKey, setModalKey] = useState(null); // format: branchName||projectName
 
@@ -91,9 +91,10 @@ const BranchView = memo(function BranchView({ branches, activeBranch, verifyActi
         updateActivityField={updateActivityField} 
         uploadPhoto={uploadPhoto}
         verifyActivity={verifyActivity}
+        rejectActivity={rejectActivity}
       />
 
-      <ReviewModal modalData={modalData} closeModal={closeModal} verifyActivity={verifyActivity} />
+      <ReviewModal modalData={modalData} closeModal={closeModal} verifyActivity={verifyActivity} rejectActivity={rejectActivity} />
     </div>
   );
 });

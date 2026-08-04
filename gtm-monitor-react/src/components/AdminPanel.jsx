@@ -5,7 +5,7 @@ import ReviewModal from './ReviewModal';
 import { formatBranch, computeStats } from '../utils';
 import { API_BASE_URL } from '../apiConfig';
 
-const AdminPanel = memo(function AdminPanel({ token, branches = [], onUpdate, goDashboard, onLogout, verifyActivity, updateActivityField, uploadPhoto, kpi }) {
+const AdminPanel = memo(function AdminPanel({ token, branches = [], onUpdate, goDashboard, onLogout, verifyActivity, rejectActivity, updateActivityField, uploadPhoto, kpi }) {
   const [activeTab, setActiveTab] = useState('monitoring'); // 'monitoring' | 'excel'
   
   // Excel Upload & Export States
@@ -634,6 +634,7 @@ const AdminPanel = memo(function AdminPanel({ token, branches = [], onUpdate, go
                   uploadPhoto={uploadPhoto}
                   onReview={openModal}
                   verifyActivity={verifyActivity}
+                  rejectActivity={rejectActivity}
                 />
               </div>
             ) : (
@@ -646,6 +647,7 @@ const AdminPanel = memo(function AdminPanel({ token, branches = [], onUpdate, go
                     uploadPhoto={uploadPhoto}
                     onReview={openModal}
                     verifyActivity={verifyActivity}
+                    rejectActivity={rejectActivity}
                   />
                 </div>
               ))
@@ -828,7 +830,7 @@ const AdminPanel = memo(function AdminPanel({ token, branches = [], onUpdate, go
       )}
 
       {/* Review Modal */}
-      <ReviewModal modalData={modalData} closeModal={closeModal} verifyActivity={verifyActivity} />
+      <ReviewModal modalData={modalData} closeModal={closeModal} verifyActivity={verifyActivity} rejectActivity={rejectActivity} />
 
       {/* Modal Konfirmasi Export Rekap Excel */}
       {isExportModalOpen && (

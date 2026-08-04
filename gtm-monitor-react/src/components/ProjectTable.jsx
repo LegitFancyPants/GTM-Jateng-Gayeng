@@ -310,7 +310,7 @@ function PhotoPreviewModal({ photoData, onClose, onReplace, onDelete }) {
 }
 
 // ─── OPTIMASI 2: REACT RENDER OPTIMIZATION (MEMOIZED PROJECT ROW) ───
-const ProjectRow = memo(({ p, branchName, isExpanded, toggleProject, onReview, updateActivityField, uploadPhoto, verifyActivity, deletePhoto, onPreviewPhoto, tableGrid, odpGrid }) => {
+const ProjectRow = memo(({ p, branchName, isExpanded, toggleProject, onReview, updateActivityField, uploadPhoto, verifyActivity, rejectActivity, deletePhoto, onPreviewPhoto, tableGrid, odpGrid }) => {
   const pOdps = p.odps || [];
   const usedTotal = p.usedTotal;
   const avaiTotal = p.avaiTotal;
@@ -509,7 +509,7 @@ const ProjectRow = memo(({ p, branchName, isExpanded, toggleProject, onReview, u
   );
 });
 
-export default function ProjectTable({ projects, branchName, onReview, updateActivityField, uploadPhoto, verifyActivity, deletePhoto }) {
+export default function ProjectTable({ projects, branchName, onReview, updateActivityField, uploadPhoto, verifyActivity, rejectActivity, deletePhoto }) {
   const [expanded, setExpanded] = useState({});
   const [previewPhotoData, setPreviewPhotoData] = useState(null);
   const [filterPopup, setFilterPopup] = useState(null);
@@ -726,6 +726,7 @@ export default function ProjectTable({ projects, branchName, onReview, updateAct
               updateActivityField={updateActivityField}
               uploadPhoto={uploadPhoto}
               verifyActivity={verifyActivity}
+              rejectActivity={rejectActivity}
               deletePhoto={deletePhoto}
               onPreviewPhoto={setPreviewPhotoData}
               tableGrid={tableGrid}

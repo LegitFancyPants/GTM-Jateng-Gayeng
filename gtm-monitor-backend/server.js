@@ -708,6 +708,65 @@ app.post('/api/verify', requireAdmin, async (req, res) => {
   }
 });
 
+// 3b. Reject Project Activity Verification (Admin only — deletes photo & resets status to 'belum')
+app.post('/api/reject', requireAdmin, async (req, res) => {
+  try {
+    const { projectName, branchName, type } = req.body;
+
+    const branch = await prisma.branch.findUnique({ where: { name: branchName } });
+    if (!branch) {
+      return res.status(404).json({ success: false, message: 'Branch not found' });
+    }
+
+    const project = await prisma.project.findFirst({
+      where: { name: projectName, branchId: branch.id }
+    });
+
+    if (!project) {
+      return res.status(404).json({ success: false, message: 'Project not found' });
+    }
+
+    const existingActivity = await prisma.projectActivity.findUnique({
+      where: { projectId_type: { projectId: project.id, type } }
+    });
+
+    if (!existingActivity) {
+      return res.status(404).json({ success: false, message: 'Activity not found' });
+    }
+
+    // Hapus foto jika ada (baik Cloudinary maupun disk lokal)
+    if (existingActivity.photoUrl) {
+      if (existingActivity.photoUrl.includes('res.cloudinary.com')) {
+        await deleteFromCloudinary(existingActivity.photoUrl);
+      } else if (existingActivity.photoUrl.startsWith('/uploads/')) {
+        const localP = path.join(__dirname, existingActivity.photoUrl);
+        if (fs.existsSync(localP)) {
+          await fs.promises.unlink(localP).catch(err => console.error('Unlink error on reject:', err.message));
+        }
+      }
+    }
+
+    // Reset status ke 'belum' dan hapus foto
+    const updatedActivity = await prisma.projectActivity.update({
+      where: {
+        projectId_type: {
+          projectId: project.id,
+          type: type
+        }
+      },
+      data: {
+        status: 'belum',
+        photoUrl: null
+      }
+    });
+
+    res.json({ success: true, message: 'Verifikasi berhasil ditolak. Foto telah dihapus dan status di-reset.', activity: updatedActivity });
+  } catch (error) {
+    console.error('Error rejecting activity:', error);
+    res.status(500).json({ success: false, message: 'Gagal menolak verifikasi activity' });
+  }
+});
+
 // 4. Import Excel (Admin only) â€” updates ODP data and creates Projects/Branches robustly & super fast
 app.post('/api/admin/import-excel', requireAdmin, excelUpload.single('file'), async (req, res) => {
   try {
