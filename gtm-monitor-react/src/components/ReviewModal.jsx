@@ -47,19 +47,21 @@ export default function ReviewModal({ modalData, closeModal, verifyActivity, rej
     setIsRejecting(true);
     try {
       const { actKey, photoId } = rejectTarget;
-      await rejectActivity(modalData.bName, modalData.pName, actKey, photoId);
-      setLocalActivities(prev => prev.map(a => {
-        if (a.type !== actKey) return a;
-        const updatedPhotos = (a.photos || []).filter(ph => ph.id !== photoId);
-        const newStatus = updatedPhotos.some(ph => ph.status === 'upload') ? 'upload' : updatedPhotos.some(ph => ph.status === 'verified') ? 'verified' : 'belum';
-        const isCleared = updatedPhotos.length === 0;
-        return {
-          ...a,
-          status: newStatus,
-          photos: updatedPhotos,
-          ...(isCleared ? { keterangan: null, kodeSf: null, namaOutlet: null, planDate: null, photoUrl: null } : {})
-        };
-      }));
+      const resOk = await rejectActivity(modalData.bName, modalData.pName, actKey, photoId);
+      if (resOk !== false) {
+        setLocalActivities(prev => prev.map(a => {
+          if (a.type !== actKey) return a;
+          const updatedPhotos = (a.photos || []).filter(ph => ph.id !== photoId);
+          const newStatus = updatedPhotos.some(ph => ph.status === 'upload') ? 'upload' : updatedPhotos.some(ph => ph.status === 'verified') ? 'verified' : 'belum';
+          const isCleared = updatedPhotos.length === 0;
+          return {
+            ...a,
+            status: newStatus,
+            photos: updatedPhotos,
+            ...(isCleared ? { keterangan: null, kodeSf: null, namaOutlet: null, planDate: null, photoUrl: null } : {})
+          };
+        }));
+      }
       setRejectTarget(null);
     } catch (err) {
       console.error('Error rejecting activity:', err);
@@ -84,23 +86,26 @@ export default function ReviewModal({ modalData, closeModal, verifyActivity, rej
     setIsDeleting(true);
     try {
       const { actKey, photoId, bName, pName } = deleteTarget;
+      let resOk = false;
       if (deletePhoto) {
-        await deletePhoto(bName, pName, actKey, photoId);
+        resOk = await deletePhoto(bName, pName, actKey, photoId);
       } else if (rejectActivity) {
-        await rejectActivity(bName, pName, actKey, photoId);
+        resOk = await rejectActivity(bName, pName, actKey, photoId);
       }
-      setLocalActivities(prev => prev.map(a => {
-        if (a.type !== actKey) return a;
-        const updatedPhotos = (a.photos || []).filter(ph => ph.id !== photoId);
-        const newStatus = updatedPhotos.some(ph => ph.status === 'upload') ? 'upload' : updatedPhotos.some(ph => ph.status === 'verified') ? 'verified' : 'belum';
-        const isCleared = updatedPhotos.length === 0;
-        return {
-          ...a,
-          status: newStatus,
-          photos: updatedPhotos,
-          ...(isCleared ? { keterangan: null, kodeSf: null, namaOutlet: null, planDate: null, photoUrl: null } : {})
-        };
-      }));
+      if (resOk !== false) {
+        setLocalActivities(prev => prev.map(a => {
+          if (a.type !== actKey) return a;
+          const updatedPhotos = (a.photos || []).filter(ph => ph.id !== photoId);
+          const newStatus = updatedPhotos.some(ph => ph.status === 'upload') ? 'upload' : updatedPhotos.some(ph => ph.status === 'verified') ? 'verified' : 'belum';
+          const isCleared = updatedPhotos.length === 0;
+          return {
+            ...a,
+            status: newStatus,
+            photos: updatedPhotos,
+            ...(isCleared ? { keterangan: null, kodeSf: null, namaOutlet: null, planDate: null, photoUrl: null } : {})
+          };
+        }));
+      }
       setDeleteTarget(null);
     } catch (err) {
       console.error('Error deleting activity:', err);

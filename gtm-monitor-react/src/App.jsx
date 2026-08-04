@@ -545,7 +545,7 @@ function App() {
 
   // Reject activity verification at PROJECT level (Admin only)
   const rejectActivity = useCallback(async (branchName, projectName, actType, photoId) => {
-    if (!isAdmin) return;
+    if (!isAdmin) return false;
 
     try {
       const res = await fetch(`${API_BASE_URL}/api/reject`, {
@@ -561,11 +561,18 @@ function App() {
           photoId
         })
       });
-      if (res.ok) {
+      const data = await res.json();
+      if (res.ok && data.success) {
         await fetchData();
+        return true;
+      } else {
+        alert(`❌ ${data.message || 'Gagal menolak verifikasi activity.'}`);
+        return false;
       }
     } catch (err) {
       console.error('Error rejecting activity:', err);
+      alert('❌ Terjadi kesalahan server saat menolak verifikasi.');
+      return false;
     }
   }, [isAdmin, token, fetchData]);
 
