@@ -188,6 +188,8 @@ const AdminPanel = memo(function AdminPanel({ token, branches = [], onUpdate, go
     })).filter(b => b.projects && b.projects.length > 0);
   }, [branches]);
 
+  const totalProjects = useMemo(() => priorityBranches.reduce((s, b) => s + (b.projects?.length || 0), 0), [priorityBranches]);
+
   // Monitoring Filters States
   const [selectedBranch, setSelectedBranch] = useState('Semua Branch');
   const [search, setSearch] = useState('');
