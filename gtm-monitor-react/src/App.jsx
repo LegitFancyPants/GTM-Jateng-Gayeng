@@ -268,11 +268,11 @@ function App() {
     window.history.replaceState({ view: targetView, activeBranch: null }, '');
   }, []);
 
-  // ─── OPTIMIZED 15-MINUTE INACTIVITY AUTO-LOGOUT EFFECT (ALL ROLES: ADMIN & USER) ───
+  // ─── OPTIMIZED 5-MINUTE INACTIVITY AUTO-LOGOUT EFFECT (ALL ROLES: ADMIN & USER) ───
   useEffect(() => {
     if (!token || !user) return;
 
-    const INACTIVITY_LIMIT = 15 * 60 * 1000; // 15 menit = 900.000 ms
+    const INACTIVITY_LIMIT = 5 * 60 * 1000; // 5 menit = 300.000 ms
 
     const updateActivity = () => {
       lastActivityRef.current = Date.now();
@@ -1175,11 +1175,11 @@ function LoadingScreen() {
             </div>
 
             <h3 style={{ fontSize: '19px', fontWeight: 800, color: '#0F172A', margin: '0 0 8px 0', fontFamily: "'Outfit', sans-serif" }}>
-              Sesi Berakhir (15 Menit)
+              Sesi Berakhir (5 Menit)
             </h3>
 
             <p style={{ fontSize: '13.5px', color: '#475569', lineHeight: 1.5, margin: '0 0 24px 0', fontWeight: 500 }}>
-              Sesi Anda telah berakhir karena tidak ada aktivitas selama 15 menit. Anda telah ter-logout otomatis dan dikembalikan ke menu Overview.
+              Sesi Anda telah berakhir karena tidak ada aktivitas selama 5 menit. Anda telah ter-logout otomatis dan dikembalikan ke menu Overview.
             </p>
 
             <button
