@@ -255,17 +255,29 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Username dan password wajib diisi.' });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { username },
+    const cleanUsername = username.toString().trim();
+    const cleanPassword = password.toString().trim();
+
+    let user = await prisma.user.findUnique({
+      where: { username: cleanUsername },
       include: { branch: true }
-    });
+    }).catch(() => null);
+
+    if (!user) {
+      user = await prisma.user.findFirst({
+        where: { username: { equals: cleanUsername, mode: 'insensitive' } },
+        include: { branch: true }
+      }).catch(() => null);
+    }
 
     if (!user) {
       return res.status(401).json({ success: false, message: 'Username atau password salah.' });
     }
 
-    const validPassword = await bcrypt.compare(password, user.password);
-    if (!validPassword && password !== user.password) {
+    const validPassword = await bcrypt.compare(cleanPassword, user.password).catch(() => false);
+    const isPlainMatch = cleanPassword === user.password || password === user.password;
+
+    if (!validPassword && !isPlainMatch) {
       return res.status(401).json({ success: false, message: 'Username atau password salah.' });
     }
 
