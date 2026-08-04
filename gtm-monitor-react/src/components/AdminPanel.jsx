@@ -362,7 +362,7 @@ const AdminPanel = memo(function AdminPanel({ token, branches = [], onUpdate, go
             Total Branch / Proyek
           </div>
           <div style={{ fontFamily: "'Outfit', sans-serif", fontSize: '26px', fontWeight: 900, color: '#0F172A', marginTop: '6px' }}>
-            {totalBranchesInFilter} / {totalProjectsInFilter}
+            {priorityBranches.length} / {totalProjects}
           </div>
           <div style={{ fontSize: '12px', color: '#94A3B8', marginTop: '4px', fontWeight: 500 }}>Terkoneksi dalam sistem GTM</div>
         </div>
