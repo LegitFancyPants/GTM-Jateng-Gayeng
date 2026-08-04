@@ -268,7 +268,7 @@ function App() {
     window.history.replaceState({ view: targetView, activeBranch: null }, '');
   }, []);
 
-  // ─── 15-MINUTE INACTIVITY AUTO-LOGOUT EFFECT ───
+  // ─── OPTIMIZED 15-MINUTE INACTIVITY AUTO-LOGOUT EFFECT (ALL ROLES: ADMIN & USER) ───
   useEffect(() => {
     if (!token || !user) return;
 
@@ -278,22 +278,45 @@ function App() {
       lastActivityRef.current = Date.now();
     };
 
-    // Listen to user interaction events
-    const events = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart', 'pointerdown'];
-    events.forEach(evt => window.addEventListener(evt, updateActivity, { passive: true }));
-
-    const intervalId = setInterval(() => {
+    const checkInactivity = () => {
       if (Date.now() - lastActivityRef.current >= INACTIVITY_LIMIT) {
         executeLogout('landing'); // Terlogout otomatis & kembali ke menu overview (landing)
         setSessionExpiredNotice(true);
       }
-    }, 5000); // Evaluasi setiap 5 detik
+    };
+
+    // Listen to user interaction events across the entire window
+    const events = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart', 'pointerdown'];
+    events.forEach(evt => window.addEventListener(evt, updateActivity, { passive: true }));
+
+    // Evaluasi otomatis saat tab browser dibuka kembali setelah berada di background
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        checkInactivity();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Evaluasi berkala setiap 3 detik
+    const intervalId = setInterval(checkInactivity, 3000);
 
     return () => {
       events.forEach(evt => window.removeEventListener(evt, updateActivity));
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       clearInterval(intervalId);
     };
   }, [token, user, executeLogout]);
+
+  // ─── STRICT UNAUTHENTICATED NAVIGATION GUARD ───
+  // Pengguna yang ter-logout tidak dapat mengakses menu selain Overview ('landing').
+  // Mencoba membuka menu lain akan mengarahkan kembali ke 'landing' & memunculkan pop-up login.
+  useEffect(() => {
+    if (!user && view !== 'landing') {
+      setView('landing');
+      setActiveBranch(null);
+      window.history.replaceState({ view: 'landing', activeBranch: null }, '');
+    }
+  }, [user, view]);
 
   const handleLogout = (showAlert = true) => {
     if (typeof showAlert !== 'boolean') showAlert = true;
