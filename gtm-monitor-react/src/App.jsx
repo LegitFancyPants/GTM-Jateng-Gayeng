@@ -236,6 +236,7 @@ function App() {
   const handleLoginSuccess = (newToken, newUser) => {
     document.activeElement?.blur();
     lastLoginTimestamp.current = Date.now();
+    lastActivityRef.current = Date.now(); // Reset timestamp aktivitas saat login berhasil
     setShowProfileModal(false);
     setShowLogoutConfirmModal(false);
     setBranches([]);
@@ -254,6 +255,7 @@ function App() {
   const lastActivityRef = useRef(Date.now());
 
   const executeLogout = useCallback((targetView = 'landing') => {
+    lastActivityRef.current = Date.now(); // Reset timestamp aktivitas saat logout
     setUser(null);
     setToken(null);
     setBranches([]);
@@ -271,6 +273,9 @@ function App() {
   // ─── OPTIMIZED 5-MINUTE INACTIVITY AUTO-LOGOUT EFFECT (ALL ROLES: ADMIN & USER) ───
   useEffect(() => {
     if (!token || !user) return;
+
+    // Reset timestamp aktivitas saat useEffect sesi diaktifkan untuk akun yang baru login
+    lastActivityRef.current = Date.now();
 
     const INACTIVITY_LIMIT = 5 * 60 * 1000; // 5 menit = 300.000 ms
 
