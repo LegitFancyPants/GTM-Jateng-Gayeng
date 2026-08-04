@@ -88,7 +88,7 @@ function App() {
 
   // Override KPI dengan nilai resmi dari file Excel (Jateng DIY summary) jika filter = ALL
   const kpi = useMemo(() => {
-    if (typeDesignFilter === 'ALL' && importMeta && importMeta.occRate !== null) {
+    if (typeDesignFilter === 'ALL' && importMeta && typeof importMeta.occRate === 'number' && !isNaN(importMeta.occRate)) {
       return {
         ...kpiRaw,
         occRate: Math.round(importMeta.occRate * 1000) / 10,  // 0.121 -> 12.1
@@ -99,7 +99,8 @@ function App() {
         gapWoW: importMeta.gapWoW,
       };
     }
-    return { ...kpiRaw, gapWoW: null };
+    const calcRate = kpiRaw.totalPort > 0 ? Math.round((kpiRaw.totalUsed / kpiRaw.totalPort) * 1000) / 10 : 0;
+    return { ...kpiRaw, occRate: kpiRaw.occRate || calcRate, gapWoW: null };
   }, [kpiRaw, importMeta, typeDesignFilter]);
 
   const statusChips = useMemo(() => {
