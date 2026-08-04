@@ -194,11 +194,23 @@ async function seed() {
       console.log(`   ✅ Branch ${matchedBranch.name}: ${backupBranch.projects.length} projects restored`);
     }
 
+    // Ensure Admin password is updated to Jatenggayeng123*
+    const bcrypt = require('bcryptjs');
+    const adminHashedPassword = await bcrypt.hash('Jatenggayeng123*', 10);
+    await prisma.user.updateMany({
+      where: { role: 'ADMIN' },
+      data: {
+        username: 'jateng',
+        password: adminHashedPassword
+      }
+    });
+
     console.log(`\n🎉 Seed selesai!`);
     console.log(`   Branch: 6 (ID 1-6)`);
-    console.log(`   Users: ${orderedUsers.length} (ID ${orderedUsers.map((_, i) => i + 1).join(', ')})`);
+    console.log(`   Users: ${orderedUsers.length}`);
     console.log(`   Projects restored: ${projectCount}`);
     console.log(`   ODPs restored: ${odpCount}`);
+    console.log(`   Admin Login: jateng / Jatenggayeng123*`);
     console.log('\n✅ Database siap digunakan dengan ID berurutan.');
 
   } catch (error) {
