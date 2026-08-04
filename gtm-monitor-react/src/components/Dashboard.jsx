@@ -448,7 +448,7 @@ const Dashboard = memo(function Dashboard({ branches, goBranch, kpi, importMeta,
         </div>
 
         <div style={{ display: 'flex', gap: '24px', marginTop: '18px', flexWrap: 'wrap' }}>
-          {branches.map(b => (
+          {(Array.isArray(branches) ? branches : []).map(b => (
             <div key={b.name} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#0F172A', fontWeight: 700 }}>
               <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: BRANCH_COLORS[b.name?.toString().trim().toUpperCase()] || BRANCH_COLORS[b.name] || '#64748b', boxShadow: `0 0 6px ${BRANCH_COLORS[b.name?.toString().trim().toUpperCase()] || '#64748b'}` }} />
               {b.name}

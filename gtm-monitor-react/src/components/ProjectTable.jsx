@@ -1,6 +1,8 @@
 import { useState, useMemo, memo, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { ACT_TYPES, actMeta, formatBranch } from '../utils';
+import UploadModal from './UploadModal';
+import ConfirmSubmitModal from './ConfirmSubmitModal';
 
 const FilterIcon = () => (
   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -310,7 +312,7 @@ function PhotoPreviewModal({ photoData, onClose, onReplace, onDelete }) {
 }
 
 // ─── OPTIMASI 2: REACT RENDER OPTIMIZATION (MEMOIZED PROJECT ROW) ───
-const ProjectRow = memo(({ p, branchName, isExpanded, toggleProject, onReview, updateActivityField, uploadPhoto, verifyActivity, rejectActivity, deletePhoto, onPreviewPhoto, tableGrid, odpGrid }) => {
+const ProjectRow = memo(({ p, branchName, isExpanded, toggleProject, onReview, onOpenUploadModal, onPreviewPhoto, tableGrid, odpGrid }) => {
   const pOdps = p.odps || [];
   const usedTotal = p.usedTotal;
   const avaiTotal = p.avaiTotal;
@@ -320,7 +322,7 @@ const ProjectRow = memo(({ p, branchName, isExpanded, toggleProject, onReview, u
 
   return (
     <div>
-      {/* PROJECT ROW — with activity inputs */}
+      {/* PROJECT ROW — with activity status & upload button */}
       <div
         className="table-row"
         style={{ gridTemplateColumns: tableGrid }}
@@ -362,131 +364,81 @@ const ProjectRow = memo(({ p, branchName, isExpanded, toggleProject, onReview, u
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', height: '100%' }}>{avaiTotal}</div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', height: '100%' }}>{totalPort}</div>
 
-        {/* Activity inputs at project level */}
+        {/* Activity cells */}
         {ACT_TYPES.map(actType => {
           const a = projectActivities.find(x => x.type === actType.key);
           const status = a?.status || 'belum';
           const meta = actMeta(status);
-          const hasPhoto = Boolean(a?.photoUrl && a.photoUrl !== 'uploading...');
+          const photos = a?.photos || [];
+          const verifiedPhotos = photos.filter(ph => ph.status === 'verified');
+          const pendingPhotos = photos.filter(ph => ph.status === 'upload');
+          const hasPending = status === 'upload' || pendingPhotos.length > 0;
+          const isVerified = status === 'verified' || verifiedPhotos.length > 0;
 
           return (
-            <div key={actType.key} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', gap: '10px', alignSelf: 'flex-start' }}>
-              <div style={{ fontSize: '11px', fontWeight: 700, padding: '3px 10px', borderRadius: '6px', backgroundColor: meta.bg, color: meta.color, border: meta.border, height: '15px', display: 'flex', alignItems: 'center' }}>
+            <div key={actType.key} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '6px 0', alignSelf: 'center' }}>
+              <div style={{ fontSize: '11px', fontWeight: 700, padding: '3px 10px', borderRadius: '6px', backgroundColor: meta.bg, color: meta.color, border: meta.border, display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap' }}>
                 {meta.label}
               </div>
 
-              {/* Date + Photo Input (For Tsel Menyapa Warga) */}
-              {actType.kind === 'date_photo' && (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
-                  <input
-                    type="date"
-                    value={a?.planDate ? new Date(a.planDate).toISOString().split('T')[0] : ''}
-                    onChange={(e) => updateActivityField ? updateActivityField(bName, p.name, actType.key, 'planDate', e.target.value) : undefined}
-                    style={{ width: '120px', fontSize: '11.5px', padding: '3px 6px', border: '1px solid #e2e8f0', borderRadius: '5px' }}
-                    readOnly={!updateActivityField}
-                    title="Pilih tanggal rencana"
-                  />
-                  {hasPhoto ? (
-                    <div
-                      onClick={() => onPreviewPhoto && onPreviewPhoto({ branchName: bName, projectName: p.name, actType: actType.key, photoUrl: a.photoUrl, status: a.status })}
-                      style={{ width: '120px', height: '36px', borderRadius: '6px', border: '2px solid #22c55e', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', background: '#f0fdf4', fontSize: '11px', color: '#16a34a', cursor: 'pointer', overflow: 'hidden', textAlign: 'center', padding: '2px 8px', boxSizing: 'border-box' }}
-                      title="Klik untuk melihat preview foto / ganti / hapus"
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                        <polyline points="22 4 12 14.01 9 11.01"></polyline>
-                      </svg>
-                      <span style={{ fontWeight: 700, fontSize: '11px', color: '#16a34a' }}>Foto Terisi</span>
-                    </div>
-                  ) : (
-                    <label style={{ width: '120px', height: '36px', borderRadius: '6px', border: '1px dashed #cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', background: '#f8fafc', fontSize: '11px', color: '#64748b', cursor: uploadPhoto ? 'pointer' : 'default', overflow: 'hidden', textAlign: 'center', padding: '2px 8px', boxSizing: 'border-box' }}>
-                      {a?.photoUrl === 'uploading...' ? (
-                        <span style={{ fontSize: '11px', color: '#64748b' }}>Uploading...</span>
-                      ) : (
-                        <>
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                            <circle cx="8.5" cy="8.5" r="1.5" />
-                            <polyline points="21 15 16 10 5 21" />
-                          </svg>
-                          <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 600 }}>+ Upload Foto</span>
-                        </>
-                      )}
-                      {uploadPhoto && (
-                        <input
-                          type="file"
-                          accept="image/*"
-                          style={{ display: 'none' }}
-                          onChange={(e) => {
-                            if (e.target.files && e.target.files[0]) {
-                              uploadPhoto(bName, p.name, actType.key, e.target.files[0]);
-                            }
-                          }}
-                        />
-                      )}
-                    </label>
-                  )}
+              {/* Counter Badge (Opsi A) jika ada foto terverifikasi */}
+              {verifiedPhotos.length > 0 && (
+                <div
+                  onClick={() => onReview && onReview(bName, p.name)}
+                  style={{ fontSize: '10px', fontWeight: 800, color: '#16a34a', background: '#dcfce7', padding: '2px 8px', borderRadius: '10px', cursor: 'pointer', border: '1px solid #bbf7d0', display: 'flex', alignItems: 'center', gap: '3px' }}
+                  title="Klik Review untuk melihat riwayat foto"
+                >
+                  📷 {verifiedPhotos.length} Foto Terverifikasi
                 </div>
               )}
 
-              {/* Photo Input */}
-              {actType.kind === 'photo' && (
-                hasPhoto ? (
-                  <div
-                    onClick={() => onPreviewPhoto && onPreviewPhoto({ branchName: bName, projectName: p.name, actType: actType.key, photoUrl: a.photoUrl, status: a.status })}
-                    style={{ width: '64px', height: '64px', borderRadius: '8px', border: '2px solid #22c55e', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#f0fdf4', fontSize: '10px', color: '#16a34a', cursor: 'pointer', overflow: 'hidden', textAlign: 'center', padding: '4px', boxSizing: 'border-box' }}
-                    title="Klik untuk melihat preview foto / ganti / hapus"
-                  >
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                      <polyline points="22 4 12 14.01 9 11.01"></polyline>
-                    </svg>
-                    <span style={{ fontWeight: 700, marginTop: '2px', fontSize: '10.5px', color: '#16a34a' }}>Terisi</span>
-                  </div>
-                ) : (
-                  <label style={{ width: '64px', height: '64px', borderRadius: '8px', border: '1px dashed #cbd5e1', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#f8fafc', fontSize: '10px', color: '#64748b', cursor: uploadPhoto ? 'pointer' : 'default', overflow: 'hidden', textAlign: 'center', padding: '4px', boxSizing: 'border-box' }}>
-                    {a?.photoUrl === 'uploading...' ? (
-                      <span style={{ fontSize: '11px', color: '#64748b' }}>Upload...</span>
-                    ) : (
-                      <>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                          <circle cx="8.5" cy="8.5" r="1.5" />
-                          <polyline points="21 15 16 10 5 21" />
-                        </svg>
-                        <span style={{ marginTop: '2px', fontSize: '10.5px', color: '#64748b', fontWeight: 600 }}>Foto</span>
-                      </>
-                    )}
-                    {uploadPhoto && (
-                      <input
-                        type="file"
-                        accept="image/*"
-                        style={{ display: 'none' }}
-                        onChange={(e) => {
-                          if (e.target.files && e.target.files[0]) {
-                            uploadPhoto(bName, p.name, actType.key, e.target.files[0]);
-                          }
-                        }}
-                      />
-                    )}
-                  </label>
-                )
-              )}
-
-              {/* Date Input */}
-              {actType.kind === 'date' && (
-                <input
-                  type="date"
-                  value={a?.planDate ? new Date(a.planDate).toISOString().split('T')[0] : ''}
-                  onChange={(e) => updateActivityField ? updateActivityField(bName, p.name, actType.key, 'planDate', e.target.value) : undefined}
-                  style={{ width: '120px', fontSize: '12px', padding: '4px 8px', border: '1px solid #e2e8f0', borderRadius: '5px' }}
-                  readOnly={!updateActivityField}
-                />
-              )}
-
-              {/* Text Input */}
-              {actType.kind === 'text' && (
-                <ActivityTextInput a={a} actType={actType} bName={bName} p={p} updateActivityField={updateActivityField} />
+              {/* Action Buttons / Status text */}
+              {hasPending ? (
+                <button
+                  type="button"
+                  onClick={() => onReview && onReview(bName, p.name)}
+                  style={{
+                    padding: '5px 10px', borderRadius: '8px', border: '1px solid #fde68a',
+                    background: '#fef3c7', color: '#b45309', fontSize: '11px', fontWeight: 700,
+                    cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px'
+                  }}
+                  title="Foto sedang menunggu verifikasi Admin. Klik Review untuk detail."
+                >
+                  <span>⏳ Menunggu Verifikasi</span>
+                </button>
+              ) : isVerified ? (
+                <button
+                  type="button"
+                  onClick={() => onOpenUploadModal && onOpenUploadModal({ branchName: bName, projectName: p.name, actTypeObj: actType })}
+                  style={{
+                    padding: '6px 12px', borderRadius: '8px', border: 'none',
+                    background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
+                    color: '#FFFFFF', fontSize: '11px', fontWeight: 800, cursor: 'pointer',
+                    boxShadow: '0 2px 8px rgba(16, 185, 129, 0.25)', display: 'flex', alignItems: 'center', gap: '4px'
+                  }}
+                  title="Klik untuk menambah foto kegiatan baru"
+                >
+                  <span>+ Tambah Foto</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => onOpenUploadModal && onOpenUploadModal({ branchName: bName, projectName: p.name, actTypeObj: actType })}
+                  style={{
+                    padding: '6px 14px', borderRadius: '8px', border: 'none',
+                    background: 'linear-gradient(135deg, #FF5E00 0%, #C8102E 100%)',
+                    color: '#FFFFFF', fontSize: '11px', fontWeight: 800, cursor: 'pointer',
+                    boxShadow: '0 2px 8px rgba(200, 16, 46, 0.25)', display: 'flex', alignItems: 'center', gap: '4px'
+                  }}
+                  title="Klik untuk mengunggah kegiatan GTM"
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="17 8 12 3 7 8" />
+                    <line x1="12" y1="3" x2="12" y2="15" />
+                  </svg>
+                  <span>Upload</span>
+                </button>
               )}
             </div>
           );
@@ -525,6 +477,11 @@ export default function ProjectTable({ projects, branchName, onReview, updateAct
   const [pageSize, setPageSize] = useState(25);
   const [isPageSizeOpen, setIsPageSizeOpen] = useState(false);
 
+  // ─── UPLOAD MODAL STATE ───
+  const [activeUploadData, setActiveUploadData] = useState(null);
+  const [confirmSubmitData, setConfirmSubmitData] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const toggleProject = useCallback((projectName) => {
     setExpanded(prev => ({ ...prev, [projectName]: !prev[projectName] }));
   }, []);
@@ -532,14 +489,16 @@ export default function ProjectTable({ projects, branchName, onReview, updateAct
   // ─── OPTIMASI 2: GUNAKAN NILAI PRE-COMPUTED DARI SERVER ───
   // usedTotal, avaiTotal, totalPort, occRate sudah dihitung di server.js — tidak perlu reduce() di sini.
   const projectsWithTotals = useMemo(() => {
-    return projects.map(p => ({
-      ...p,
-      wok: p.wok || '-',
-      // Gunakan nilai yang sudah ada dari server, fallback ke 0 jika tidak ada
-      usedTotal: p.usedTotal ?? p.odps.reduce((s, o) => s + o.used, 0),
-      avaiTotal: p.avaiTotal ?? p.odps.reduce((s, o) => s + o.avai, 0),
-      totalPort: p.totalPort ?? p.odps.reduce((s, o) => s + o.total, 0),
-    }));
+    return (Array.isArray(projects) ? projects : []).map(p => {
+      const odps = Array.isArray(p.odps) ? p.odps : [];
+      return {
+        ...p,
+        wok: p.wok || '-',
+        usedTotal: p.usedTotal ?? odps.reduce((s, o) => s + (o.used || 0), 0),
+        avaiTotal: p.avaiTotal ?? odps.reduce((s, o) => s + (o.avai || 0), 0),
+        totalPort: p.totalPort ?? odps.reduce((s, o) => s + (o.total || 0), 0),
+      };
+    });
   }, [projects]);
 
   const displayProjects = useMemo(() => {
@@ -720,14 +679,10 @@ export default function ProjectTable({ projects, branchName, onReview, updateAct
               key={p.name}
               p={p}
               branchName={branchName}
-              isExpanded={expanded[p.name]}
+              isExpanded={Boolean(expanded[p.name])}
               toggleProject={toggleProject}
               onReview={onReview}
-              updateActivityField={updateActivityField}
-              uploadPhoto={uploadPhoto}
-              verifyActivity={verifyActivity}
-              rejectActivity={rejectActivity}
-              deletePhoto={deletePhoto}
+              onOpenUploadModal={setActiveUploadData}
               onPreviewPhoto={setPreviewPhotoData}
               tableGrid={tableGrid}
               odpGrid={odpGrid}
@@ -755,6 +710,49 @@ export default function ProjectTable({ projects, branchName, onReview, updateAct
           onDelete={() => {
             if (deletePhoto) {
               deletePhoto(previewPhotoData.branchName, previewPhotoData.projectName, previewPhotoData.actType);
+            }
+          }}
+        />
+      )}
+
+      {/* Upload Modal */}
+      {activeUploadData && (
+        <UploadModal
+          data={activeUploadData}
+          onClose={() => setActiveUploadData(null)}
+          onSubmit={(payload) => {
+            setConfirmSubmitData({
+              ...activeUploadData,
+              actLabel: activeUploadData.actTypeObj.label,
+              payload
+            });
+          }}
+        />
+      )}
+
+      {/* Confirm Submit Modal */}
+      {confirmSubmitData && (
+        <ConfirmSubmitModal
+          data={confirmSubmitData}
+          isSubmitting={isSubmitting}
+          onCancel={() => setConfirmSubmitData(null)}
+          onConfirm={async () => {
+            setIsSubmitting(true);
+            try {
+              if (uploadPhoto) {
+                await uploadPhoto(
+                  confirmSubmitData.branchName,
+                  confirmSubmitData.projectName,
+                  confirmSubmitData.actTypeObj.key,
+                  confirmSubmitData.payload
+                );
+              }
+              setConfirmSubmitData(null);
+              setActiveUploadData(null);
+            } catch (err) {
+              console.error('Submit error:', err);
+            } finally {
+              setIsSubmitting(false);
             }
           }}
         />

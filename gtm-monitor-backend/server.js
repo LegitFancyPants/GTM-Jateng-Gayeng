@@ -356,7 +356,10 @@ app.get('/api/data', optionalAuthenticateToken, async (req, res) => {
         projects: {
           include: {
             odps: true,
-            activities: true // ProjectActivity
+            activities: true,
+            photos: {
+              orderBy: { createdAt: 'asc' }
+            }
           }
         }
       }
@@ -377,12 +380,70 @@ app.get('/api/data', optionalAuthenticateToken, async (req, res) => {
         const isPriority = odpCount > 1 && occRate < 35;
         const typeDesign = p.typeDesign || 'Greenfield';
 
+        const actTypes = ['tsel_menyapa', 'branding_outlet', 'bumdes', 'rekrutmen_sf', 'open_table'];
+        const formattedActivities = actTypes.map(actKey => {
+          let typePhotos = (p.photos || []).filter(ph => ph.type === actKey);
+          const legacyAct = (p.activities || []).find(a => a.type === actKey);
+
+          // Jika ada data legacy di ProjectActivity tapi belum ada di ProjectActivityPhoto
+          if (legacyAct && (legacyAct.photoUrl || legacyAct.planDate || legacyAct.keterangan)) {
+            const existsInPhotos = typePhotos.some(ph => ph.photoUrl === legacyAct.photoUrl);
+            if (!existsInPhotos) {
+              typePhotos.push({
+                id: legacyAct.id,
+                type: actKey,
+                status: legacyAct.status || 'upload',
+                photoUrl: legacyAct.photoUrl,
+                planDate: legacyAct.planDate,
+                keterangan: legacyAct.keterangan,
+                createdAt: legacyAct.createdAt || new Date()
+              });
+            }
+          }
+
+          // Cek keberadaan file fisik untuk foto lokal (/uploads/...)
+          const validPhotos = typePhotos.map(ph => {
+            let photoUrl = ph.photoUrl;
+            let status = ph.status;
+            if (photoUrl && photoUrl.startsWith('/uploads/')) {
+              const localFilePath = path.join(__dirname, photoUrl);
+              if (!fs.existsSync(localFilePath)) {
+                console.log(`⚠️ [File Checker] File foto lokal hilang dari disk untuk proyek "${p.name}" (${actKey}): ${photoUrl}`);
+                photoUrl = null;
+                status = 'belum';
+              }
+            }
+            return { ...ph, photoUrl, status };
+          }).filter(ph => ph.photoUrl || ph.planDate || ph.keterangan || ph.kodeSf || ph.namaOutlet);
+
+          // Hitung overall status kegiatan
+          let overallStatus = 'belum';
+          if (validPhotos.some(ph => ph.status === 'upload')) {
+            overallStatus = 'upload';
+          } else if (validPhotos.some(ph => ph.status === 'verified')) {
+            overallStatus = 'verified';
+          }
+
+          const latestPhoto = validPhotos[validPhotos.length - 1];
+
+          return {
+            id: legacyAct?.id || actKey,
+            type: actKey,
+            status: overallStatus,
+            photos: validPhotos,
+            photoUrl: latestPhoto?.photoUrl || null,
+            planDate: latestPhoto?.planDate || null,
+            namaOutlet: latestPhoto?.namaOutlet || null,
+            kodeSf: latestPhoto?.kodeSf || latestPhoto?.keterangan || null,
+            keterangan: latestPhoto?.keterangan || null
+          };
+        });
+
         return {
           name: p.name,
           wok: p.wok,
           typeDesign,
           isPriority,
-          // Totals siap pakai
           usedTotal,
           avaiTotal,
           totalPort,
@@ -391,15 +452,7 @@ app.get('/api/data', optionalAuthenticateToken, async (req, res) => {
           odps: p.odps.map(o => {
             const coords = getOdpCoords(o.odp, b.name, o.lat, o.lon);
             const pct = o.total > 0 ? o.used / o.total : 0;
-            const calcStatus = o.used === 0
-              ? 'BLACK'
-              : pct < 0.25
-              ? 'GREEN'
-              : pct < 0.50
-              ? 'YELLOW'
-              : pct < 0.75
-              ? 'ORANGE'
-              : 'RED';
+            const calcStatus = o.used === 0 ? 'BLACK' : pct < 0.25 ? 'GREEN' : pct < 0.50 ? 'YELLOW' : pct < 0.75 ? 'ORANGE' : 'RED';
             const occStatus = o.occStatus ? o.occStatus.toUpperCase() : calcStatus;
 
             return {
@@ -412,37 +465,7 @@ app.get('/api/data', optionalAuthenticateToken, async (req, res) => {
               occStatus: occStatus
             };
           }),
-          // Project-level activities
-          activities: p.activities.map(a => {
-            let status = a.status;
-            let photoUrl = a.photoUrl;
-
-            // 1. Physical File Existence Check for local storage files (/uploads/...)
-            if (photoUrl && photoUrl.startsWith('/uploads/')) {
-              const localFilePath = path.join(__dirname, photoUrl);
-              if (!fs.existsSync(localFilePath)) {
-                console.log(`⚠️ [File Checker] File foto lokal hilang dari disk untuk proyek "${p.name}" tipe "${a.type}": ${photoUrl}`);
-                photoUrl = null;
-                if (status !== 'belum') {
-                  status = 'belum';
-                }
-              }
-            }
-
-            // Tsel Menyapa Warga (kind: date_photo) requires BOTH planDate AND photoUrl to be in 'upload' status
-            if (status === 'upload' && a.type === 'tsel_menyapa' && (!a.planDate || !photoUrl)) {
-              status = 'belum';
-            }
-            return {
-              id: a.id,
-              type: a.type,
-              status: status,
-              photoUrl: photoUrl,
-              planDate: a.planDate,
-              actualDate: a.actualDate,
-              keterangan: a.keterangan
-            };
-          })
+          activities: formattedActivities
         };
       })
     }));
@@ -470,8 +493,8 @@ app.get('/api/import-meta', optionalAuthenticateToken, async (req, res) => {
 // 2. Upload/Update Project Activity (Protected & Branch-Scoped — Cloudinary Staging)
 app.post('/api/activities', authenticateToken, upload.single('photo'), async (req, res) => {
   try {
-    const { projectName, branchName, type, status, planDate, actualDate, keterangan } = req.body;
-    console.log(`[Activity POST] project: ${projectName}, type: ${type}, status: ${status}, keterangan:`, keterangan);
+    const { projectName, branchName, type, planDate, namaOutlet, kodeSf, keterangan } = req.body;
+    console.log(`[Activity POST] project: ${projectName}, type: ${type}, namaOutlet: ${namaOutlet}, planDate: ${planDate}`);
 
     // Security Check: USER can only update their assigned branch
     if (req.user && req.user.role === 'USER' && req.user.branchName !== branchName) {
@@ -481,7 +504,7 @@ app.post('/api/activities', authenticateToken, upload.single('photo'), async (re
     // Find the Project by name + branch
     const branch = await prisma.branch.findUnique({ where: { name: branchName } });
     if (!branch) {
-      return res.status(404).json({ error: 'Branch not found' });
+      return res.status(404).json({ error: 'Branch tidak ditemukan' });
     }
 
     const project = await prisma.project.findFirst({
@@ -489,90 +512,100 @@ app.post('/api/activities', authenticateToken, upload.single('photo'), async (re
     });
 
     if (!project) {
-      return res.status(404).json({ error: 'Project not found' });
+      return res.status(404).json({ error: 'Proyek tidak ditemukan' });
     }
 
-    // Find existing activity
-    const existingActivity = await prisma.projectActivity.findUnique({
+    // Cek apakah ada foto kegiatan sebelumnya yang masih berstatus 'upload' (menunggu verifikasi)
+    const existingPending = await prisma.projectActivityPhoto.findFirst({
       where: {
-        projectId_type: {
-          projectId: project.id,
-          type: type
-        }
+        projectId: project.id,
+        type: type,
+        status: 'upload'
       }
     });
 
-    let photoUrl = undefined;
+    if (existingPending) {
+      return res.status(400).json({ error: 'Foto kegiatan sebelumnya masih menunggu verifikasi Admin. Anda hanya dapat menambahkan foto baru jika kegiatan sebelumnya telah terverifikasi.' });
+    }
+
+    // Validasi input wajib per kegiatan GTM
+    if (type === 'branding_outlet') {
+      if (!namaOutlet || !namaOutlet.trim() || !req.file) {
+        return res.status(400).json({ error: 'Upload Branding Downline/Outlet wajib memasukkan Nama Outlet dan Foto bukti.' });
+      }
+    } else if (type === 'open_table' || type === 'tsel_menyapa') {
+      if (!planDate || !req.file) {
+        return res.status(400).json({ error: 'Upload kegiatan ini wajib memasukkan Tanggal dan Foto bukti.' });
+      }
+    } else if (type === 'bumdes') {
+      if (!req.file) {
+        return res.status(400).json({ error: 'Upload Kerjasama BUMDes wajib memasukkan Foto bukti.' });
+      }
+    } else if (type === 'rekrutmen_sf') {
+      const sfVal = kodeSf || keterangan;
+      if (!req.file && (!sfVal || !sfVal.trim())) {
+        return res.status(400).json({ error: 'Rekrutmen SF AKAMSI wajib memasukkan setidaknya Kode SF atau Foto bukti.' });
+      }
+    }
+
+    let photoUrl = null;
     if (req.file) {
-      // Upload photo to Cloudinary staging (Status "upload" / Belum terverifikasi)
       console.log('☁️ Uploading photo to Cloudinary staging...');
       const cldRes = await uploadToCloudinary(req.file.buffer, 'gtm_staging');
       photoUrl = cldRes.secure_url;
       console.log('✅ Cloudinary Staging URL:', photoUrl);
-
-      // Jika sebelumnya ada foto di Cloudinary yang belum terverifikasi, hapus foto lama tersebut
-      if (existingActivity && existingActivity.photoUrl && existingActivity.photoUrl.includes('res.cloudinary.com')) {
-        await deleteFromCloudinary(existingActivity.photoUrl);
-      }
     }
 
-    const effectivePlanDate = planDate ? new Date(planDate) : existingActivity?.planDate;
-    const effectivePhotoUrl = photoUrl || existingActivity?.photoUrl;
-    const effectiveKeterangan = keterangan !== undefined ? keterangan : existingActivity?.keterangan;
-    const currentStatus = existingActivity?.status || 'belum';
+    const effectiveKeterangan = keterangan || namaOutlet || kodeSf || null;
+    const effectivePlanDate = planDate ? new Date(planDate) : null;
 
-    let finalStatus = status || currentStatus;
-    if (currentStatus !== 'verified' && status !== 'verified') {
-      if (type === 'tsel_menyapa') {
-        const hasDate = Boolean(effectivePlanDate);
-        const hasPhoto = Boolean(effectivePhotoUrl);
-        finalStatus = (hasDate && hasPhoto) ? 'upload' : 'belum';
-      } else if (['branding_outlet', 'bumdes', 'open_table'].includes(type)) {
-        finalStatus = Boolean(effectivePhotoUrl) ? 'upload' : 'belum';
-      } else if (type === 'rekrutmen_sf') {
-        finalStatus = Boolean(effectiveKeterangan) ? 'upload' : 'belum';
+    // Simpan ke ProjectActivityPhoto
+    const activityPhoto = await prisma.projectActivityPhoto.create({
+      data: {
+        projectId: project.id,
+        type: type,
+        status: 'upload',
+        photoUrl: photoUrl,
+        planDate: effectivePlanDate,
+        namaOutlet: namaOutlet || null,
+        kodeSf: kodeSf || keterangan || null,
+        keterangan: effectiveKeterangan,
+        userId: req.user?.id || undefined
       }
-    }
+    });
 
-    // Upsert project activity
-    const activity = await prisma.projectActivity.upsert({
-      where: {
-        projectId_type: {
-          projectId: project.id,
-          type: type
-        }
-      },
+    // Sinkronkan juga ke ProjectActivity
+    await prisma.projectActivity.upsert({
+      where: { projectId_type: { projectId: project.id, type: type } },
       update: {
-        status: finalStatus,
-        planDate: planDate ? new Date(planDate) : undefined,
-        actualDate: actualDate ? new Date(actualDate) : undefined,
-        ...(photoUrl && { photoUrl }),
-        ...(keterangan !== undefined && { keterangan }),
+        status: 'upload',
+        photoUrl: photoUrl || undefined,
+        planDate: effectivePlanDate || undefined,
+        keterangan: effectiveKeterangan || undefined,
         userId: req.user?.id || undefined
       },
       create: {
         projectId: project.id,
         type: type,
-        status: finalStatus,
-        planDate: planDate ? new Date(planDate) : undefined,
-        actualDate: actualDate ? new Date(actualDate) : undefined,
+        status: 'upload',
         photoUrl: photoUrl,
-        keterangan: keterangan !== undefined ? keterangan : null,
+        planDate: effectivePlanDate,
+        keterangan: effectiveKeterangan,
         userId: req.user?.id || undefined
       }
     });
 
-    res.json({ success: true, activity });
+    res.json({ success: true, activityPhoto });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Failed to save activity' });
+    console.error('Error saving activity:', error);
+    res.status(500).json({ error: 'Gagal menyimpan kegiatan' });
   }
 });
 
 // 2b. Delete Activity Photo (Protected)
 app.post('/api/activities/delete-photo', authenticateToken, async (req, res) => {
   try {
-    const { projectName, branchName, type } = req.body;
+    const { projectName, branchName, type, photoId } = req.body;
 
     if (req.user && req.user.role === 'USER' && req.user.branchName !== branchName) {
       return res.status(403).json({ success: false, message: `Akses ditolak. Anda hanya berhak memodifikasi data di branch ${req.user.branchName}.` });
@@ -586,41 +619,57 @@ app.post('/api/activities/delete-photo', authenticateToken, async (req, res) => 
     });
     if (!project) return res.status(404).json({ success: false, message: 'Proyek tidak ditemukan' });
 
-    const activity = await prisma.projectActivity.findUnique({
-      where: { projectId_type: { projectId: project.id, type } }
+    let targetPhoto = null;
+    if (photoId) {
+      targetPhoto = await prisma.projectActivityPhoto.findUnique({ where: { id: photoId } });
+    } else {
+      targetPhoto = await prisma.projectActivityPhoto.findFirst({
+        where: { projectId: project.id, type: type },
+        orderBy: { createdAt: 'desc' }
+      });
+    }
+
+    if (targetPhoto && targetPhoto.photoUrl) {
+      if (targetPhoto.photoUrl.includes('res.cloudinary.com')) {
+        await deleteFromCloudinary(targetPhoto.photoUrl);
+      } else if (targetPhoto.photoUrl.startsWith('/uploads/')) {
+        const localP = path.join(__dirname, targetPhoto.photoUrl);
+        if (fs.existsSync(localP)) {
+          await fs.promises.unlink(localP).catch(err => console.error('Unlink error:', err.message));
+        }
+      }
+      await prisma.projectActivityPhoto.delete({ where: { id: targetPhoto.id } }).catch(() => null);
+    }
+
+    // Update status ProjectActivity
+    const remainingPhotos = await prisma.projectActivityPhoto.findMany({
+      where: { projectId: project.id, type: type }
+    });
+    let newStatus = 'belum';
+    if (remainingPhotos.some(p => p.status === 'upload')) {
+      newStatus = 'upload';
+    } else if (remainingPhotos.some(p => p.status === 'verified')) {
+      newStatus = 'verified';
+    }
+
+    const latest = remainingPhotos[remainingPhotos.length - 1];
+    await prisma.projectActivity.upsert({
+      where: { projectId_type: { projectId: project.id, type: type } },
+      update: {
+        status: newStatus,
+        photoUrl: latest?.photoUrl || null,
+        planDate: latest?.planDate || null,
+        keterangan: latest?.keterangan || null
+      },
+      create: {
+        projectId: project.id,
+        type: type,
+        status: newStatus,
+        photoUrl: latest?.photoUrl || null
+      }
     });
 
-    if (!activity || !activity.photoUrl) {
-      return res.json({ success: true, message: 'Foto sudah kosong' });
-    }
-
-    // 1. Jika foto di Cloudinary: hapus dari Cloudinary
-    if (activity.photoUrl.includes('res.cloudinary.com')) {
-      await deleteFromCloudinary(activity.photoUrl);
-    }
-    // 2. Jika foto di Local disk: hapus file fisik dari lokal
-    else if (activity.photoUrl.startsWith('/uploads/')) {
-      const localP = path.join(__dirname, activity.photoUrl);
-      if (fs.existsSync(localP)) {
-        await fs.promises.unlink(localP).catch(err => console.error('Unlink error:', err.message));
-      }
-    }
-
-    // 3. Hitung status baru setelah foto dihapus
-    let finalStatus = 'belum';
-    if (type === 'rekrutmen_sf' && activity.keterangan) {
-      finalStatus = 'upload';
-    }
-
-    const updated = await prisma.projectActivity.update({
-      where: { id: activity.id },
-      data: {
-        photoUrl: null,
-        status: finalStatus
-      }
-    });
-
-    res.json({ success: true, activity: updated });
+    res.json({ success: true, message: 'Foto berhasil dihapus' });
   } catch (error) {
     console.error('Delete photo error:', error);
     res.status(500).json({ success: false, message: 'Gagal menghapus foto' });
@@ -630,7 +679,7 @@ app.post('/api/activities/delete-photo', authenticateToken, async (req, res) => 
 // 3. Verify Project Activity (Admin only — Download from Cloudinary to Local PC Disk)
 app.post('/api/verify', requireAdmin, async (req, res) => {
   try {
-    const { projectName, branchName, type } = req.body;
+    const { projectName, branchName, type, photoId } = req.body;
 
     const branch = await prisma.branch.findUnique({ where: { name: branchName } });
     if (!branch) {
@@ -645,21 +694,25 @@ app.post('/api/verify', requireAdmin, async (req, res) => {
       return res.status(404).json({ error: 'Project not found' });
     }
 
-    const existingActivity = await prisma.projectActivity.findUnique({
-      where: { projectId_type: { projectId: project.id, type } }
-    });
+    let targetPhoto = null;
+    if (photoId) {
+      targetPhoto = await prisma.projectActivityPhoto.findUnique({ where: { id: photoId } });
+    } else {
+      targetPhoto = await prisma.projectActivityPhoto.findFirst({
+        where: { projectId: project.id, type: type, status: 'upload' }
+      });
+    }
 
-    let finalPhotoUrl = existingActivity?.photoUrl;
+    let finalPhotoUrl = targetPhoto?.photoUrl;
 
-    // Jika foto berada di Cloudinary (Staging), tarik & simpan ke penyimpanan lokal Mini PC
-    if (existingActivity && existingActivity.photoUrl && existingActivity.photoUrl.includes('res.cloudinary.com')) {
+    if (targetPhoto && targetPhoto.photoUrl && targetPhoto.photoUrl.includes('res.cloudinary.com')) {
       try {
-        console.log(`📥 [Admin Verify] Mengunduh foto terverifikasi dari Cloudinary untuk disimpan ke lokal PC (${projectName})...`);
-        const photoBuffer = await downloadBuffer(existingActivity.photoUrl);
+        console.log(`📥 [Admin Verify] Mengunduh foto terverifikasi dari Cloudinary untuk disimpan ke PC lokal (${projectName})...`);
+        const photoBuffer = await downloadBuffer(targetPhoto.photoUrl);
 
         const rawBranch = branchName.toString().trim().toUpperCase().replace(/[^A-Z0-9_-]/gi, '_');
         const rawWok = (project.wok || 'WOK').toString().trim().toUpperCase().replace(/[^A-Z0-9_-]/gi, '_');
-        
+
         const now = new Date();
         const year = now.getFullYear();
         const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -679,39 +732,55 @@ app.post('/api/verify', requireAdmin, async (req, res) => {
 
         const relPath = path.relative(__dirname, localFilePath).replace(/\\/g, '/');
         finalPhotoUrl = relPath.startsWith('/') ? relPath : '/' + relPath;
-        console.log('✅ Foto terverifikasi sukses tersimpan di disk lokal:', finalPhotoUrl);
 
-        // Hapus foto dari Cloudinary setelah tersimpan di lokal
-        await deleteFromCloudinary(existingActivity.photoUrl);
+        await deleteFromCloudinary(targetPhoto.photoUrl);
       } catch (dlErr) {
         console.error('⚠️ Gagal mengunduh foto dari Cloudinary ke lokal:', dlErr.message);
       }
     }
 
-    const activity = await prisma.projectActivity.update({
-      where: {
-        projectId_type: {
-          projectId: project.id,
-          type: type
+    if (targetPhoto) {
+      await prisma.projectActivityPhoto.update({
+        where: { id: targetPhoto.id },
+        data: {
+          status: 'verified',
+          photoUrl: finalPhotoUrl || targetPhoto.photoUrl
         }
+      });
+    }
+
+    // Update overall status ProjectActivity
+    const remainingPending = await prisma.projectActivityPhoto.count({
+      where: { projectId: project.id, type: type, status: 'upload' }
+    });
+
+    const newStatus = remainingPending > 0 ? 'upload' : 'verified';
+
+    const activity = await prisma.projectActivity.upsert({
+      where: { projectId_type: { projectId: project.id, type: type } },
+      update: {
+        status: newStatus,
+        photoUrl: finalPhotoUrl || targetPhoto?.photoUrl || undefined
       },
-      data: {
-        status: 'verified',
-        ...(finalPhotoUrl ? { photoUrl: finalPhotoUrl } : {})
+      create: {
+        projectId: project.id,
+        type: type,
+        status: newStatus,
+        photoUrl: finalPhotoUrl || targetPhoto?.photoUrl || null
       }
     });
 
     res.json({ success: true, activity });
   } catch (error) {
-    console.error(error);
+    console.error('Error verifying activity:', error);
     res.status(500).json({ error: 'Failed to verify activity' });
   }
 });
 
-// 3b. Reject Project Activity Verification (Admin only — deletes photo & resets status to 'belum')
+// 3b. Reject Project Activity Verification (Admin only — deletes photo & resets status)
 app.post('/api/reject', requireAdmin, async (req, res) => {
   try {
-    const { projectName, branchName, type } = req.body;
+    const { projectName, branchName, type, photoId } = req.body;
 
     const branch = await prisma.branch.findUnique({ where: { name: branchName } });
     if (!branch) {
@@ -726,41 +795,59 @@ app.post('/api/reject', requireAdmin, async (req, res) => {
       return res.status(404).json({ success: false, message: 'Project not found' });
     }
 
-    const existingActivity = await prisma.projectActivity.findUnique({
-      where: { projectId_type: { projectId: project.id, type } }
-    });
-
-    if (!existingActivity) {
-      return res.status(404).json({ success: false, message: 'Activity not found' });
+    let targetPhoto = null;
+    if (photoId) {
+      targetPhoto = await prisma.projectActivityPhoto.findUnique({ where: { id: photoId } });
+    } else {
+      targetPhoto = await prisma.projectActivityPhoto.findFirst({
+        where: { projectId: project.id, type: type, status: 'upload' },
+        orderBy: { createdAt: 'desc' }
+      });
     }
 
-    // Hapus foto jika ada (baik Cloudinary maupun disk lokal)
-    if (existingActivity.photoUrl) {
-      if (existingActivity.photoUrl.includes('res.cloudinary.com')) {
-        await deleteFromCloudinary(existingActivity.photoUrl);
-      } else if (existingActivity.photoUrl.startsWith('/uploads/')) {
-        const localP = path.join(__dirname, existingActivity.photoUrl);
-        if (fs.existsSync(localP)) {
-          await fs.promises.unlink(localP).catch(err => console.error('Unlink error on reject:', err.message));
+    if (targetPhoto) {
+      if (targetPhoto.photoUrl) {
+        if (targetPhoto.photoUrl.includes('res.cloudinary.com')) {
+          await deleteFromCloudinary(targetPhoto.photoUrl);
+        } else if (targetPhoto.photoUrl.startsWith('/uploads/')) {
+          const localP = path.join(__dirname, targetPhoto.photoUrl);
+          if (fs.existsSync(localP)) {
+            await fs.promises.unlink(localP).catch(err => console.error('Unlink error on reject:', err.message));
+          }
         }
       }
+      await prisma.projectActivityPhoto.delete({ where: { id: targetPhoto.id } }).catch(() => null);
     }
 
-    // Reset status ke 'belum' dan hapus foto
-    const updatedActivity = await prisma.projectActivity.update({
-      where: {
-        projectId_type: {
-          projectId: project.id,
-          type: type
-        }
+    // Recalculate status ProjectActivity
+    const remaining = await prisma.projectActivityPhoto.findMany({
+      where: { projectId: project.id, type: type }
+    });
+
+    let overallStatus = 'belum';
+    if (remaining.some(ph => ph.status === 'upload')) {
+      overallStatus = 'upload';
+    } else if (remaining.some(ph => ph.status === 'verified')) {
+      overallStatus = 'verified';
+    }
+
+    const latest = remaining[remaining.length - 1];
+
+    const updatedActivity = await prisma.projectActivity.upsert({
+      where: { projectId_type: { projectId: project.id, type: type } },
+      update: {
+        status: overallStatus,
+        photoUrl: latest?.photoUrl || null
       },
-      data: {
-        status: 'belum',
-        photoUrl: null
+      create: {
+        projectId: project.id,
+        type: type,
+        status: overallStatus,
+        photoUrl: latest?.photoUrl || null
       }
     });
 
-    res.json({ success: true, message: 'Verifikasi berhasil ditolak. Foto telah dihapus dan status di-reset.', activity: updatedActivity });
+    res.json({ success: true, message: 'Verifikasi berhasil ditolak. Foto telah dihapus.', activity: updatedActivity });
   } catch (error) {
     console.error('Error rejecting activity:', error);
     res.status(500).json({ success: false, message: 'Gagal menolak verifikasi activity' });

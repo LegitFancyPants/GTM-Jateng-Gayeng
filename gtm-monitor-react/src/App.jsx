@@ -435,50 +435,34 @@ function App() {
   }, [token, branches]);
 
   // Upload photo at PROJECT level
-  const uploadPhoto = useCallback(async (branchName, projectName, actType, file) => {
-    let targetStatus = 'upload';
-    const b = branches.find(x => x.name === branchName);
-    const p = b?.projects.find(x => x.name === projectName);
-    let a = p?.activities?.find(x => x.type === actType);
+  const uploadPhoto = useCallback(async (branchName, projectName, actType, payload) => {
+    let file = payload;
+    let planDate = null;
+    let namaOutlet = null;
+    let kodeSf = null;
+    let keterangan = null;
 
-    let hasDate = Boolean(a?.planDate);
-    // Since we are uploading a photo, hasPhoto becomes true optimistically
-    
-    if (a?.status === 'verified') {
-      targetStatus = 'verified';
-    } else if (actType === 'tsel_menyapa') {
-      targetStatus = hasDate ? 'upload' : 'belum';
-    } else {
-      targetStatus = 'upload';
+    if (payload && typeof payload === 'object' && !(payload instanceof File)) {
+      file = payload.file;
+      planDate = payload.planDate;
+      namaOutlet = payload.namaOutlet;
+      kodeSf = payload.kodeSf;
+      keterangan = payload.keterangan;
     }
 
-    // Optimistic UI Update
-    setBranches(prev => {
-      const newBranches = JSON.parse(JSON.stringify(prev));
-      const bDraft = newBranches.find(x => x.name === branchName);
-      const pDraft = bDraft?.projects.find(x => x.name === projectName);
-      if (pDraft) {
-        if (!pDraft.activities) pDraft.activities = [];
-        let aDraft = pDraft.activities.find(x => x.type === actType);
-        if (!aDraft) {
-          aDraft = { type: actType, status: 'belum' };
-          pDraft.activities.push(aDraft);
-        }
-        aDraft.photoUrl = 'uploading...';
-        if (aDraft.status !== 'verified') {
-          aDraft.status = targetStatus;
-        }
-      }
-      return newBranches;
-    });
+    const b = branches.find(x => x.name === branchName);
+    const p = b?.projects.find(x => x.name === projectName);
 
     const formData = new FormData();
     formData.append('branchName', branchName);
     formData.append('projectName', projectName);
     formData.append('wokName', p?.wok || 'WOK');
     formData.append('type', actType);
-    formData.append('status', targetStatus);
-    formData.append('photo', file);
+    if (file) formData.append('photo', file);
+    if (planDate) formData.append('planDate', planDate);
+    if (namaOutlet) formData.append('namaOutlet', namaOutlet);
+    if (kodeSf) formData.append('kodeSf', kodeSf);
+    if (keterangan) formData.append('keterangan', keterangan);
 
     try {
       const res = await fetch(`${API_BASE_URL}/api/activities`, {
@@ -489,45 +473,23 @@ function App() {
         body: formData
       });
       if (res.ok) {
-        const resData = await res.json();
-        const realPhotoUrl = resData?.activity?.photoUrl;
-        setBranches(prev => {
-          const newBranches = JSON.parse(JSON.stringify(prev));
-          const b = newBranches.find(x => x.name === branchName);
-          const p = b?.projects.find(x => x.name === projectName);
-          if (p) {
-            let a = p.activities?.find(x => x.type === actType);
-            if (a) {
-              a.photoUrl = realPhotoUrl || a.photoUrl;
-              if (a.status !== 'verified') {
-                if (actType === 'tsel_menyapa') {
-                  const hasDate = Boolean(a.planDate);
-                  const hasPhoto = Boolean(a.photoUrl && a.photoUrl !== 'uploading...');
-                  a.status = (hasDate && hasPhoto) ? 'upload' : 'belum';
-                } else {
-                  a.status = 'upload';
-                }
-              }
-            }
-          }
-          return newBranches;
-        });
-        fetchData();
-      } else if (res.status === 403 || res.status === 401) {
-        const errData = await res.json();
-        alert(`❌ ${errData.error || errData.message}`);
-        fetchData();
+        await fetchData();
+        return { success: true };
       } else {
-        fetchData();
+        const errData = await res.json();
+        alert(`❌ ${errData.error || errData.message || 'Gagal menyimpan kegiatan'}`);
+        await fetchData();
+        return { success: false, error: errData.error || errData.message };
       }
     } catch (err) {
       console.error('Error uploading photo:', err);
-      fetchData();
+      await fetchData();
+      return { success: false, error: err.message };
     }
-  }, [token]);
+  }, [token, branches, fetchData]);
 
   // Verify activity at PROJECT level (Admin only)
-  const verifyActivity = useCallback(async (branchName, projectName, actType) => {
+  const verifyActivity = useCallback(async (branchName, projectName, actType, photoId) => {
     if (!isAdmin) return;
 
     try {
@@ -540,21 +502,12 @@ function App() {
         body: JSON.stringify({
           branchName,
           projectName,
-          type: actType
+          type: actType,
+          photoId
         })
       });
       if (res.ok) {
-        setBranches(prev => {
-          const newBranches = JSON.parse(JSON.stringify(prev));
-          const b = newBranches.find(x => x.name === branchName);
-          const p = b?.projects.find(x => x.name === projectName);
-          if (p && p.activities) {
-            const a = p.activities.find(x => x.type === actType);
-            if (a) a.status = 'verified';
-          }
-          return newBranches;
-        });
-        fetchData();
+        await fetchData();
       }
     } catch (err) {
       console.error('Error verifying activity:', err);
@@ -562,7 +515,7 @@ function App() {
   }, [isAdmin, token, fetchData]);
 
   // Reject activity verification at PROJECT level (Admin only)
-  const rejectActivity = useCallback(async (branchName, projectName, actType) => {
+  const rejectActivity = useCallback(async (branchName, projectName, actType, photoId) => {
     if (!isAdmin) return;
 
     try {
@@ -575,31 +528,19 @@ function App() {
         body: JSON.stringify({
           branchName,
           projectName,
-          type: actType
+          type: actType,
+          photoId
         })
       });
       if (res.ok) {
-        setBranches(prev => {
-          const newBranches = JSON.parse(JSON.stringify(prev));
-          const b = newBranches.find(x => x.name === branchName);
-          const p = b?.projects.find(x => x.name === projectName);
-          if (p && p.activities) {
-            const a = p.activities.find(x => x.type === actType);
-            if (a) {
-              a.status = 'belum';
-              a.photoUrl = null;
-            }
-          }
-          return newBranches;
-        });
-        fetchData();
+        await fetchData();
       }
     } catch (err) {
       console.error('Error rejecting activity:', err);
     }
   }, [isAdmin, token, fetchData]);
 
-  const deletePhoto = useCallback(async (branchName, projectName, actType) => {
+  const deletePhoto = useCallback(async (branchName, projectName, actType, photoId) => {
     try {
       const res = await fetch(`${API_BASE_URL}/api/activities/delete-photo`, {
         method: 'POST',
@@ -607,11 +548,11 @@ function App() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ branchName, projectName, type: actType })
+        body: JSON.stringify({ branchName, projectName, type: actType, photoId })
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        fetchData();
+        await fetchData();
         return true;
       } else {
         alert(`❌ ${data.message || 'Gagal menghapus foto.'}`);

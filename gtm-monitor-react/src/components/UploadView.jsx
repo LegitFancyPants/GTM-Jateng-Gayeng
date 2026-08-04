@@ -7,7 +7,7 @@ import { formatBranch, computeStats } from '../utils';
 const UploadView = memo(function UploadView({ branches, initialBranch, updateActivityField, verifyActivity, rejectActivity, uploadPhoto, deletePhoto }) {
   // Halaman Upload Activity Wajib difilter: OCC < 35%, ODP > 1, DAN Type Design === Greenfield
   const priorityBranches = useMemo(() => {
-    return (branches || []).map(b => ({
+    return (Array.isArray(branches) ? branches : []).map(b => ({
       ...b,
       projects: (b.projects || []).filter(p => {
         const isPriority = p.isPriority ?? (p.odpCount > 1 && p.occRate < 35);

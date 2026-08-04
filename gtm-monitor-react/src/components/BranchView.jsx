@@ -8,8 +8,14 @@ const BranchView = memo(function BranchView({ branches, activeBranch, verifyActi
   const [search, setSearch] = useState('');
   const [modalKey, setModalKey] = useState(null); // format: branchName||projectName
 
-  const branch = branches.find(b => b.name === activeBranch);
-  if (!branch) return null;
+  const branch = (Array.isArray(branches) ? branches : []).find(b => b.name === activeBranch);
+  if (!branch) {
+    return (
+      <div style={{ padding: '40px', textAlign: 'center', color: '#64748B', fontSize: '14px', fontWeight: 600 }}>
+        Memuat data branch <strong>{activeBranch || ''}</strong>...
+      </div>
+    );
+  }
 
   const priorityProjects = useMemo(() => {
     return (branch.projects || []).filter(p => {
