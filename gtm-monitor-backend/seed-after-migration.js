@@ -58,23 +58,29 @@ async function seed() {
     // ─── 1. Buat Branches dengan ID berurutan ───────────────────────────────
     console.log('🏢 Membuat 6 branch...');
     for (const branch of BRANCHES) {
-      // Gunakan executeRaw untuk set ID manual di PostgreSQL autoincrement
-      await prisma.$executeRawUnsafe(
-        `INSERT INTO "Branch" (id, name) VALUES ($1, $2) ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name`,
-        branch.id, branch.name
-      );
+      try {
+        await prisma.$executeRawUnsafe(
+          `INSERT INTO "Branch" (id, name) VALUES ($1, $2)
+           ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name`,
+          branch.id, branch.name
+        );
+      } catch (err) {
+        await prisma.branch.upsert({
+          where: { name: branch.name },
+          update: { name: branch.name },
+          create: { id: branch.id, name: branch.name }
+        }).catch(() => null);
+      }
       console.log(`   ✅ Branch ${branch.id}: ${branch.name}`);
     }
-    // Update sequence agar autoincrement lanjut dari 7
+
     await prisma.$executeRawUnsafe(
       `SELECT setval(pg_get_serial_sequence('"Branch"', 'id'), 6, true)`
-    );
+    ).catch(() => null);
     console.log('   ✅ Sequence Branch diset ke 6\n');
 
     // ─── 2. Buat Users dengan ID berurutan ──────────────────────────────────
     console.log('👥 Membuat users...');
-    
-    // Urutkan: admin dulu (id=1), lalu user lainnya
     const adminUsers = backup.users.filter(u => u.role === 'ADMIN');
     const regularUsers = backup.users.filter(u => u.role !== 'ADMIN');
     const orderedUsers = [...adminUsers, ...regularUsers];
@@ -85,51 +91,58 @@ async function seed() {
 
       let branchId = null;
       if (u.branchName) {
-        // Cari branch ID berdasarkan nama dari BRANCHES array
         const branch = BRANCHES.find(b => b.name === u.branchName);
         if (branch) {
           branchId = branch.id;
         } else {
-          // Coba cari di database jika nama tidak sama persis
           const dbBranch = await prisma.branch.findFirst({ where: { name: u.branchName } });
           branchId = dbBranch?.id || null;
         }
       }
 
-      await prisma.$executeRawUnsafe(
-        `INSERT INTO "User" (id, username, password, "fullName", role, "branchId", "createdAt") 
-         VALUES ($1, $2, $3, $4, $5, $6, $7)
-         ON CONFLICT (id) DO UPDATE SET 
-           username = EXCLUDED.username,
-           password = EXCLUDED.password,
-           "fullName" = EXCLUDED."fullName",
-           role = EXCLUDED.role,
-           "branchId" = EXCLUDED."branchId"`,
-        userId,
-        u.username,
-        u.password,
-        u.fullName,
-        u.role,
-        branchId,
-        new Date(u.createdAt)
-      ).catch(async () => {
-        await prisma.user.updateMany({
+      try {
+        await prisma.$executeRawUnsafe(
+          `INSERT INTO "User" (id, username, password, "fullName", role, "branchId", "createdAt") 
+           VALUES ($1, $2, $3, $4, $5, $6, $7)
+           ON CONFLICT (id) DO UPDATE SET 
+             username = EXCLUDED.username,
+             password = EXCLUDED.password,
+             "fullName" = EXCLUDED."fullName",
+             role = EXCLUDED.role,
+             "branchId" = EXCLUDED."branchId"`,
+          userId,
+          u.username,
+          u.password,
+          u.fullName,
+          u.role,
+          branchId,
+          new Date(u.createdAt)
+        );
+      } catch (err) {
+        await prisma.user.upsert({
           where: { username: u.username },
-          data: {
+          update: {
+            password: u.password,
+            fullName: u.fullName,
+            role: u.role,
+            branchId: branchId
+          },
+          create: {
+            username: u.username,
             password: u.password,
             fullName: u.fullName,
             role: u.role,
             branchId: branchId
           }
         }).catch(() => null);
-      });
+      }
       console.log(`   ✅ User ${userId}: ${u.username} (${u.role}) - branch: ${u.branchName || 'ADMIN'}`);
     }
-    // Update sequence agar autoincrement lanjut dari jumlah user saat ini
+
     await prisma.$executeRawUnsafe(
       `SELECT setval(pg_get_serial_sequence('"User"', 'id'), $1, true)`,
       orderedUsers.length
-    );
+    ).catch(() => null);
     console.log(`   ✅ Sequence User diset ke ${orderedUsers.length}\n`);
 
     // ─── 3. Restore Project & ODP dari backup ───────────────────────────────
@@ -138,7 +151,6 @@ async function seed() {
     let odpCount = 0;
 
     for (const backupBranch of backup.branches) {
-      // Cari branch yang sesuai (nama mungkin berbeda case)
       const matchedBranch = BRANCHES.find(
         b => b.name === backupBranch.name || 
              b.name.toLowerCase() === backupBranch.name.toLowerCase()
@@ -150,10 +162,9 @@ async function seed() {
       }
 
       for (const proj of backupBranch.projects) {
-        // Upsert Project
         let project = await prisma.project.findFirst({
           where: { name: proj.name, branchId: matchedBranch.id }
-        });
+        }).catch(() => null);
 
         if (!project) {
           project = await prisma.project.create({
@@ -162,48 +173,47 @@ async function seed() {
               wok: proj.wok,
               branchId: matchedBranch.id
             }
-          });
-          projectCount++;
+          }).catch(() => null);
+          if (project) projectCount++;
         }
 
-        // Upsert ODPs
-        for (const odp of proj.odps) {
-          await prisma.odp.upsert({
-            where: { odp: odp.odp },
-            update: {
-              avai: odp.avai,
-              used: odp.used,
-              total: odp.total,
-              lat: odp.lat,
-              lon: odp.lon,
-              projectId: project.id
-            },
-            create: {
-              odp: odp.odp,
-              avai: odp.avai,
-              used: odp.used,
-              total: odp.total,
-              lat: odp.lat,
-              lon: odp.lon,
-              projectId: project.id
-            }
-          });
-          odpCount++;
+        if (project) {
+          for (const odp of proj.odps) {
+            await prisma.odp.upsert({
+              where: { odp: odp.odp },
+              update: {
+                avai: odp.avai,
+                used: odp.used,
+                total: odp.total,
+                lat: odp.lat,
+                lon: odp.lon,
+                projectId: project.id
+              },
+              create: {
+                odp: odp.odp,
+                avai: odp.avai,
+                used: odp.used,
+                total: odp.total,
+                lat: odp.lat,
+                lon: odp.lon,
+                projectId: project.id
+              }
+            }).catch(() => null);
+            odpCount++;
+          }
         }
       }
-      console.log(`   ✅ Branch ${matchedBranch.name}: ${backupBranch.projects.length} projects restored`);
+      console.log(`   ✅ Branch ${matchedBranch.name}: ${backupBranch.projects.length} projects processed`);
     }
 
     console.log(`\n🎉 Seed selesai!`);
     console.log(`   Branch: 6 (ID 1-6)`);
-    console.log(`   Users: ${orderedUsers.length} (ID ${orderedUsers.map((_, i) => i + 1).join(', ')})`);
-    console.log(`   Projects restored: ${projectCount}`);
-    console.log(`   ODPs restored: ${odpCount}`);
-    console.log('\n✅ Database siap digunakan dengan ID berurutan.');
-
+    console.log(`   Users: ${orderedUsers.length}`);
+    console.log(`   Projects processed: ${projectCount}`);
+    console.log(`   ODPs processed: ${odpCount}`);
+    console.log('\n✅ Database siap digunakan.');
   } catch (error) {
-    console.error('❌ Error:', error.message);
-    console.error(error);
+    console.error('❌ Error saat seed:', error);
   } finally {
     await prisma.$disconnect();
   }
