@@ -99,7 +99,8 @@ async function seed() {
       await prisma.$executeRawUnsafe(
         `INSERT INTO "User" (id, username, password, "fullName", role, "branchId", "createdAt") 
          VALUES ($1, $2, $3, $4, $5, $6, $7)
-         ON CONFLICT (username) DO UPDATE SET 
+         ON CONFLICT (id) DO UPDATE SET 
+           username = EXCLUDED.username,
            password = EXCLUDED.password,
            "fullName" = EXCLUDED."fullName",
            role = EXCLUDED.role,
@@ -111,7 +112,17 @@ async function seed() {
         u.role,
         branchId,
         new Date(u.createdAt)
-      );
+      ).catch(async () => {
+        await prisma.user.updateMany({
+          where: { username: u.username },
+          data: {
+            password: u.password,
+            fullName: u.fullName,
+            role: u.role,
+            branchId: branchId
+          }
+        }).catch(() => null);
+      });
       console.log(`   ✅ User ${userId}: ${u.username} (${u.role}) - branch: ${u.branchName || 'ADMIN'}`);
     }
     // Update sequence agar autoincrement lanjut dari jumlah user saat ini
