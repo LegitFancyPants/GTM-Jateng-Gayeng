@@ -453,6 +453,7 @@ app.get('/api/data', optionalAuthenticateToken, async (req, res) => {
 
         return {
           name: p.name,
+          branchName: b.name,
           wok: p.wok,
           typeDesign,
           isPriority,
