@@ -196,15 +196,16 @@ const AdminPanel = memo(function AdminPanel({ token, branches = [], onUpdate, go
   const [isBranchDropdownOpen, setIsBranchDropdownOpen] = useState(false);
   const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
 
-  // Gunakan kpi yang dihitung dari priorityBranches agar persis sama dengan Halaman Upload Activity
-  const stats = useMemo(() => computeStats(priorityBranches), [priorityBranches]);
-  const totalProjects = useMemo(() => priorityBranches.reduce((s, b) => s + (b.projects?.length || 0), 0), [priorityBranches]);
-
   // Filter Branches and Projects for Monitoring Tab
   const filteredBranches = useMemo(() => {
     if (selectedBranch === 'Semua Branch') return priorityBranches;
     return priorityBranches.filter(b => b.name === selectedBranch);
   }, [priorityBranches, selectedBranch]);
+
+  // Dynamic KPI stats recalculated based on the selected branch filter
+  const stats = useMemo(() => computeStats(filteredBranches), [filteredBranches]);
+  const totalProjectsInFilter = useMemo(() => filteredBranches.reduce((s, b) => s + (b.projects?.length || 0), 0), [filteredBranches]);
+  const totalBranchesInFilter = useMemo(() => selectedBranch === 'Semua Branch' ? priorityBranches.length : (filteredBranches.length > 0 ? 1 : 0), [priorityBranches, filteredBranches, selectedBranch]);
 
   // Hitung jumlah proyek per status filter (Semua, Menunggu Verifikasi, Sudah Terverifikasi, Belum Dikerjakan)
   const statusCounts = useMemo(() => {
@@ -359,7 +360,7 @@ const AdminPanel = memo(function AdminPanel({ token, branches = [], onUpdate, go
             Total Branch / Proyek
           </div>
           <div style={{ fontFamily: "'Outfit', sans-serif", fontSize: '26px', fontWeight: 900, color: '#0F172A', marginTop: '6px' }}>
-            {branches.length} / {totalProjects}
+            {totalBranchesInFilter} / {totalProjectsInFilter}
           </div>
           <div style={{ fontSize: '12px', color: '#94A3B8', marginTop: '4px', fontWeight: 500 }}>Terkoneksi dalam sistem GTM</div>
         </div>
