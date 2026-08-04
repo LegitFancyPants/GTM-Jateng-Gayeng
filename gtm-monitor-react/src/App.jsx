@@ -940,6 +940,7 @@ function LoadingScreen() {
               branches={branches} 
               goBranch={goBranch} 
               kpi={kpi} 
+              importMeta={importMeta}
               statusChips={statusChips} 
               ranking={ranking} 
               mapBounds={mapBounds} 

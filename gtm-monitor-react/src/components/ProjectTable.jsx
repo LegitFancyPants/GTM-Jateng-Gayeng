@@ -675,14 +675,14 @@ export default function ProjectTable({ projects, branchName, onReview, updateAct
   const odpGrid = '34px 210px 130px 80px 80px 80px';
 
   return (
-    <div className="card" style={{ overflow: 'hidden', position: 'relative' }}>
+    <div className="card" style={{ position: 'relative', overflow: 'hidden' }}>
       {filterPopup && (
         <div
           onClick={() => setFilterPopup(null)}
           style={{ position: 'fixed', inset: 0, zIndex: 99 }}
         />
       )}
-      <div style={{ overflowX: 'auto' }}>
+      <div style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: '75vh' }}>
         <div style={{ minWidth: 'max-content', paddingBottom: filterPopup ? '400px' : '0' }}>
           {/* Header */}
           <div className="table-header" style={{ gridTemplateColumns: tableGrid }}>

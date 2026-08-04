@@ -112,31 +112,14 @@ const UploadView = memo(function UploadView({ branches, initialBranch, updateAct
             KEGIATAN & PELAPORAN LAPANGAN
           </div>
           <h1 style={{ fontFamily: "'Outfit', sans-serif", fontSize: '28px', fontWeight: 900, color: '#0F172A', margin: 0, letterSpacing: '-0.5px' }}>
-            Aktivitas Proyek Greenfield
+            GTM Activity LOP Greenfield Priority
           </h1>
         </div>
       </div>
 
-      {/* ─── 2. KPI SUMMARY GRID (DYNAMIC SPECTRUM COLORS 0-35% & 0-100%) ─── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px', marginBottom: '24px' }}>
-        {/* Card 1: Occupancy Rate (Skala 0-35% Dinamis) */}
-        <div style={{
-          background: '#FFFFFF',
-          borderRadius: '18px',
-          border: '1px solid #E2E8F0',
-          padding: '20px 24px',
-          boxShadow: '0 4px 14px rgba(0, 0, 0, 0.02)',
-          transition: 'transform 0.2s ease, boxShadow 0.2s ease'
-        }}>
-          <div style={{ fontSize: '11px', color: '#64748B', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1.2px' }}>
-            Occupancy Rate
-          </div>
-          <div style={{ fontFamily: "'Outfit', sans-serif", fontSize: '26px', fontWeight: 900, color: getDynamicColor35(stats.occRate), marginTop: '6px', transition: 'color 0.3s ease' }}>
-            {stats.occRate}%
-          </div>
-        </div>
-
-        {/* Card 2: Port Avai / Used / Total (Used Skala 0-35% dari Total Port) */}
+      {/* ─── 2. KPI SUMMARY GRID (3 CARDS PROPORTIONALLY BALANCED) ─── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '20px', marginBottom: '24px' }}>
+        {/* Card 1: Port Avai / Used / Total (Used Skala 0-35% dari Total Port) */}
         <div style={{
           background: '#FFFFFF',
           borderRadius: '18px',
@@ -148,12 +131,12 @@ const UploadView = memo(function UploadView({ branches, initialBranch, updateAct
           <div style={{ fontSize: '11px', color: '#64748B', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1.2px' }}>
             Port Avai / Used / Total
           </div>
-          <div style={{ fontFamily: "'Outfit', sans-serif", fontSize: '20px', fontWeight: 900, color: '#0F172A', marginTop: '8px' }}>
+          <div style={{ fontFamily: "'Outfit', sans-serif", fontSize: '22px', fontWeight: 900, color: '#0F172A', marginTop: '8px' }}>
             {stats.totalAvai} / <span style={{ color: getDynamicColor35(usedPct), transition: 'color 0.3s ease' }}>{stats.totalUsed}</span> / {stats.totalPort}
           </div>
         </div>
 
-        {/* Card 3: Jumlah Proyek / ODP (Teks Proyek & ODP Dihapus, Angka Hitam) */}
+        {/* Card 2: Jumlah Proyek / ODP */}
         <div style={{
           background: '#FFFFFF',
           borderRadius: '18px',
@@ -165,12 +148,12 @@ const UploadView = memo(function UploadView({ branches, initialBranch, updateAct
           <div style={{ fontSize: '11px', color: '#64748B', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1.2px' }}>
             Jumlah Proyek / ODP
           </div>
-          <div style={{ fontFamily: "'Outfit', sans-serif", fontSize: '20px', fontWeight: 900, color: '#0F172A', marginTop: '8px' }}>
+          <div style={{ fontFamily: "'Outfit', sans-serif", fontSize: '22px', fontWeight: 900, color: '#0F172A', marginTop: '8px' }}>
             {totalProjectsInFilter} / {stats.odpCount}
           </div>
         </div>
 
-        {/* Card 4: Aktivitas GTM Selesai (Skala 0-100% Dinamis) */}
+        {/* Card 3: Aktivitas GTM Selesai (Skala 0-100% Dinamis) */}
         <div style={{
           background: '#FFFFFF',
           borderRadius: '18px',

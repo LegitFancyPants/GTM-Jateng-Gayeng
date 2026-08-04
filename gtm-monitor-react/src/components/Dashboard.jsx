@@ -1,13 +1,52 @@
-import { useState, useEffect, memo } from 'react';
+import { useState, useEffect, useMemo, memo } from 'react';
 import L from 'leaflet';
 import { MapContainer, TileLayer, CircleMarker } from 'react-leaflet';
 import MarkerClusterGroup from 'react-leaflet-cluster';
 import { BRANCH_COLORS } from '../utils';
 
 // Dashboard dibungkus React.memo agar TIDAK re-render saat menu profile di header dibuka/ditutup.
-const Dashboard = memo(function Dashboard({ branches, goBranch, kpi, statusChips, ranking, mapBounds, mapPoints, isAdmin, typeDesignFilter = 'ALL', setTypeDesignFilter }) {
+const Dashboard = memo(function Dashboard({ branches, goBranch, kpi, importMeta, statusChips, ranking, mapBounds, mapPoints, isAdmin, typeDesignFilter = 'ALL', setTypeDesignFilter }) {
   const [showMarkers, setShowMarkers] = useState(false);
   const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
+
+  const lastUpdateFormatted = useMemo(() => {
+    let rawDate = importMeta?.updatedAt || importMeta?.lastUpdate;
+
+    if (!rawDate && branches && branches.length > 0) {
+      let latestTime = 0;
+      branches.forEach(b => {
+        (b.projects || []).forEach(p => {
+          (p.activities || []).forEach(a => {
+            if (a.updatedAt) {
+              const t = new Date(a.updatedAt).getTime();
+              if (!isNaN(t) && t > latestTime) latestTime = t;
+            }
+            if (a.actualDate) {
+              const t = new Date(a.actualDate).getTime();
+              if (!isNaN(t) && t > latestTime) latestTime = t;
+            }
+          });
+        });
+      });
+      if (latestTime > 0) {
+        rawDate = new Date(latestTime);
+      }
+    }
+
+    if (!rawDate) {
+      rawDate = new Date();
+    }
+
+    const d = new Date(rawDate);
+    if (isNaN(d.getTime())) return null;
+
+    const monthsIndo = [
+      'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+      'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+    ];
+
+    return `${d.getDate()} ${monthsIndo[d.getMonth()]} ${d.getFullYear()}`;
+  }, [importMeta, branches]);
 
   // Tunda pemuatan marker peta 100ms agar halaman Dashboard berpindah seketika
   useEffect(() => {
@@ -54,6 +93,15 @@ const Dashboard = memo(function Dashboard({ branches, goBranch, kpi, statusChips
           <h1 style={{ fontFamily: "'Outfit', sans-serif", fontSize: '28px', fontWeight: 900, color: '#0F172A', margin: 0, letterSpacing: '-0.5px' }}>
             Overview Kinerja Regional
           </h1>
+          {lastUpdateFormatted && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#64748B', fontWeight: 500, marginTop: '6px' }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 8v4l3 3"></path>
+                <path d="M3.05 11a9 9 0 1 1 .5 4m-.5 5v-5h5"></path>
+              </svg>
+              <span>Last update {lastUpdateFormatted}</span>
+            </div>
+          )}
         </div>
 
         {setTypeDesignFilter && (
