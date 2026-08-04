@@ -79,7 +79,6 @@ export function flatOdps(branches, typeDesignFilter) {
 export function computeStats(branches, typeDesignFilter) {
   let totalAvai = 0, totalUsed = 0, totalPort = 0, odpCount = 0;
   let totalProjCount = 0;
-  let verifiedProjCount = 0;
   const allActs = [];
 
   for (const b of (Array.isArray(branches) ? branches : [])) {
@@ -89,16 +88,13 @@ export function computeStats(branches, typeDesignFilter) {
         continue;
       }
       totalProjCount++;
-      if (p.activities?.some(a => a.status === 'verified')) {
-        verifiedProjCount++;
-      }
       for (const o of (p.odps || [])) {
         totalAvai += o.avai;
         totalUsed += o.used;
         totalPort += o.total;
         odpCount++;
       }
-      // Activities are now at project level
+      // Activities are at project level
       if (p.activities) {
         allActs.push(...p.activities);
       }
@@ -109,12 +105,18 @@ export function computeStats(branches, typeDesignFilter) {
   const actVerified = allActs.filter(a => a.status === 'verified').length;
   const actUploaded = allActs.filter(a => a.status === 'upload').length;
   const actBelum = allActs.filter(a => a.status === 'belum').length;
-  const actCompletionPct = totalProjCount ? Math.round((verifiedProjCount / totalProjCount) * 1000) / 10 : 0;
+  
+  // Perhitungan Kontribusi Persentase Verifikasi:
+  // Setiap 1 Proyek memiliki 5 Tipe Aktivitas.
+  // Total Kapasitas Aktivitas = Total Proyek * 5.
+  // Progress (%) = (Jumlah Aktivitas Terverifikasi / (Total Proyek * 5)) * 100%
+  const totalActivitySlots = totalProjCount * 5;
+  const actCompletionPct = totalActivitySlots ? Math.round((actVerified / totalActivitySlots) * 1000) / 10 : 0;
   
   return {
     totalAvai, totalUsed, totalPort, occRate,
     actVerified, actUploaded, actBelum, actCompletionPct, odpCount,
-    totalProjCount, verifiedProjCount
+    totalProjCount, totalActivitySlots
   };
 }
 

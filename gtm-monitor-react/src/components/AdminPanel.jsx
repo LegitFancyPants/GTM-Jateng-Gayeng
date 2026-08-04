@@ -416,7 +416,7 @@ const AdminPanel = memo(function AdminPanel({ token, branches = [], onUpdate, go
           <div style={{ fontFamily: "'Outfit', sans-serif", fontSize: '26px', fontWeight: 900, color: '#0F172A', marginTop: '6px' }}>
             {stats.actCompletionPct}%
           </div>
-          <div style={{ fontSize: '12px', color: '#94A3B8', marginTop: '4px', fontWeight: 500 }}>{stats.actVerified} kegiatan terverifikasi</div>
+          <div style={{ fontSize: '12px', color: '#94A3B8', marginTop: '4px', fontWeight: 500 }}>{stats.actVerified} dari {stats.totalActivitySlots} kegiatan terverifikasi</div>
         </div>
       </div>
 
