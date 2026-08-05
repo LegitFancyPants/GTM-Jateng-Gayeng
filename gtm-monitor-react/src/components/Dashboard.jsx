@@ -1,12 +1,7 @@
 import { useState, useEffect, useMemo, memo } from 'react';
-import L from 'leaflet';
-import { MapContainer, TileLayer, CircleMarker } from 'react-leaflet';
-import MarkerClusterGroup from 'react-leaflet-cluster';
-import { BRANCH_COLORS } from '../utils';
 
 // Dashboard dibungkus React.memo agar TIDAK re-render saat menu profile di header dibuka/ditutup.
-const Dashboard = memo(function Dashboard({ branches, goBranch, kpi, importMeta, statusChips, ranking, mapBounds, mapPoints, isAdmin, typeDesignFilter = 'ALL', setTypeDesignFilter }) {
-  const [showMarkers, setShowMarkers] = useState(false);
+const Dashboard = memo(function Dashboard({ branches, goBranch, kpi, importMeta, statusChips, ranking, isAdmin, typeDesignFilter = 'ALL', setTypeDesignFilter }) {
   const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
 
   const lastUpdateFormatted = useMemo(() => {
@@ -48,33 +43,14 @@ const Dashboard = memo(function Dashboard({ branches, goBranch, kpi, importMeta,
     return `${d.getDate()} ${monthsIndo[d.getMonth()]} ${d.getFullYear()}`;
   }, [importMeta, branches]);
 
-  // Tunda pemuatan marker peta 100ms agar halaman Dashboard berpindah seketika
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setShowMarkers(true);
-    }, 100);
-
     const handleClickOutside = () => setIsStatusDropdownOpen(false);
     window.addEventListener('click', handleClickOutside);
 
     return () => {
-      clearTimeout(timer);
       window.removeEventListener('click', handleClickOutside);
     };
   }, []);
-
-  const createClusterCustomIcon = (cluster) => {
-    const markers = cluster.getAllChildMarkers();
-    let color = '#C8102E';
-    if (markers.length > 0 && markers[0].options && markers[0].options.fillColor) {
-      color = markers[0].options.fillColor;
-    }
-    return L.divIcon({
-      html: `<div style="background: ${color}; opacity: 0.95; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 800; border: 2px solid white; box-shadow: 0 4px 10px rgba(0,0,0,0.2); font-size: 12px; font-family: 'Outfit', sans-serif;">${cluster.getChildCount()}</div>`,
-      className: 'custom-marker-cluster',
-      iconSize: L.point(32, 32, true),
-    });
-  };
 
   const safeKpi = kpi || { occRate: 0, totalUsed: 0, totalPort: 0, totalAvai: 0, odpCount: 0, actCompletionPct: 0, actVerified: 0, actUploaded: 0, actBelum: 0 };
   const safeStatusChips = statusChips || [];
@@ -408,48 +384,6 @@ const Dashboard = memo(function Dashboard({ branches, goBranch, kpi, importMeta,
               </div>
             ))}
           </div>
-        </div>
-      </div>
-
-      {/* ─── 4. PETA SEBARAN ODP (STYLE HARMONIZED WITH OVERVIEW) ─── */}
-      <div className="dashboard-card">
-        <div style={{ marginBottom: '18px' }}>
-          <h2 style={{ fontFamily: "'Outfit', sans-serif", fontSize: '20px', fontWeight: 800, color: '#0F172A', margin: '0 0 4px 0', letterSpacing: '-0.3px' }}>
-            Peta Sebaran ODP Regional
-          </h2>
-          <div style={{ fontSize: '12.5px', color: '#64748B', fontWeight: 500 }}>
-            Titik lokasi ODP tiap branch Jateng DIY
-          </div>
-        </div>
-
-        <div style={{ width: '100%', height: '340px', borderRadius: '14px', overflow: 'hidden', zIndex: 0, position: 'relative', border: '1px solid #E2E8F0' }}>
-          <MapContainer bounds={safeMapBounds} style={{ width: '100%', height: '100%', zIndex: 1 }}>
-            <TileLayer
-              url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-            />
-            {showMarkers && (
-              <MarkerClusterGroup chunkedLoading maxClusterRadius={40} iconCreateFunction={createClusterCustomIcon}>
-                {safeMapPoints.map(pt => (
-                  <CircleMarker
-                    key={pt.key}
-                    center={[pt.lat, pt.lon]}
-                    radius={5}
-                    pathOptions={{ color: pt.color, fillColor: pt.color, fillOpacity: 0.85, weight: 1 }}
-                  />
-                ))}
-              </MarkerClusterGroup>
-            )}
-          </MapContainer>
-        </div>
-
-        <div style={{ display: 'flex', gap: '24px', marginTop: '18px', flexWrap: 'wrap' }}>
-          {(Array.isArray(branches) ? branches : []).map(b => (
-            <div key={b.name} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#0F172A', fontWeight: 700 }}>
-              <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: BRANCH_COLORS[b.name?.toString().trim().toUpperCase()] || BRANCH_COLORS[b.name] || '#64748b', boxShadow: `0 0 6px ${BRANCH_COLORS[b.name?.toString().trim().toUpperCase()] || '#64748b'}` }} />
-              {b.name}
-            </div>
-          ))}
         </div>
       </div>
     </div>
