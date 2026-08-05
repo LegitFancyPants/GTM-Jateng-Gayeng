@@ -84,15 +84,32 @@ const Dashboard = memo(function Dashboard({ branches, goBranch, kpi, importMeta,
       const originalOverflowY = tableWrapper.style.overflowY;
       const originalOverflowX = tableWrapper.style.overflowX;
 
+      // Temporarily remove max height / overflow to capture full table height
       tableWrapper.style.maxHeight = 'none';
       tableWrapper.style.overflowY = 'visible';
       tableWrapper.style.overflowX = 'visible';
+
+      // Temporarily unpin position:sticky from th/tfoot so html2canvas doesn't obscure branch names
+      const stickyEls = tableWrapper.querySelectorAll('[style*="position: sticky"], [style*="position:sticky"]');
+      stickyEls.forEach(el => {
+        el.dataset.origPosition = el.style.position;
+        el.style.position = 'static';
+      });
 
       const canvas = await html2canvas(tableWrapper, {
         scale: 2,
         backgroundColor: '#FFFFFF',
         useCORS: true,
-        logging: false
+        logging: false,
+        windowWidth: tableWrapper.scrollWidth + 100
+      });
+
+      // Restore sticky elements
+      stickyEls.forEach(el => {
+        if (el.dataset.origPosition) {
+          el.style.position = el.dataset.origPosition;
+          delete el.dataset.origPosition;
+        }
       });
 
       tableWrapper.style.maxHeight = originalMaxHeight;
@@ -629,10 +646,10 @@ const Dashboard = memo(function Dashboard({ branches, goBranch, kpi, importMeta,
         </div>
 
         <div id="executive-summary-wrapper" className="table-responsive-wrapper" style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: '65vh', borderRadius: '14px', border: '1px solid #E2E8F0', position: 'relative', background: '#FFFFFF' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', textAlign: 'center', minWidth: '1150px' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', textAlign: 'center', minWidth: '1180px' }}>
             <thead>
               <tr style={{ background: '#0F172A', color: '#FFFFFF', fontWeight: 800 }}>
-                <th style={{ position: 'sticky', top: 0, zIndex: 30, background: '#0F172A', color: '#FFFFFF', padding: '14px 12px', borderRight: '1px solid #1E293B', borderBottom: '1px solid #1E293B', width: '130px', verticalAlign: 'middle' }} rowSpan={2}>Branch</th>
+                <th style={{ position: 'sticky', top: 0, zIndex: 30, background: '#0F172A', color: '#FFFFFF', padding: '14px 12px', borderRight: '1px solid #1E293B', borderBottom: '1px solid #1E293B', width: '150px', verticalAlign: 'middle' }} rowSpan={2}>Branch</th>
                 <th style={{ position: 'sticky', top: 0, zIndex: 30, background: '#0F172A', color: '#FFFFFF', padding: '14px 12px', borderRight: '1px solid #1E293B', borderBottom: '1px solid #1E293B', width: '180px', verticalAlign: 'middle' }} rowSpan={2}>WOK</th>
                 <th style={{ position: 'sticky', top: 0, zIndex: 30, background: '#0F172A', color: '#FFFFFF', padding: '14px 12px', borderRight: '1px solid #1E293B', borderBottom: '1px solid #1E293B', width: '90px', verticalAlign: 'middle' }} rowSpan={2}>Jumlah LOP</th>
                 <th style={{ position: 'sticky', top: 0, zIndex: 25, background: '#14532D', color: '#FFFFFF', padding: '10px 12px', borderRight: '1px solid #15803D', borderBottom: '1px solid #15803D', textTransform: 'uppercase', letterSpacing: '0.5px' }} colSpan={5}>Done Activity</th>
@@ -662,18 +679,20 @@ const Dashboard = memo(function Dashboard({ branches, goBranch, kpi, importMeta,
                     <td 
                       rowSpan={row.branchRowSpan} 
                       style={{ 
-                        padding: '12px 8px', 
+                        padding: '12px 10px', 
                         fontWeight: 900, 
+                        fontSize: '12.5px',
                         color: '#0F172A', 
                         borderRight: '1px solid #E2E8F0', 
                         borderBottom: '2px solid rgba(100, 116, 139, 0.75)',
                         background: '#FAFAFC',
-                        verticalAlign: 'middle'
+                        verticalAlign: 'middle',
+                        textAlign: 'center'
                       }}
                     >
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: `${row.branchRowSpan * 42}px`, width: '100%', wordBreak: 'break-word' }}>
+                      <span style={{ display: 'inline-block', whiteSpace: 'nowrap', letterSpacing: '0.5px' }}>
                         {row.branch}
-                      </div>
+                      </span>
                     </td>
                   )}
                   <td style={{ padding: '12px', fontWeight: 700, color: '#334155', textAlign: 'left', borderRight: '1px solid #E2E8F0', borderBottom: row.isLastInBranch ? '2px solid rgba(100, 116, 139, 0.75)' : '1px solid #F1F5F9' }}>
