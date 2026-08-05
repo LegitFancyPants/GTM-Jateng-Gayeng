@@ -92,9 +92,10 @@ function App() {
       return {
         ...kpiRaw,
         occRate: Math.round(importMeta.occRate * 1000) / 10,  // 0.121 -> 12.1
-        totalAvai: importMeta.available || kpiRaw.totalAvai,
-        totalUsed: importMeta.used || kpiRaw.totalUsed,
-        totalPort: importMeta.total || kpiRaw.totalPort,
+        // FIX: gunakan != null agar nilai 0 tidak dianggap "kosong" dan fallback ke DB
+        totalAvai: importMeta.available != null ? importMeta.available : kpiRaw.totalAvai,
+        totalUsed: importMeta.used != null ? importMeta.used : kpiRaw.totalUsed,
+        totalPort: importMeta.total != null ? importMeta.total : kpiRaw.totalPort,
         odpCount: kpiRaw.odpCount,
         gapWoW: importMeta.gapWoW,
       };
@@ -102,6 +103,7 @@ function App() {
     const calcRate = kpiRaw.totalPort > 0 ? Math.round((kpiRaw.totalUsed / kpiRaw.totalPort) * 1000) / 10 : 0;
     return { ...kpiRaw, occRate: kpiRaw.occRate || calcRate, gapWoW: null };
   }, [kpiRaw, importMeta, typeDesignFilter]);
+
 
   const statusChips = useMemo(() => {
     const counts = { GREEN: 0, YELLOW: 0, ORANGE: 0, RED: 0, BLACK: 0 };

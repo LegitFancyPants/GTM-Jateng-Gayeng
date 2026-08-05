@@ -4,6 +4,10 @@ const prisma = new PrismaClient();
 async function main() {
   console.log("🚀 Starting data reset...");
   try {
+    // Hapus tabel-tabel turunan terlebih dahulu (urutan penting untuk foreign key)
+    const resPhoto = await prisma.projectActivityPhoto.deleteMany({});
+    console.log(`✅ Deleted ${resPhoto.count} ProjectActivityPhotos.`);
+
     const resProjectAct = await prisma.projectActivity.deleteMany({});
     console.log(`✅ Deleted ${resProjectAct.count} ProjectActivities.`);
 
@@ -16,16 +20,15 @@ async function main() {
     const resProject = await prisma.project.deleteMany({});
     console.log(`✅ Deleted ${resProject.count} Projects.`);
 
-    if (prisma.importMeta) {
-      const resImportMeta = await prisma.importMeta.deleteMany({});
-      console.log(`✅ Deleted ${resImportMeta.count} ImportMetas.`);
-    }
+    const resImportMeta = await prisma.importMeta.deleteMany({});
+    console.log(`✅ Deleted ${resImportMeta.count} ImportMetas.`);
 
+    // Reset field OCC di Branch (tapi data Branch tetap ada)
     const resBranchUpdate = await prisma.branch.updateMany({
       data: {
         occRate: null,
-        gapWoW: null
-      }
+        gapWoW: null,
+      },
     });
     console.log(`✅ Reset occRate & gapWoW for ${resBranchUpdate.count} Branches.`);
 
@@ -44,5 +47,3 @@ async function main() {
 }
 
 main();
-
-

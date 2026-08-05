@@ -1147,7 +1147,11 @@ app.post('/api/admin/import-excel', requireAdmin, excelUpload.single('file'), as
         const used = parseInt(findValue(normRow, ['USED', 'USED IUM', 'TERPAKAI', 'PORT USED'], ['USED', 'TERPAKAI']) || 0) || 0;
         
         const avaiVal = findValue(normRow, ['AVAI IUM', 'AVAI', 'AVAILABLE', 'TERSEDIA', 'PORT AVAI'], ['AVAI', 'AVAILABLE']);
-        const avai = (avaiVal !== undefined && avaiVal !== null) ? (parseInt(avaiVal) || 0) : Math.max(0, total - used);
+        // FIX: Hapus Math.max(0,...) — ODP over-subscribed (used > total) boleh punya avai negatif, sesuai Excel
+        // Jika kolom AVAI ada → pakai langsung (termasuk nilai negatif seperti -7, -1)
+        // Jika kolom AVAI tidak ada → hitung total - used (TANPA Math.max agar nilai negatif tidak di-clamp ke 0)
+        const avai = (avaiVal !== undefined && avaiVal !== null) ? (parseInt(avaiVal) || 0) : (total - used);
+
 
         // Ambil OCC BRANCH dan GAP WOW dari kolom Excel
         const rawOccBranch = findValue(normRow, ['OCC BRANCH'], ['OCC BRANCH']);
@@ -1244,9 +1248,12 @@ app.post('/api/admin/import-excel', requireAdmin, excelUpload.single('file'), as
         const countToCreate = rawOdp ? 1 : Math.max(1, jumlahOdp);
         const baseSubTotal = Math.floor(total / countToCreate);
         const baseSubUsed = Math.floor(used / countToCreate);
+        // FIX: Split avai dari Excel secara proporsional, bukan recalculate sebagai total-used
+        const baseSubAvai = Math.floor(avai / countToCreate);
 
         let remainingTotal = total;
         let remainingUsed = used;
+        let remainingAvai = avai;
 
         for (let i = 1; i <= countToCreate; i++) {
           let rawOdpStr = rawOdp ? rawOdp.toString().trim() : '';
@@ -1266,16 +1273,18 @@ app.post('/api/admin/import-excel', requireAdmin, excelUpload.single('file'), as
 
           let subTotal = baseSubTotal;
           let subUsed = baseSubUsed;
+          let subAvai = baseSubAvai;
           
-          // The last ODP gets the remainder to ensure exact sums
+          // ODP terakhir mendapat sisa pembagian agar total presisi
           if (i === countToCreate) {
             subTotal = remainingTotal;
             subUsed = remainingUsed;
+            subAvai = remainingAvai; // FIX: gunakan sisa avai dari Excel, bukan recalculate
           } else {
             remainingTotal -= subTotal;
             remainingUsed -= subUsed;
+            remainingAvai -= baseSubAvai;
           }
-          const subAvai = Math.max(0, subTotal - subUsed);
 
           const existingOdp = odpMap.get(cleanOdpKey);
           const coords = hasExplicitCoords 
@@ -1408,15 +1417,9 @@ app.post('/api/admin/import-excel', requireAdmin, excelUpload.single('file'), as
       }
     }
 
-    // â”€â”€â”€ 4. STALE ODP CLEANUP (Hapus ODP lama yang tidak ada di file update baru agar statistik 100% presisi) â”€â”€â”€
-    const processedOdpNames = new Set();
-    odpsToCreate.forEach(o => processedOdpNames.add(o.odp.toUpperCase()));
-    odpsToUpdate.forEach(o => processedOdpNames.add(o.odp.toUpperCase()));
-    for (const [key, o] of odpMap.entries()) {
-      if (o.id && !o.id.startsWith('temp-')) {
-        processedOdpNames.add(key);
-      }
-    }
+    // ——— 4. STALE ODP CLEANUP (Hapus ODP lama yang tidak ada di file update baru agar statistik 100% presisi) ———
+    // FIX: Gunakan seenOdpKeysInCurrentImport — berisi TEPAT semua ODP yang dibaca dari file Excel terbaru.
+    const processedOdpNames = seenOdpKeysInCurrentImport; // Set<string> — sudah berisi key uppercase dari semua ODP di file terbaru
 
     const allDbOdps = await prisma.odp.findMany({ select: { id: true, odp: true } });
     const staleOdpIds = allDbOdps
@@ -1424,7 +1427,7 @@ app.post('/api/admin/import-excel', requireAdmin, excelUpload.single('file'), as
       .map(o => o.id);
 
     if (staleOdpIds.length > 0) {
-      console.log(`ðŸ§¹ Membersihkan ${staleOdpIds.length} ODP lama yang tidak ada di file update baru...`);
+      console.log(`🧹 Membersihkan ${staleOdpIds.length} ODP lama yang tidak ada di file Excel terbaru...`);
       for (let i = 0; i < staleOdpIds.length; i += 500) {
         await prisma.odp.deleteMany({
           where: { id: { in: staleOdpIds.slice(i, i + 500) } }
