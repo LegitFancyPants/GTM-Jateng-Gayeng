@@ -80,41 +80,26 @@ const Dashboard = memo(function Dashboard({ branches, goBranch, kpi, importMeta,
     try {
       setIsExportingPng(true);
 
-      const originalMaxHeight = tableWrapper.style.maxHeight;
-      const originalOverflowY = tableWrapper.style.overflowY;
-      const originalOverflowX = tableWrapper.style.overflowX;
-
-      // Temporarily remove max height / overflow to capture full table height
-      tableWrapper.style.maxHeight = 'none';
-      tableWrapper.style.overflowY = 'visible';
-      tableWrapper.style.overflowX = 'visible';
-
-      // Temporarily unpin position:sticky from th/tfoot so html2canvas doesn't obscure branch names
-      const stickyEls = tableWrapper.querySelectorAll('[style*="position: sticky"], [style*="position:sticky"]');
-      stickyEls.forEach(el => {
-        el.dataset.origPosition = el.style.position;
-        el.style.position = 'static';
-      });
-
       const canvas = await html2canvas(tableWrapper, {
         scale: 2,
         backgroundColor: '#FFFFFF',
         useCORS: true,
         logging: false,
-        windowWidth: tableWrapper.scrollWidth + 100
-      });
+        onclone: (clonedDoc) => {
+          const clonedWrapper = clonedDoc.getElementById('executive-summary-wrapper');
+          if (clonedWrapper) {
+            clonedWrapper.style.maxHeight = 'none';
+            clonedWrapper.style.overflowY = 'visible';
+            clonedWrapper.style.overflowX = 'visible';
 
-      // Restore sticky elements
-      stickyEls.forEach(el => {
-        if (el.dataset.origPosition) {
-          el.style.position = el.dataset.origPosition;
-          delete el.dataset.origPosition;
+            // Unpin sticky positions in cloned DOM so html2canvas renders full headers cleanly
+            const stickyEls = clonedWrapper.querySelectorAll('[style*="sticky"]');
+            stickyEls.forEach(el => {
+              el.style.position = 'static';
+            });
+          }
         }
       });
-
-      tableWrapper.style.maxHeight = originalMaxHeight;
-      tableWrapper.style.overflowY = originalOverflowY;
-      tableWrapper.style.overflowX = originalOverflowX;
 
       const image = canvas.toDataURL('image/png');
       const link = document.createElement('a');
@@ -649,12 +634,24 @@ const Dashboard = memo(function Dashboard({ branches, goBranch, kpi, importMeta,
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', textAlign: 'center', minWidth: '1180px' }}>
             <thead>
               <tr style={{ background: '#0F172A', color: '#FFFFFF', fontWeight: 800 }}>
-                <th style={{ position: 'sticky', top: 0, zIndex: 30, background: '#0F172A', color: '#FFFFFF', padding: '14px 12px', borderRight: '1px solid #1E293B', borderBottom: '1px solid #1E293B', width: '150px', verticalAlign: 'middle' }} rowSpan={2}>Branch</th>
-                <th style={{ position: 'sticky', top: 0, zIndex: 30, background: '#0F172A', color: '#FFFFFF', padding: '14px 12px', borderRight: '1px solid #1E293B', borderBottom: '1px solid #1E293B', width: '180px', verticalAlign: 'middle' }} rowSpan={2}>WOK</th>
-                <th style={{ position: 'sticky', top: 0, zIndex: 30, background: '#0F172A', color: '#FFFFFF', padding: '14px 12px', borderRight: '1px solid #1E293B', borderBottom: '1px solid #1E293B', width: '90px', verticalAlign: 'middle' }} rowSpan={2}>Jumlah LOP</th>
-                <th style={{ position: 'sticky', top: 0, zIndex: 25, background: '#14532D', color: '#FFFFFF', padding: '10px 12px', borderRight: '1px solid #15803D', borderBottom: '1px solid #15803D', textTransform: 'uppercase', letterSpacing: '0.5px' }} colSpan={5}>Done Activity</th>
-                <th style={{ position: 'sticky', top: 0, zIndex: 25, background: '#7F1D1D', color: '#FFFFFF', padding: '10px 12px', borderRight: '1px solid #B91C1C', borderBottom: '1px solid #B91C1C', textTransform: 'uppercase', letterSpacing: '0.5px' }} colSpan={5}>Not Yet Activity</th>
-                <th style={{ position: 'sticky', top: 0, zIndex: 30, background: '#0F172A', color: '#FFFFFF', padding: '14px 12px', borderBottom: '1px solid #1E293B', width: '90px', verticalAlign: 'middle' }} rowSpan={2}>Progress</th>
+                <th style={{ position: 'sticky', top: 0, zIndex: 30, background: '#0F172A', color: '#FFFFFF', padding: '14px 12px', borderRight: '1px solid #1E293B', borderBottom: '1px solid #1E293B', width: '150px', verticalAlign: 'middle' }} rowSpan={2}>
+                  <span style={{ color: '#FFFFFF', fontWeight: 800, position: 'relative', zIndex: 10, display: 'inline-block' }}>Branch</span>
+                </th>
+                <th style={{ position: 'sticky', top: 0, zIndex: 30, background: '#0F172A', color: '#FFFFFF', padding: '14px 12px', borderRight: '1px solid #1E293B', borderBottom: '1px solid #1E293B', width: '180px', verticalAlign: 'middle' }} rowSpan={2}>
+                  <span style={{ color: '#FFFFFF', fontWeight: 800, position: 'relative', zIndex: 10, display: 'inline-block' }}>WOK</span>
+                </th>
+                <th style={{ position: 'sticky', top: 0, zIndex: 30, background: '#0F172A', color: '#FFFFFF', padding: '14px 12px', borderRight: '1px solid #1E293B', borderBottom: '1px solid #1E293B', width: '90px', verticalAlign: 'middle' }} rowSpan={2}>
+                  <span style={{ color: '#FFFFFF', fontWeight: 800, position: 'relative', zIndex: 10, display: 'inline-block' }}>Jumlah LOP</span>
+                </th>
+                <th style={{ position: 'sticky', top: 0, zIndex: 25, background: '#14532D', color: '#FFFFFF', padding: '10px 12px', borderRight: '1px solid #15803D', borderBottom: '1px solid #15803D', textTransform: 'uppercase', letterSpacing: '0.5px' }} colSpan={5}>
+                  <span style={{ color: '#FFFFFF', fontWeight: 800, position: 'relative', zIndex: 10, display: 'inline-block' }}>Done Activity</span>
+                </th>
+                <th style={{ position: 'sticky', top: 0, zIndex: 25, background: '#7F1D1D', color: '#FFFFFF', padding: '10px 12px', borderRight: '1px solid #B91C1C', borderBottom: '1px solid #B91C1C', textTransform: 'uppercase', letterSpacing: '0.5px' }} colSpan={5}>
+                  <span style={{ color: '#FFFFFF', fontWeight: 800, position: 'relative', zIndex: 10, display: 'inline-block' }}>Not Yet Activity</span>
+                </th>
+                <th style={{ position: 'sticky', top: 0, zIndex: 30, background: '#0F172A', color: '#FFFFFF', padding: '14px 12px', borderBottom: '1px solid #1E293B', width: '90px', verticalAlign: 'middle' }} rowSpan={2}>
+                  <span style={{ color: '#FFFFFF', fontWeight: 800, position: 'relative', zIndex: 10, display: 'inline-block' }}>Progress</span>
+                </th>
               </tr>
               <tr style={{ background: '#0F172A', color: '#FFFFFF', fontSize: '11px', fontWeight: 700 }}>
                 {/* Subheaders for Done Activity (Dark Green + Crisp White Text) */}
