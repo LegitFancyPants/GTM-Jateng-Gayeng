@@ -232,8 +232,7 @@ app.post('/api/auth/register', requireAdmin, async (req, res) => {
 
     const token = jwt.sign(
       { id: user.id, username: user.username, role: user.role, branchName: branch.name, fullName: user.fullName },
-      JWT_SECRET,
-      { expiresIn: '24h' }
+      JWT_SECRET
     );
 
     res.json({
@@ -284,8 +283,7 @@ app.post('/api/auth/login', async (req, res) => {
     const branchName = user.branch ? user.branch.name : null;
     const token = jwt.sign(
       { id: user.id, username: user.username, role: user.role, branchName, fullName: user.fullName },
-      JWT_SECRET,
-      { expiresIn: '24h' }
+      JWT_SECRET
     );
 
     res.json({
