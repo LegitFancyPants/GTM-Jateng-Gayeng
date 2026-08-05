@@ -35,6 +35,38 @@ const ACT_TYPES_ORDER = [
   { key: 'open_table', shortLabel: 'Always ON Open Table' }
 ];
 
+// Dynamic Color Helpers for Executive Summary Grand Total Row (Red -> Yellow -> Green)
+function getDoneColor(val, max) {
+  if (!max || max <= 0) return '#94A3B8';
+  const ratio = Math.min(Math.max(val / max, 0), 1);
+  if (ratio <= 0.5) {
+    const t = ratio * 2;
+    const r = Math.round(239 + (245 - 239) * t); // Red (#EF4444) to Yellow (#F59E0B)
+    const g = Math.round(68 + (158 - 68) * t);
+    const b = Math.round(68 + (11 - 68) * t);
+    return `rgb(${r}, ${g}, ${b})`;
+  } else {
+    const t = (ratio - 0.5) * 2;
+    const r = Math.round(245 + (74 - 245) * t);  // Yellow (#F59E0B) to Green (#4ADE80)
+    const g = Math.round(158 + (222 - 158) * t);
+    const b = Math.round(11 + (128 - 11) * t);
+    return `rgb(${r}, ${g}, ${b})`;
+  }
+}
+
+function getNotYetColor(val, max) {
+  if (!max || max <= 0) return '#94A3B8';
+  // Dynamic range opposite of Done: max remaining -> Red, 0 remaining -> Green
+  const doneEquivalent = Math.max(max - val, 0);
+  return getDoneColor(doneEquivalent, max);
+}
+
+function getProgress35Color(pct) {
+  const targetMax = 35; // Range 0% to 35%
+  const ratio = Math.min(Math.max(pct / targetMax, 0), 1);
+  return getDoneColor(ratio * 100, 100);
+}
+
 // Dashboard dibungkus React.memo agar TIDAK re-render saat menu profile di header dibuka/ditutup.
 const Dashboard = memo(function Dashboard({ branches, goBranch, kpi, importMeta, statusChips, ranking, isAdmin, typeDesignFilter = 'ALL', setTypeDesignFilter }) {
   const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
@@ -594,26 +626,26 @@ const Dashboard = memo(function Dashboard({ branches, goBranch, kpi, importMeta,
                 <td colSpan={2} style={{ padding: '14px 16px', textAlign: 'left', fontSize: '13px', letterSpacing: '0.5px' }}>
                   TOTAL REGIONAL JATENG DIY
                 </td>
-                <td style={{ padding: '14px 12px', fontSize: '13.5px', fontFamily: "'Outfit', sans-serif", color: '#FF5E00' }}>
+                <td style={{ padding: '14px 12px', fontSize: '13.5px', fontFamily: "'Outfit', sans-serif", color: '#FFFFFF' }}>
                   {executiveSummary.grandTotalLop}
                 </td>
 
-                {/* Grand Total Done */}
+                {/* Grand Total Done: Dynamic Color Range (0 -> Max = Red -> Green) */}
                 {ACT_TYPES_ORDER.map(item => (
-                  <td key={`gt-done-${item.key}`} style={{ padding: '14px 8px', color: '#4ADE80' }}>
+                  <td key={`gt-done-${item.key}`} style={{ padding: '14px 8px', color: getDoneColor(executiveSummary.grandTotalDone[item.key], executiveSummary.grandTotalLop), fontWeight: 900 }}>
                     {executiveSummary.grandTotalDone[item.key]}
                   </td>
                 ))}
 
-                {/* Grand Total Not Yet */}
+                {/* Grand Total Not Yet: Dynamic Color Range (Max -> 0 = Red -> Green) */}
                 {ACT_TYPES_ORDER.map(item => (
-                  <td key={`gt-notyet-${item.key}`} style={{ padding: '14px 8px', color: '#FBBF24' }}>
+                  <td key={`gt-notyet-${item.key}`} style={{ padding: '14px 8px', color: getNotYetColor(executiveSummary.grandTotalNotYet[item.key], executiveSummary.grandTotalLop), fontWeight: 900 }}>
                     {executiveSummary.grandTotalNotYet[item.key]}
                   </td>
                 ))}
 
-                {/* Grand Total Progress */}
-                <td style={{ padding: '14px 12px', fontFamily: "'Outfit', sans-serif", fontSize: '14px', color: '#38BDF8' }}>
+                {/* Grand Total Progress: Dynamic Color Range (0% -> 35% = Red -> Green) */}
+                <td style={{ padding: '14px 12px', fontFamily: "'Outfit', sans-serif", fontSize: '14px', color: getProgress35Color(executiveSummary.grandProgressPct), fontWeight: 900 }}>
                   {executiveSummary.grandProgressPct}%
                 </td>
               </tr>
