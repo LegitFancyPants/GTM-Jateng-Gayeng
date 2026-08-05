@@ -538,31 +538,31 @@ const Dashboard = memo(function Dashboard({ branches, goBranch, kpi, importMeta,
           </div>
         </div>
 
-        <div className="table-responsive-wrapper" style={{ overflowX: 'auto', borderRadius: '14px', border: '1px solid #E2E8F0' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', textAlign: 'center', minWidth: '1150px' }}>
+        <div className="table-responsive-wrapper" style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: '65vh', borderRadius: '14px', border: '1px solid #E2E8F0', position: 'relative' }}>
+          <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, fontSize: '12px', textAlign: 'center', minWidth: '1150px' }}>
             <thead>
-              <tr style={{ background: '#F8FAFC', color: '#0F172A', fontWeight: 800, borderBottom: '1px solid #E2E8F0' }}>
-                <th style={{ padding: '14px 12px', borderRight: '1px solid #E2E8F0', width: '130px', verticalAlign: 'middle' }} rowSpan={2}>Branch</th>
-                <th style={{ padding: '14px 12px', borderRight: '1px solid #E2E8F0', width: '180px', verticalAlign: 'middle' }} rowSpan={2}>WOK</th>
-                <th style={{ padding: '14px 12px', borderRight: '1px solid #E2E8F0', width: '90px', verticalAlign: 'middle' }} rowSpan={2}>Jumlah LOP</th>
-                <th style={{ padding: '10px 12px', borderRight: '1px solid #E2E8F0', borderBottom: '1px solid #E2E8F0', background: '#F0FDF4', color: '#166534' }} colSpan={5}>Done Activity</th>
-                <th style={{ padding: '10px 12px', borderRight: '1px solid #E2E8F0', borderBottom: '1px solid #E2E8F0', background: '#FFFBEB', color: '#92400E' }} colSpan={5}>Not Yet Activity</th>
-                <th style={{ padding: '14px 12px', width: '90px', verticalAlign: 'middle' }} rowSpan={2}>Progress</th>
+              <tr style={{ background: '#F8FAFC', color: '#0F172A', fontWeight: 800 }}>
+                <th style={{ position: 'sticky', top: 0, zIndex: 30, background: '#F8FAFC', padding: '14px 12px', borderRight: '1px solid #E2E8F0', borderBottom: '1px solid #E2E8F0', width: '130px', verticalAlign: 'middle' }} rowSpan={2}>Branch</th>
+                <th style={{ position: 'sticky', top: 0, zIndex: 30, background: '#F8FAFC', padding: '14px 12px', borderRight: '1px solid #E2E8F0', borderBottom: '1px solid #E2E8F0', width: '180px', verticalAlign: 'middle' }} rowSpan={2}>WOK</th>
+                <th style={{ position: 'sticky', top: 0, zIndex: 30, background: '#F8FAFC', padding: '14px 12px', borderRight: '1px solid #E2E8F0', borderBottom: '1px solid #E2E8F0', width: '90px', verticalAlign: 'middle' }} rowSpan={2}>Jumlah LOP</th>
+                <th style={{ position: 'sticky', top: 0, zIndex: 25, background: '#F0FDF4', color: '#166534', padding: '10px 12px', borderRight: '1px solid #E2E8F0', borderBottom: '1px solid #E2E8F0' }} colSpan={5}>Done Activity</th>
+                <th style={{ position: 'sticky', top: 0, zIndex: 25, background: '#FFFBEB', color: '#92400E', padding: '10px 12px', borderRight: '1px solid #E2E8F0', borderBottom: '1px solid #E2E8F0' }} colSpan={5}>Not Yet Activity</th>
+                <th style={{ position: 'sticky', top: 0, zIndex: 30, background: '#F8FAFC', padding: '14px 12px', borderBottom: '1px solid #E2E8F0', width: '90px', verticalAlign: 'middle' }} rowSpan={2}>Progress</th>
               </tr>
-              <tr style={{ background: '#F8FAFC', color: '#475569', fontSize: '11px', fontWeight: 700, borderBottom: '2px solid #E2E8F0' }}>
+              <tr style={{ background: '#F8FAFC', color: '#475569', fontSize: '11px', fontWeight: 700 }}>
                 {/* Subheaders for Done Activity */}
-                <th style={{ padding: '10px 8px', borderRight: '1px solid #E2E8F0', background: '#F0FDF4', color: '#15803D' }}>Tsel Menyapa Warga</th>
-                <th style={{ padding: '10px 8px', borderRight: '1px solid #E2E8F0', background: '#F0FDF4', color: '#15803D' }}>Branding Downline/Outlet</th>
-                <th style={{ padding: '10px 8px', borderRight: '1px solid #E2E8F0', background: '#F0FDF4', color: '#15803D' }}>Kerjasama dengan BUMDES</th>
-                <th style={{ padding: '10px 8px', borderRight: '1px solid #E2E8F0', background: '#F0FDF4', color: '#15803D' }}>Rekrutmen SF AKAMSI</th>
-                <th style={{ padding: '10px 8px', borderRight: '1px solid #E2E8F0', background: '#F0FDF4', color: '#15803D' }}>Always ON Open Table</th>
+                <th style={{ position: 'sticky', top: '38px', zIndex: 20, background: '#F0FDF4', color: '#15803D', padding: '10px 8px', borderRight: '1px solid #E2E8F0', borderBottom: '2px solid #E2E8F0' }}>Tsel Menyapa Warga</th>
+                <th style={{ position: 'sticky', top: '38px', zIndex: 20, background: '#F0FDF4', color: '#15803D', padding: '10px 8px', borderRight: '1px solid #E2E8F0', borderBottom: '2px solid #E2E8F0' }}>Branding Downline/Outlet</th>
+                <th style={{ position: 'sticky', top: '38px', zIndex: 20, background: '#F0FDF4', color: '#15803D', padding: '10px 8px', borderRight: '1px solid #E2E8F0', borderBottom: '2px solid #E2E8F0' }}>Kerjasama dengan BUMDES</th>
+                <th style={{ position: 'sticky', top: '38px', zIndex: 20, background: '#F0FDF4', color: '#15803D', padding: '10px 8px', borderRight: '1px solid #E2E8F0', borderBottom: '2px solid #E2E8F0' }}>Rekrutmen SF AKAMSI</th>
+                <th style={{ position: 'sticky', top: '38px', zIndex: 20, background: '#F0FDF4', color: '#15803D', padding: '10px 8px', borderRight: '1px solid #E2E8F0', borderBottom: '2px solid #E2E8F0' }}>Always ON Open Table</th>
 
                 {/* Subheaders for Not Yet Activity */}
-                <th style={{ padding: '10px 8px', borderRight: '1px solid #E2E8F0', background: '#FFFBEB', color: '#B45309' }}>Tsel Menyapa Warga</th>
-                <th style={{ padding: '10px 8px', borderRight: '1px solid #E2E8F0', background: '#FFFBEB', color: '#B45309' }}>Branding Downline/Outlet</th>
-                <th style={{ padding: '10px 8px', borderRight: '1px solid #E2E8F0', background: '#FFFBEB', color: '#B45309' }}>Kerjasama dengan BUMDES</th>
-                <th style={{ padding: '10px 8px', borderRight: '1px solid #E2E8F0', background: '#FFFBEB', color: '#B45309' }}>Rekrutmen SF AKAMSI</th>
-                <th style={{ padding: '10px 8px', borderRight: '1px solid #E2E8F0', background: '#FFFBEB', color: '#B45309' }}>Always ON Open Table</th>
+                <th style={{ position: 'sticky', top: '38px', zIndex: 20, background: '#FFFBEB', color: '#B45309', padding: '10px 8px', borderRight: '1px solid #E2E8F0', borderBottom: '2px solid #E2E8F0' }}>Tsel Menyapa Warga</th>
+                <th style={{ position: 'sticky', top: '38px', zIndex: 20, background: '#FFFBEB', color: '#B45309', padding: '10px 8px', borderRight: '1px solid #E2E8F0', borderBottom: '2px solid #E2E8F0' }}>Branding Downline/Outlet</th>
+                <th style={{ position: 'sticky', top: '38px', zIndex: 20, background: '#FFFBEB', color: '#B45309', padding: '10px 8px', borderRight: '1px solid #E2E8F0', borderBottom: '2px solid #E2E8F0' }}>Kerjasama dengan BUMDES</th>
+                <th style={{ position: 'sticky', top: '38px', zIndex: 20, background: '#FFFBEB', color: '#B45309', padding: '10px 8px', borderRight: '1px solid #E2E8F0', borderBottom: '2px solid #E2E8F0' }}>Rekrutmen SF AKAMSI</th>
+                <th style={{ position: 'sticky', top: '38px', zIndex: 20, background: '#FFFBEB', color: '#B45309', padding: '10px 8px', borderRight: '1px solid #E2E8F0', borderBottom: '2px solid #E2E8F0' }}>Always ON Open Table</th>
               </tr>
             </thead>
             <tbody>
@@ -621,7 +621,7 @@ const Dashboard = memo(function Dashboard({ branches, goBranch, kpi, importMeta,
                 </tr>
               ))}
             </tbody>
-            <tfoot>
+            <tfoot style={{ position: 'sticky', bottom: 0, zIndex: 35 }}>
               <tr style={{ background: '#0F172A', color: '#FFFFFF', fontWeight: 900, borderTop: '2px solid #0F172A' }}>
                 <td colSpan={2} style={{ padding: '14px 16px', textAlign: 'left', fontSize: '13px', letterSpacing: '0.5px' }}>
                   TOTAL REGIONAL JATENG DIY
