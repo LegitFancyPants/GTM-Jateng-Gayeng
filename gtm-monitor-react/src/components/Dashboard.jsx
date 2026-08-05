@@ -621,7 +621,7 @@ const Dashboard = memo(function Dashboard({ branches, goBranch, kpi, importMeta,
                 </tr>
               ))}
             </tbody>
-            <tfoot style={{ position: 'sticky', bottom: 0, zIndex: 35 }}>
+            <tfoot>
               <tr style={{ background: '#0F172A', color: '#FFFFFF', fontWeight: 900, borderTop: '2px solid #0F172A' }}>
                 <td colSpan={2} style={{ padding: '14px 16px', textAlign: 'left', fontSize: '13px', letterSpacing: '0.5px' }}>
                   TOTAL REGIONAL JATENG DIY
