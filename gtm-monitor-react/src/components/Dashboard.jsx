@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo, memo } from 'react';
+import { useState, useEffect, useMemo, useCallback, memo } from 'react';
+import html2canvas from 'html2canvas';
 
 const BRANCH_WOK_MATRIX = [
   {
@@ -70,6 +71,47 @@ function getProgress35Color(pct) {
 // Dashboard dibungkus React.memo agar TIDAK re-render saat menu profile di header dibuka/ditutup.
 const Dashboard = memo(function Dashboard({ branches, goBranch, kpi, importMeta, statusChips, ranking, isAdmin, typeDesignFilter = 'ALL', setTypeDesignFilter }) {
   const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
+  const [isExportingPng, setIsExportingPng] = useState(false);
+
+  const handleDownloadPNG = useCallback(async () => {
+    const tableWrapper = document.getElementById('executive-summary-wrapper');
+    if (!tableWrapper || isExportingPng) return;
+
+    try {
+      setIsExportingPng(true);
+
+      const originalMaxHeight = tableWrapper.style.maxHeight;
+      const originalOverflowY = tableWrapper.style.overflowY;
+      const originalOverflowX = tableWrapper.style.overflowX;
+
+      tableWrapper.style.maxHeight = 'none';
+      tableWrapper.style.overflowY = 'visible';
+      tableWrapper.style.overflowX = 'visible';
+
+      const canvas = await html2canvas(tableWrapper, {
+        scale: 2,
+        backgroundColor: '#FFFFFF',
+        useCORS: true,
+        logging: false
+      });
+
+      tableWrapper.style.maxHeight = originalMaxHeight;
+      tableWrapper.style.overflowY = originalOverflowY;
+      tableWrapper.style.overflowX = originalOverflowX;
+
+      const image = canvas.toDataURL('image/png');
+      const link = document.createElement('a');
+      link.download = `Executive_Summary_GTM_${new Date().toISOString().slice(0, 10)}.png`;
+      link.href = image;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (err) {
+      console.error('Failed to export PNG:', err);
+    } finally {
+      setIsExportingPng(false);
+    }
+  }, [isExportingPng]);
 
   const lastUpdateFormatted = useMemo(() => {
     let rawDate = importMeta?.updatedAt || importMeta?.lastUpdate;
@@ -537,9 +579,56 @@ const Dashboard = memo(function Dashboard({ branches, goBranch, kpi, importMeta,
               Rekapitulasi pencapaian aktivitas GTM berdasarkan WOK dan Branch
             </div>
           </div>
+
+          <button
+            type="button"
+            onClick={handleDownloadPNG}
+            disabled={isExportingPng}
+            style={{
+              cursor: isExportingPng ? 'wait' : 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              background: '#FFFFFF',
+              border: '1px solid #E2E8F0',
+              color: '#475569',
+              fontWeight: 800,
+              fontSize: '13px',
+              padding: '8px 18px',
+              borderRadius: '50px',
+              boxShadow: '0 2px 6px rgba(0, 0, 0, 0.02)',
+              transition: 'all 0.2s ease',
+              flexShrink: 0,
+              opacity: isExportingPng ? 0.7 : 1
+            }}
+            onMouseEnter={(e) => {
+              if (!isExportingPng) {
+                e.currentTarget.style.borderColor = '#FF5E00';
+                e.currentTarget.style.color = '#C8102E';
+                e.currentTarget.style.transform = 'translateY(-1px)';
+                e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.06)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!isExportingPng) {
+                e.currentTarget.style.borderColor = '#E2E8F0';
+                e.currentTarget.style.color = '#475569';
+                e.currentTarget.style.transform = 'translateY(0px)';
+                e.currentTarget.style.boxShadow = '0 2px 6px rgba(0, 0, 0, 0.02)';
+              }
+            }}
+            title="Download Executive Summary dalam format PNG"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+              <circle cx="8.5" cy="8.5" r="1.5" />
+              <polyline points="21 15 16 10 5 21" />
+            </svg>
+            <span>{isExportingPng ? 'Generating PNG...' : 'Download PNG'}</span>
+          </button>
         </div>
 
-        <div className="table-responsive-wrapper" style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: '65vh', borderRadius: '14px', border: '1px solid #E2E8F0', position: 'relative' }}>
+        <div id="executive-summary-wrapper" className="table-responsive-wrapper" style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: '65vh', borderRadius: '14px', border: '1px solid #E2E8F0', position: 'relative', background: '#FFFFFF' }}>
           <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, fontSize: '12px', textAlign: 'center', minWidth: '1150px' }}>
             <thead>
               <tr style={{ background: '#0F172A', color: '#FFFFFF', fontWeight: 800 }}>
