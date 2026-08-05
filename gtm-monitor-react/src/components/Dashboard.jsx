@@ -174,6 +174,7 @@ const Dashboard = memo(function Dashboard({ branches, goBranch, kpi, importMeta,
           branch: group.branch,
           wok: wokName,
           isFirstInBranch: wIdx === 0,
+          isLastInBranch: wIdx === group.woks.length - 1,
           branchRowSpan: group.woks.length,
           lopCount,
           done,
@@ -541,33 +542,33 @@ const Dashboard = memo(function Dashboard({ branches, goBranch, kpi, importMeta,
         <div className="table-responsive-wrapper" style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: '65vh', borderRadius: '14px', border: '1px solid #E2E8F0', position: 'relative' }}>
           <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, fontSize: '12px', textAlign: 'center', minWidth: '1150px' }}>
             <thead>
-              <tr style={{ background: '#F8FAFC', color: '#0F172A', fontWeight: 800 }}>
-                <th style={{ position: 'sticky', top: 0, zIndex: 30, background: '#F8FAFC', padding: '14px 12px', borderRight: '1px solid #E2E8F0', borderBottom: '1px solid #E2E8F0', width: '130px', verticalAlign: 'middle' }} rowSpan={2}>Branch</th>
-                <th style={{ position: 'sticky', top: 0, zIndex: 30, background: '#F8FAFC', padding: '14px 12px', borderRight: '1px solid #E2E8F0', borderBottom: '1px solid #E2E8F0', width: '180px', verticalAlign: 'middle' }} rowSpan={2}>WOK</th>
-                <th style={{ position: 'sticky', top: 0, zIndex: 30, background: '#F8FAFC', padding: '14px 12px', borderRight: '1px solid #E2E8F0', borderBottom: '1px solid #E2E8F0', width: '90px', verticalAlign: 'middle' }} rowSpan={2}>Jumlah LOP</th>
-                <th style={{ position: 'sticky', top: 0, zIndex: 25, background: '#F0FDF4', color: '#166534', padding: '10px 12px', borderRight: '1px solid #E2E8F0', borderBottom: '1px solid #E2E8F0' }} colSpan={5}>Done Activity</th>
-                <th style={{ position: 'sticky', top: 0, zIndex: 25, background: '#FFFBEB', color: '#92400E', padding: '10px 12px', borderRight: '1px solid #E2E8F0', borderBottom: '1px solid #E2E8F0' }} colSpan={5}>Not Yet Activity</th>
-                <th style={{ position: 'sticky', top: 0, zIndex: 30, background: '#F8FAFC', padding: '14px 12px', borderBottom: '1px solid #E2E8F0', width: '90px', verticalAlign: 'middle' }} rowSpan={2}>Progress</th>
+              <tr style={{ background: '#0F172A', color: '#FFFFFF', fontWeight: 800 }}>
+                <th style={{ position: 'sticky', top: 0, zIndex: 30, background: '#0F172A', color: '#FFFFFF', padding: '14px 12px', borderRight: '1px solid #1E293B', borderBottom: '1px solid #1E293B', width: '130px', verticalAlign: 'middle' }} rowSpan={2}>Branch</th>
+                <th style={{ position: 'sticky', top: 0, zIndex: 30, background: '#0F172A', color: '#FFFFFF', padding: '14px 12px', borderRight: '1px solid #1E293B', borderBottom: '1px solid #1E293B', width: '180px', verticalAlign: 'middle' }} rowSpan={2}>WOK</th>
+                <th style={{ position: 'sticky', top: 0, zIndex: 30, background: '#0F172A', color: '#FFFFFF', padding: '14px 12px', borderRight: '1px solid #1E293B', borderBottom: '1px solid #1E293B', width: '90px', verticalAlign: 'middle' }} rowSpan={2}>Jumlah LOP</th>
+                <th style={{ position: 'sticky', top: 0, zIndex: 25, background: '#14532D', color: '#FFFFFF', padding: '10px 12px', borderRight: '1px solid #15803D', borderBottom: '1px solid #15803D', textTransform: 'uppercase', letterSpacing: '0.5px' }} colSpan={5}>Done Activity</th>
+                <th style={{ position: 'sticky', top: 0, zIndex: 25, background: '#7F1D1D', color: '#FFFFFF', padding: '10px 12px', borderRight: '1px solid #B91C1C', borderBottom: '1px solid #B91C1C', textTransform: 'uppercase', letterSpacing: '0.5px' }} colSpan={5}>Not Yet Activity</th>
+                <th style={{ position: 'sticky', top: 0, zIndex: 30, background: '#0F172A', color: '#FFFFFF', padding: '14px 12px', borderBottom: '1px solid #1E293B', width: '90px', verticalAlign: 'middle' }} rowSpan={2}>Progress</th>
               </tr>
-              <tr style={{ background: '#F8FAFC', color: '#475569', fontSize: '11px', fontWeight: 700 }}>
-                {/* Subheaders for Done Activity */}
-                <th style={{ position: 'sticky', top: '36px', zIndex: 20, background: '#F0FDF4', color: '#15803D', padding: '10px 8px', borderRight: '1px solid #E2E8F0', borderBottom: '2px solid #E2E8F0', boxShadow: '0 -2px 0 #F0FDF4' }}>Tsel Menyapa Warga</th>
-                <th style={{ position: 'sticky', top: '36px', zIndex: 20, background: '#F0FDF4', color: '#15803D', padding: '10px 8px', borderRight: '1px solid #E2E8F0', borderBottom: '2px solid #E2E8F0', boxShadow: '0 -2px 0 #F0FDF4' }}>Branding Downline/Outlet</th>
-                <th style={{ position: 'sticky', top: '36px', zIndex: 20, background: '#F0FDF4', color: '#15803D', padding: '10px 8px', borderRight: '1px solid #E2E8F0', borderBottom: '2px solid #E2E8F0', boxShadow: '0 -2px 0 #F0FDF4' }}>Kerjasama dengan BUMDES</th>
-                <th style={{ position: 'sticky', top: '36px', zIndex: 20, background: '#F0FDF4', color: '#15803D', padding: '10px 8px', borderRight: '1px solid #E2E8F0', borderBottom: '2px solid #E2E8F0', boxShadow: '0 -2px 0 #F0FDF4' }}>Rekrutmen SF AKAMSI</th>
-                <th style={{ position: 'sticky', top: '36px', zIndex: 20, background: '#F0FDF4', color: '#15803D', padding: '10px 8px', borderRight: '1px solid #E2E8F0', borderBottom: '2px solid #E2E8F0', boxShadow: '0 -2px 0 #F0FDF4' }}>Always ON Open Table</th>
+              <tr style={{ background: '#0F172A', color: '#FFFFFF', fontSize: '11px', fontWeight: 700 }}>
+                {/* Subheaders for Done Activity (Dark Green + Crisp White Text) */}
+                <th style={{ position: 'sticky', top: '36px', zIndex: 20, background: '#14532D', color: '#F0FDF4', padding: '10px 8px', borderRight: '1px solid #15803D', borderBottom: '2px solid #166534', boxShadow: '0 -2px 0 #14532D' }}>Tsel Menyapa Warga</th>
+                <th style={{ position: 'sticky', top: '36px', zIndex: 20, background: '#14532D', color: '#F0FDF4', padding: '10px 8px', borderRight: '1px solid #15803D', borderBottom: '2px solid #166534', boxShadow: '0 -2px 0 #14532D' }}>Branding Downline/Outlet</th>
+                <th style={{ position: 'sticky', top: '36px', zIndex: 20, background: '#14532D', color: '#F0FDF4', padding: '10px 8px', borderRight: '1px solid #15803D', borderBottom: '2px solid #166534', boxShadow: '0 -2px 0 #14532D' }}>Kerjasama dengan BUMDES</th>
+                <th style={{ position: 'sticky', top: '36px', zIndex: 20, background: '#14532D', color: '#F0FDF4', padding: '10px 8px', borderRight: '1px solid #15803D', borderBottom: '2px solid #166534', boxShadow: '0 -2px 0 #14532D' }}>Rekrutmen SF AKAMSI</th>
+                <th style={{ position: 'sticky', top: '36px', zIndex: 20, background: '#14532D', color: '#F0FDF4', padding: '10px 8px', borderRight: '1px solid #15803D', borderBottom: '2px solid #166534', boxShadow: '0 -2px 0 #14532D' }}>Always ON Open Table</th>
 
-                {/* Subheaders for Not Yet Activity */}
-                <th style={{ position: 'sticky', top: '36px', zIndex: 20, background: '#FFFBEB', color: '#B45309', padding: '10px 8px', borderRight: '1px solid #E2E8F0', borderBottom: '2px solid #E2E8F0', boxShadow: '0 -2px 0 #FFFBEB' }}>Tsel Menyapa Warga</th>
-                <th style={{ position: 'sticky', top: '36px', zIndex: 20, background: '#FFFBEB', color: '#B45309', padding: '10px 8px', borderRight: '1px solid #E2E8F0', borderBottom: '2px solid #E2E8F0', boxShadow: '0 -2px 0 #FFFBEB' }}>Branding Downline/Outlet</th>
-                <th style={{ position: 'sticky', top: '36px', zIndex: 20, background: '#FFFBEB', color: '#B45309', padding: '10px 8px', borderRight: '1px solid #E2E8F0', borderBottom: '2px solid #E2E8F0', boxShadow: '0 -2px 0 #FFFBEB' }}>Kerjasama dengan BUMDES</th>
-                <th style={{ position: 'sticky', top: '36px', zIndex: 20, background: '#FFFBEB', color: '#B45309', padding: '10px 8px', borderRight: '1px solid #E2E8F0', borderBottom: '2px solid #E2E8F0', boxShadow: '0 -2px 0 #FFFBEB' }}>Rekrutmen SF AKAMSI</th>
-                <th style={{ position: 'sticky', top: '36px', zIndex: 20, background: '#FFFBEB', color: '#B45309', padding: '10px 8px', borderRight: '1px solid #E2E8F0', borderBottom: '2px solid #E2E8F0', boxShadow: '0 -2px 0 #FFFBEB' }}>Always ON Open Table</th>
+                {/* Subheaders for Not Yet Activity (Dark Red + Crisp White Text) */}
+                <th style={{ position: 'sticky', top: '36px', zIndex: 20, background: '#7F1D1D', color: '#FEF2F2', padding: '10px 8px', borderRight: '1px solid #B91C1C', borderBottom: '2px solid #991B1B', boxShadow: '0 -2px 0 #7F1D1D' }}>Tsel Menyapa Warga</th>
+                <th style={{ position: 'sticky', top: '36px', zIndex: 20, background: '#7F1D1D', color: '#FEF2F2', padding: '10px 8px', borderRight: '1px solid #B91C1C', borderBottom: '2px solid #991B1B', boxShadow: '0 -2px 0 #7F1D1D' }}>Branding Downline/Outlet</th>
+                <th style={{ position: 'sticky', top: '36px', zIndex: 20, background: '#7F1D1D', color: '#FEF2F2', padding: '10px 8px', borderRight: '1px solid #B91C1C', borderBottom: '2px solid #991B1B', boxShadow: '0 -2px 0 #7F1D1D' }}>Kerjasama dengan BUMDES</th>
+                <th style={{ position: 'sticky', top: '36px', zIndex: 20, background: '#7F1D1D', color: '#FEF2F2', padding: '10px 8px', borderRight: '1px solid #B91C1C', borderBottom: '2px solid #991B1B', boxShadow: '0 -2px 0 #7F1D1D' }}>Rekrutmen SF AKAMSI</th>
+                <th style={{ position: 'sticky', top: '36px', zIndex: 20, background: '#7F1D1D', color: '#FEF2F2', padding: '10px 8px', borderRight: '1px solid #B91C1C', borderBottom: '2px solid #991B1B', boxShadow: '0 -2px 0 #7F1D1D' }}>Always ON Open Table</th>
               </tr>
             </thead>
             <tbody>
               {executiveSummary.rows.map((row, rIdx) => (
-                <tr key={`${row.branch}-${row.wok}`} style={{ borderBottom: '1px solid #F1F5F9', background: rIdx % 2 === 0 ? '#FFFFFF' : '#FAFAFC' }}>
+                <tr key={`${row.branch}-${row.wok}`} style={{ borderBottom: row.isLastInBranch ? '3px solid #94A3B8' : '1px solid #E2E8F0', background: rIdx % 2 === 0 ? '#FFFFFF' : '#FAFAFC' }}>
                   {row.isFirstInBranch && (
                     <td 
                       rowSpan={row.branchRowSpan} 
@@ -575,7 +576,8 @@ const Dashboard = memo(function Dashboard({ branches, goBranch, kpi, importMeta,
                         padding: '12px', 
                         fontWeight: 900, 
                         color: '#0F172A', 
-                        borderRight: '1px solid #E2E8F0', 
+                        borderRight: '2px solid #94A3B8', 
+                        borderBottom: '3px solid #94A3B8',
                         background: '#FAFAFC',
                         verticalAlign: 'middle'
                       }}
