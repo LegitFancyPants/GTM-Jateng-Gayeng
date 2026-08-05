@@ -629,7 +629,7 @@ const Dashboard = memo(function Dashboard({ branches, goBranch, kpi, importMeta,
         </div>
 
         <div id="executive-summary-wrapper" className="table-responsive-wrapper" style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: '65vh', borderRadius: '14px', border: '1px solid #E2E8F0', position: 'relative', background: '#FFFFFF' }}>
-          <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, fontSize: '12px', textAlign: 'center', minWidth: '1150px' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', textAlign: 'center', minWidth: '1150px' }}>
             <thead>
               <tr style={{ background: '#0F172A', color: '#FFFFFF', fontWeight: 800 }}>
                 <th style={{ position: 'sticky', top: 0, zIndex: 30, background: '#0F172A', color: '#FFFFFF', padding: '14px 12px', borderRight: '1px solid #1E293B', borderBottom: '1px solid #1E293B', width: '130px', verticalAlign: 'middle' }} rowSpan={2}>Branch</th>
@@ -662,7 +662,7 @@ const Dashboard = memo(function Dashboard({ branches, goBranch, kpi, importMeta,
                     <td 
                       rowSpan={row.branchRowSpan} 
                       style={{ 
-                        padding: '12px', 
+                        padding: '12px 8px', 
                         fontWeight: 900, 
                         color: '#0F172A', 
                         borderRight: '1px solid #E2E8F0', 
@@ -671,7 +671,9 @@ const Dashboard = memo(function Dashboard({ branches, goBranch, kpi, importMeta,
                         verticalAlign: 'middle'
                       }}
                     >
-                      {row.branch}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: `${row.branchRowSpan * 42}px`, width: '100%', wordBreak: 'break-word' }}>
+                        {row.branch}
+                      </div>
                     </td>
                   )}
                   <td style={{ padding: '12px', fontWeight: 700, color: '#334155', textAlign: 'left', borderRight: '1px solid #E2E8F0', borderBottom: row.isLastInBranch ? '2px solid rgba(100, 116, 139, 0.75)' : '1px solid #F1F5F9' }}>
