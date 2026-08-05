@@ -619,38 +619,6 @@ const AdminPanel = memo(function AdminPanel({ token, branches = [], onUpdate, go
               )}
             </div>
 
-            {/* Tombol Export Excel (DI TENGAH) */}
-            <button
-              type="button"
-              className="branch-filter-capsule"
-              onClick={() => exportProjectsToExcel(branches, selectedBranch)}
-              style={{
-                cursor: 'pointer',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '8px',
-                background: '#FFFFFF',
-                border: '1px solid #10B981',
-                color: '#047857',
-                fontWeight: 800,
-                fontSize: '13px',
-                padding: '10px 20px',
-                borderRadius: '50px',
-                boxShadow: '0 2px 8px rgba(16, 185, 129, 0.15)',
-                transition: 'all 0.2s ease',
-                flexShrink: 0
-              }}
-              title="Export Data Rekap Excel (.xlsx)"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                <polyline points="14 2 14 8 20 8" />
-                <line x1="12" y1="18" x2="12" y2="12" />
-                <line x1="9" y1="15" x2="15" y2="15" />
-              </svg>
-              <span>Export Excel</span>
-            </button>
-
             {/* Search Input */}
             <div style={{ flex: 1, minWidth: '220px' }}>
               <input
