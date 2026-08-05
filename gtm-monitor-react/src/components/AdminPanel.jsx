@@ -327,7 +327,7 @@ const AdminPanel = memo(function AdminPanel({ token, branches = [], onUpdate, go
         setFile(null);
         if (onUpdate) onUpdate();
       } else if (response.status === 401) {
-        setError(result.message || 'Sesi login Admin telah berakhir (15 menit tidak aktif). Silakan login kembali.');
+        setError(result.message || 'Sesi login Admin telah berakhir. Silakan login kembali.');
       } else {
         setError(result.message || result.error || 'Gagal mengunggah dan memperbarui database.');
       }

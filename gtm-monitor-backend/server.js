@@ -168,7 +168,7 @@ const authenticateToken = (req, res, next) => {
   if (!token) return res.status(401).json({ success: false, message: 'Akses ditolak. Sesi tidak ditemukan.' });
 
   jwt.verify(token, JWT_SECRET, (err, user) => {
-    if (err) return res.status(401).json({ success: false, message: 'Sesi telah berakhir (15 menit tidak aktif). Silakan login kembali.' });
+    if (err) return res.status(401).json({ success: false, message: 'Sesi telah berakhir. Silakan login kembali.' });
     req.user = user;
     next();
   });
@@ -233,7 +233,7 @@ app.post('/api/auth/register', requireAdmin, async (req, res) => {
     const token = jwt.sign(
       { id: user.id, username: user.username, role: user.role, branchName: branch.name, fullName: user.fullName },
       JWT_SECRET,
-      { expiresIn: '15m' }
+      { expiresIn: '24h' }
     );
 
     res.json({
@@ -285,7 +285,7 @@ app.post('/api/auth/login', async (req, res) => {
     const token = jwt.sign(
       { id: user.id, username: user.username, role: user.role, branchName, fullName: user.fullName },
       JWT_SECRET,
-      { expiresIn: '15m' }
+      { expiresIn: '24h' }
     );
 
     res.json({
