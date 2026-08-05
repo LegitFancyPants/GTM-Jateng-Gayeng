@@ -551,18 +551,18 @@ const Dashboard = memo(function Dashboard({ branches, goBranch, kpi, importMeta,
               </tr>
               <tr style={{ background: '#F8FAFC', color: '#475569', fontSize: '11px', fontWeight: 700 }}>
                 {/* Subheaders for Done Activity */}
-                <th style={{ position: 'sticky', top: '38px', zIndex: 20, background: '#F0FDF4', color: '#15803D', padding: '10px 8px', borderRight: '1px solid #E2E8F0', borderBottom: '2px solid #E2E8F0' }}>Tsel Menyapa Warga</th>
-                <th style={{ position: 'sticky', top: '38px', zIndex: 20, background: '#F0FDF4', color: '#15803D', padding: '10px 8px', borderRight: '1px solid #E2E8F0', borderBottom: '2px solid #E2E8F0' }}>Branding Downline/Outlet</th>
-                <th style={{ position: 'sticky', top: '38px', zIndex: 20, background: '#F0FDF4', color: '#15803D', padding: '10px 8px', borderRight: '1px solid #E2E8F0', borderBottom: '2px solid #E2E8F0' }}>Kerjasama dengan BUMDES</th>
-                <th style={{ position: 'sticky', top: '38px', zIndex: 20, background: '#F0FDF4', color: '#15803D', padding: '10px 8px', borderRight: '1px solid #E2E8F0', borderBottom: '2px solid #E2E8F0' }}>Rekrutmen SF AKAMSI</th>
-                <th style={{ position: 'sticky', top: '38px', zIndex: 20, background: '#F0FDF4', color: '#15803D', padding: '10px 8px', borderRight: '1px solid #E2E8F0', borderBottom: '2px solid #E2E8F0' }}>Always ON Open Table</th>
+                <th style={{ position: 'sticky', top: '36px', zIndex: 20, background: '#F0FDF4', color: '#15803D', padding: '10px 8px', borderRight: '1px solid #E2E8F0', borderBottom: '2px solid #E2E8F0', boxShadow: '0 -2px 0 #F0FDF4' }}>Tsel Menyapa Warga</th>
+                <th style={{ position: 'sticky', top: '36px', zIndex: 20, background: '#F0FDF4', color: '#15803D', padding: '10px 8px', borderRight: '1px solid #E2E8F0', borderBottom: '2px solid #E2E8F0', boxShadow: '0 -2px 0 #F0FDF4' }}>Branding Downline/Outlet</th>
+                <th style={{ position: 'sticky', top: '36px', zIndex: 20, background: '#F0FDF4', color: '#15803D', padding: '10px 8px', borderRight: '1px solid #E2E8F0', borderBottom: '2px solid #E2E8F0', boxShadow: '0 -2px 0 #F0FDF4' }}>Kerjasama dengan BUMDES</th>
+                <th style={{ position: 'sticky', top: '36px', zIndex: 20, background: '#F0FDF4', color: '#15803D', padding: '10px 8px', borderRight: '1px solid #E2E8F0', borderBottom: '2px solid #E2E8F0', boxShadow: '0 -2px 0 #F0FDF4' }}>Rekrutmen SF AKAMSI</th>
+                <th style={{ position: 'sticky', top: '36px', zIndex: 20, background: '#F0FDF4', color: '#15803D', padding: '10px 8px', borderRight: '1px solid #E2E8F0', borderBottom: '2px solid #E2E8F0', boxShadow: '0 -2px 0 #F0FDF4' }}>Always ON Open Table</th>
 
                 {/* Subheaders for Not Yet Activity */}
-                <th style={{ position: 'sticky', top: '38px', zIndex: 20, background: '#FFFBEB', color: '#B45309', padding: '10px 8px', borderRight: '1px solid #E2E8F0', borderBottom: '2px solid #E2E8F0' }}>Tsel Menyapa Warga</th>
-                <th style={{ position: 'sticky', top: '38px', zIndex: 20, background: '#FFFBEB', color: '#B45309', padding: '10px 8px', borderRight: '1px solid #E2E8F0', borderBottom: '2px solid #E2E8F0' }}>Branding Downline/Outlet</th>
-                <th style={{ position: 'sticky', top: '38px', zIndex: 20, background: '#FFFBEB', color: '#B45309', padding: '10px 8px', borderRight: '1px solid #E2E8F0', borderBottom: '2px solid #E2E8F0' }}>Kerjasama dengan BUMDES</th>
-                <th style={{ position: 'sticky', top: '38px', zIndex: 20, background: '#FFFBEB', color: '#B45309', padding: '10px 8px', borderRight: '1px solid #E2E8F0', borderBottom: '2px solid #E2E8F0' }}>Rekrutmen SF AKAMSI</th>
-                <th style={{ position: 'sticky', top: '38px', zIndex: 20, background: '#FFFBEB', color: '#B45309', padding: '10px 8px', borderRight: '1px solid #E2E8F0', borderBottom: '2px solid #E2E8F0' }}>Always ON Open Table</th>
+                <th style={{ position: 'sticky', top: '36px', zIndex: 20, background: '#FFFBEB', color: '#B45309', padding: '10px 8px', borderRight: '1px solid #E2E8F0', borderBottom: '2px solid #E2E8F0', boxShadow: '0 -2px 0 #FFFBEB' }}>Tsel Menyapa Warga</th>
+                <th style={{ position: 'sticky', top: '36px', zIndex: 20, background: '#FFFBEB', color: '#B45309', padding: '10px 8px', borderRight: '1px solid #E2E8F0', borderBottom: '2px solid #E2E8F0', boxShadow: '0 -2px 0 #FFFBEB' }}>Branding Downline/Outlet</th>
+                <th style={{ position: 'sticky', top: '36px', zIndex: 20, background: '#FFFBEB', color: '#B45309', padding: '10px 8px', borderRight: '1px solid #E2E8F0', borderBottom: '2px solid #E2E8F0', boxShadow: '0 -2px 0 #FFFBEB' }}>Kerjasama dengan BUMDES</th>
+                <th style={{ position: 'sticky', top: '36px', zIndex: 20, background: '#FFFBEB', color: '#B45309', padding: '10px 8px', borderRight: '1px solid #E2E8F0', borderBottom: '2px solid #E2E8F0', boxShadow: '0 -2px 0 #FFFBEB' }}>Rekrutmen SF AKAMSI</th>
+                <th style={{ position: 'sticky', top: '36px', zIndex: 20, background: '#FFFBEB', color: '#B45309', padding: '10px 8px', borderRight: '1px solid #E2E8F0', borderBottom: '2px solid #E2E8F0', boxShadow: '0 -2px 0 #FFFBEB' }}>Always ON Open Table</th>
               </tr>
             </thead>
             <tbody>
