@@ -1,5 +1,40 @@
 import { useState, useEffect, useMemo, memo } from 'react';
 
+const BRANCH_WOK_MATRIX = [
+  {
+    branch: 'MAGELANG',
+    woks: ['KEBUMEN', 'MAGELANG TEMANGGUNG']
+  },
+  {
+    branch: 'PEKALONGAN',
+    woks: ['BATANG', 'PEMALANG PURBALINGGA', 'TEGAL BREBES']
+  },
+  {
+    branch: 'PURWOKERTO',
+    woks: ['CILACAP BANYUMAS', 'WONOSOBO BANJARNEGARA']
+  },
+  {
+    branch: 'SEMARANG',
+    woks: ['DEMAK', 'JEPARA KUDUS - PATI', 'SEMARANG 1', 'SEMARANG 2']
+  },
+  {
+    branch: 'SURAKARTA',
+    woks: ['BOYOLALI', 'SRAGEN', 'SURAKARTA']
+  },
+  {
+    branch: 'YOGYAKARTA',
+    woks: ['YOGYA 1', 'YOGYA 2']
+  }
+];
+
+const ACT_TYPES_ORDER = [
+  { key: 'tsel_menyapa', shortLabel: 'Tsel Menyapa Warga' },
+  { key: 'branding_outlet', shortLabel: 'Branding Downline/Outlet' },
+  { key: 'bumdes', shortLabel: 'Kerjasama dengan BUMDES' },
+  { key: 'rekrutmen_sf', shortLabel: 'Rekrutmen SF AKAMSI' },
+  { key: 'open_table', shortLabel: 'Always ON Open Table' }
+];
+
 // Dashboard dibungkus React.memo agar TIDAK re-render saat menu profile di header dibuka/ditutup.
 const Dashboard = memo(function Dashboard({ branches, goBranch, kpi, importMeta, statusChips, ranking, isAdmin, typeDesignFilter = 'ALL', setTypeDesignFilter }) {
   const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
@@ -55,6 +90,79 @@ const Dashboard = memo(function Dashboard({ branches, goBranch, kpi, importMeta,
   const safeKpi = kpi || { occRate: 0, totalUsed: 0, totalPort: 0, totalAvai: 0, odpCount: 0, actCompletionPct: 0, actVerified: 0, actUploaded: 0, actBelum: 0 };
   const safeStatusChips = statusChips || [];
   const safeRanking = ranking || [];
+
+  // Executive Summary Computation per Branch & WOK
+  const executiveSummary = useMemo(() => {
+    let grandTotalLop = 0;
+    const grandTotalDone = { tsel_menyapa: 0, branding_outlet: 0, bumdes: 0, rekrutmen_sf: 0, open_table: 0 };
+    const grandTotalNotYet = { tsel_menyapa: 0, branding_outlet: 0, bumdes: 0, rekrutmen_sf: 0, open_table: 0 };
+
+    const rows = [];
+
+    BRANCH_WOK_MATRIX.forEach(group => {
+      const bData = (branches || []).find(b => (b.name || '').toString().trim().toUpperCase() === group.branch);
+      const allProjects = bData?.projects || [];
+
+      // Filter Greenfield Priority Projects
+      const priorityProjects = allProjects.filter(p => {
+        const isPriority = p.isPriority ?? (p.odpCount > 1 && p.occRate < 35);
+        const isGreenfield = (p.typeDesign || 'Greenfield') === 'Greenfield';
+        return isPriority && isGreenfield;
+      });
+
+      group.woks.forEach((wokName, wIdx) => {
+        const wokProjects = priorityProjects.filter(p => {
+          const pWok = (p.wok || '').toString().trim().toUpperCase();
+          const cleanP = pWok.replace(/[\s-]/g, '');
+          const cleanW = wokName.replace(/[\s-]/g, '');
+          return pWok === wokName || cleanP === cleanW || cleanP.includes(cleanW) || cleanW.includes(cleanP);
+        });
+
+        const lopCount = wokProjects.length;
+        grandTotalLop += lopCount;
+
+        const done = { tsel_menyapa: 0, branding_outlet: 0, bumdes: 0, rekrutmen_sf: 0, open_table: 0 };
+        const notYet = { tsel_menyapa: 0, branding_outlet: 0, bumdes: 0, rekrutmen_sf: 0, open_table: 0 };
+
+        ACT_TYPES_ORDER.forEach(item => {
+          const k = item.key;
+          const verifiedCount = wokProjects.filter(p => p.activities?.some(a => a.type === k && a.status === 'verified')).length;
+          done[k] = verifiedCount;
+          notYet[k] = lopCount - verifiedCount;
+
+          grandTotalDone[k] += verifiedCount;
+          grandTotalNotYet[k] += lopCount - verifiedCount;
+        });
+
+        const totalDoneWok = ACT_TYPES_ORDER.reduce((s, item) => s + done[item.key], 0);
+        const totalSlotsWok = lopCount * 5;
+        const progressPct = totalSlotsWok > 0 ? Math.round((totalDoneWok / totalSlotsWok) * 1000) / 10 : 0;
+
+        rows.push({
+          branch: group.branch,
+          wok: wokName,
+          isFirstInBranch: wIdx === 0,
+          branchRowSpan: group.woks.length,
+          lopCount,
+          done,
+          notYet,
+          progressPct
+        });
+      });
+    });
+
+    const grandTotalDoneAll = ACT_TYPES_ORDER.reduce((s, item) => s + grandTotalDone[item.key], 0);
+    const grandTotalSlotsAll = grandTotalLop * 5;
+    const grandProgressPct = grandTotalSlotsAll > 0 ? Math.round((grandTotalDoneAll / grandTotalSlotsAll) * 1000) / 10 : 0;
+
+    return {
+      rows,
+      grandTotalLop,
+      grandTotalDone,
+      grandTotalNotYet,
+      grandProgressPct
+    };
+  }, [branches]);
 
   return (
     <div style={{ animation: 'fadeIn 0.3s ease-in-out' }}>
@@ -382,6 +490,135 @@ const Dashboard = memo(function Dashboard({ branches, goBranch, kpi, importMeta,
               </div>
             ))}
           </div>
+        </div>
+      </div>
+
+      {/* ─── 4. EXECUTIVE SUMMARY CARD (REKAP AKTIVITAS PER WOK & BRANCH) ─── */}
+      <div className="dashboard-card" style={{ marginTop: '24px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', flexWrap: 'wrap', gap: '8px' }}>
+          <div>
+            <h2 style={{ fontFamily: "'Outfit', sans-serif", fontSize: '20px', fontWeight: 800, color: '#0F172A', margin: '0 0 4px 0', letterSpacing: '-0.3px' }}>
+              Executive Summary
+            </h2>
+            <div style={{ fontSize: '12.5px', color: '#64748B', fontWeight: 500 }}>
+              Rekapitulasi pencapaian aktivitas GTM berdasarkan WOK dan Branch
+            </div>
+          </div>
+        </div>
+
+        <div className="table-responsive-wrapper" style={{ overflowX: 'auto', borderRadius: '14px', border: '1px solid #E2E8F0' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', textAlign: 'center', minWidth: '1150px' }}>
+            <thead>
+              <tr style={{ background: '#F8FAFC', color: '#0F172A', fontWeight: 800, borderBottom: '1px solid #E2E8F0' }}>
+                <th style={{ padding: '14px 12px', borderRight: '1px solid #E2E8F0', width: '130px', verticalAlign: 'middle' }} rowSpan={2}>Branch</th>
+                <th style={{ padding: '14px 12px', borderRight: '1px solid #E2E8F0', width: '180px', verticalAlign: 'middle' }} rowSpan={2}>WOK</th>
+                <th style={{ padding: '14px 12px', borderRight: '1px solid #E2E8F0', width: '90px', verticalAlign: 'middle' }} rowSpan={2}>Jumlah LOP</th>
+                <th style={{ padding: '10px 12px', borderRight: '1px solid #E2E8F0', borderBottom: '1px solid #E2E8F0', background: '#F0FDF4', color: '#166534' }} colSpan={5}>Done Activity</th>
+                <th style={{ padding: '10px 12px', borderRight: '1px solid #E2E8F0', borderBottom: '1px solid #E2E8F0', background: '#FFFBEB', color: '#92400E' }} colSpan={5}>Not Yet Activity</th>
+                <th style={{ padding: '14px 12px', width: '90px', verticalAlign: 'middle' }} rowSpan={2}>Progress</th>
+              </tr>
+              <tr style={{ background: '#F8FAFC', color: '#475569', fontSize: '11px', fontWeight: 700, borderBottom: '2px solid #E2E8F0' }}>
+                {/* Subheaders for Done Activity */}
+                <th style={{ padding: '10px 8px', borderRight: '1px solid #E2E8F0', background: '#F0FDF4', color: '#15803D' }}>Tsel Menyapa Warga</th>
+                <th style={{ padding: '10px 8px', borderRight: '1px solid #E2E8F0', background: '#F0FDF4', color: '#15803D' }}>Branding Downline/Outlet</th>
+                <th style={{ padding: '10px 8px', borderRight: '1px solid #E2E8F0', background: '#F0FDF4', color: '#15803D' }}>Kerjasama dengan BUMDES</th>
+                <th style={{ padding: '10px 8px', borderRight: '1px solid #E2E8F0', background: '#F0FDF4', color: '#15803D' }}>Rekrutmen SF AKAMSI</th>
+                <th style={{ padding: '10px 8px', borderRight: '1px solid #E2E8F0', background: '#F0FDF4', color: '#15803D' }}>Always ON Open Table</th>
+
+                {/* Subheaders for Not Yet Activity */}
+                <th style={{ padding: '10px 8px', borderRight: '1px solid #E2E8F0', background: '#FFFBEB', color: '#B45309' }}>Tsel Menyapa Warga</th>
+                <th style={{ padding: '10px 8px', borderRight: '1px solid #E2E8F0', background: '#FFFBEB', color: '#B45309' }}>Branding Downline/Outlet</th>
+                <th style={{ padding: '10px 8px', borderRight: '1px solid #E2E8F0', background: '#FFFBEB', color: '#B45309' }}>Kerjasama dengan BUMDES</th>
+                <th style={{ padding: '10px 8px', borderRight: '1px solid #E2E8F0', background: '#FFFBEB', color: '#B45309' }}>Rekrutmen SF AKAMSI</th>
+                <th style={{ padding: '10px 8px', borderRight: '1px solid #E2E8F0', background: '#FFFBEB', color: '#B45309' }}>Always ON Open Table</th>
+              </tr>
+            </thead>
+            <tbody>
+              {executiveSummary.rows.map((row, rIdx) => (
+                <tr key={`${row.branch}-${row.wok}`} style={{ borderBottom: '1px solid #F1F5F9', background: rIdx % 2 === 0 ? '#FFFFFF' : '#FAFAFC' }}>
+                  {row.isFirstInBranch && (
+                    <td 
+                      rowSpan={row.branchRowSpan} 
+                      style={{ 
+                        padding: '12px', 
+                        fontWeight: 900, 
+                        color: '#0F172A', 
+                        borderRight: '1px solid #E2E8F0', 
+                        background: '#FAFAFC',
+                        verticalAlign: 'middle'
+                      }}
+                    >
+                      {row.branch}
+                    </td>
+                  )}
+                  <td style={{ padding: '12px', fontWeight: 700, color: '#334155', textAlign: 'left', borderRight: '1px solid #E2E8F0' }}>
+                    {row.wok}
+                  </td>
+                  <td style={{ padding: '12px', fontWeight: 800, color: '#0F172A', borderRight: '1px solid #E2E8F0' }}>
+                    {row.lopCount}
+                  </td>
+
+                  {/* Done Values */}
+                  {ACT_TYPES_ORDER.map(item => (
+                    <td key={`done-${item.key}`} style={{ padding: '12px 8px', fontWeight: 800, color: row.done[item.key] > 0 ? '#15803D' : '#94A3B8', borderRight: '1px solid #E2E8F0', background: row.done[item.key] > 0 ? 'rgba(240, 253, 244, 0.5)' : 'transparent' }}>
+                      {row.done[item.key]}
+                    </td>
+                  ))}
+
+                  {/* Not Yet Values */}
+                  {ACT_TYPES_ORDER.map(item => (
+                    <td key={`notyet-${item.key}`} style={{ padding: '12px 8px', fontWeight: 700, color: row.notYet[item.key] > 0 ? '#B45309' : '#94A3B8', borderRight: '1px solid #E2E8F0', background: row.notYet[item.key] > 0 ? 'rgba(254, 243, 199, 0.3)' : 'transparent' }}>
+                      {row.notYet[item.key]}
+                    </td>
+                  ))}
+
+                  {/* Progress Badge */}
+                  <td style={{ padding: '12px', fontWeight: 900, fontFamily: "'Outfit', sans-serif" }}>
+                    <span style={{
+                      padding: '4px 10px',
+                      borderRadius: '50px',
+                      fontSize: '11.5px',
+                      fontWeight: 800,
+                      background: row.progressPct >= 75 ? '#DCFCE7' : row.progressPct >= 50 ? '#EFF6FF' : row.progressPct >= 25 ? '#FEF3C7' : '#FEE2E2',
+                      color: row.progressPct >= 75 ? '#15803D' : row.progressPct >= 50 ? '#1D4ED8' : row.progressPct >= 25 ? '#B45309' : '#DC2626',
+                      display: 'inline-block'
+                    }}>
+                      {row.progressPct}%
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr style={{ background: '#0F172A', color: '#FFFFFF', fontWeight: 900, borderTop: '2px solid #0F172A' }}>
+                <td colSpan={2} style={{ padding: '14px 16px', textAlign: 'left', fontSize: '13px', letterSpacing: '0.5px' }}>
+                  TOTAL REGIONAL JATENG DIY
+                </td>
+                <td style={{ padding: '14px 12px', fontSize: '13.5px', fontFamily: "'Outfit', sans-serif", color: '#FF5E00' }}>
+                  {executiveSummary.grandTotalLop}
+                </td>
+
+                {/* Grand Total Done */}
+                {ACT_TYPES_ORDER.map(item => (
+                  <td key={`gt-done-${item.key}`} style={{ padding: '14px 8px', color: '#4ADE80' }}>
+                    {executiveSummary.grandTotalDone[item.key]}
+                  </td>
+                ))}
+
+                {/* Grand Total Not Yet */}
+                {ACT_TYPES_ORDER.map(item => (
+                  <td key={`gt-notyet-${item.key}`} style={{ padding: '14px 8px', color: '#FBBF24' }}>
+                    {executiveSummary.grandTotalNotYet[item.key]}
+                  </td>
+                ))}
+
+                {/* Grand Total Progress */}
+                <td style={{ padding: '14px 12px', fontFamily: "'Outfit', sans-serif", fontSize: '14px', color: '#38BDF8' }}>
+                  {executiveSummary.grandProgressPct}%
+                </td>
+              </tr>
+            </tfoot>
+          </table>
         </div>
       </div>
     </div>
