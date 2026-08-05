@@ -88,9 +88,19 @@ const Dashboard = memo(function Dashboard({ branches, goBranch, kpi, importMeta,
         onclone: (clonedDoc) => {
           const clonedWrapper = clonedDoc.getElementById('executive-summary-wrapper');
           if (clonedWrapper) {
+            const clonedTable = clonedWrapper.querySelector('table');
+            const totalScrollWidth = Math.max(clonedTable?.scrollWidth || 0, clonedWrapper.scrollWidth || 0, 1250) + 60;
+
             clonedWrapper.style.maxHeight = 'none';
             clonedWrapper.style.overflowY = 'visible';
             clonedWrapper.style.overflowX = 'visible';
+            clonedWrapper.style.width = `${totalScrollWidth}px`;
+            clonedWrapper.style.maxWidth = 'none';
+
+            if (clonedTable) {
+              clonedTable.style.width = `${totalScrollWidth}px`;
+              clonedTable.style.minWidth = `${totalScrollWidth}px`;
+            }
 
             // Unpin sticky positions in cloned DOM so html2canvas renders full headers cleanly
             const stickyEls = clonedWrapper.querySelectorAll('[style*="sticky"]');
@@ -649,7 +659,7 @@ const Dashboard = memo(function Dashboard({ branches, goBranch, kpi, importMeta,
                 <th style={{ position: 'sticky', top: 0, zIndex: 25, background: '#7F1D1D', color: '#FFFFFF', padding: '10px 12px', borderRight: '1px solid #B91C1C', borderBottom: '1px solid #B91C1C', textTransform: 'uppercase', letterSpacing: '0.5px' }} colSpan={5}>
                   <span style={{ color: '#FFFFFF', fontWeight: 800, position: 'relative', zIndex: 10, display: 'inline-block' }}>Not Yet Activity</span>
                 </th>
-                <th style={{ position: 'sticky', top: 0, zIndex: 30, background: '#0F172A', color: '#FFFFFF', padding: '14px 12px', borderBottom: '1px solid #1E293B', width: '90px', verticalAlign: 'middle' }} rowSpan={2}>
+                <th style={{ position: 'sticky', top: 0, zIndex: 30, background: '#0F172A', color: '#FFFFFF', padding: '14px 16px', borderBottom: '1px solid #1E293B', width: '110px', verticalAlign: 'middle' }} rowSpan={2}>
                   <span style={{ color: '#FFFFFF', fontWeight: 800, position: 'relative', zIndex: 10, display: 'inline-block' }}>Progress</span>
                 </th>
               </tr>
