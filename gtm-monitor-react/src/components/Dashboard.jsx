@@ -577,7 +577,7 @@ const Dashboard = memo(function Dashboard({ branches, goBranch, kpi, importMeta,
                         fontWeight: 900, 
                         color: '#0F172A', 
                         borderRight: '1px solid #E2E8F0', 
-                        borderBottom: '3px solid #64748B',
+                        borderBottom: '2px solid rgba(100, 116, 139, 0.75)',
                         background: '#FAFAFC',
                         verticalAlign: 'middle'
                       }}
@@ -585,29 +585,29 @@ const Dashboard = memo(function Dashboard({ branches, goBranch, kpi, importMeta,
                       {row.branch}
                     </td>
                   )}
-                  <td style={{ padding: '12px', fontWeight: 700, color: '#334155', textAlign: 'left', borderRight: '1px solid #E2E8F0', borderBottom: row.isLastInBranch ? '3px solid #64748B' : '1px solid #F1F5F9' }}>
+                  <td style={{ padding: '12px', fontWeight: 700, color: '#334155', textAlign: 'left', borderRight: '1px solid #E2E8F0', borderBottom: row.isLastInBranch ? '2px solid rgba(100, 116, 139, 0.75)' : '1px solid #F1F5F9' }}>
                     {row.wok}
                   </td>
-                  <td style={{ padding: '12px', fontWeight: 800, color: '#0F172A', borderRight: '1px solid #E2E8F0', borderBottom: row.isLastInBranch ? '3px solid #64748B' : '1px solid #F1F5F9' }}>
+                  <td style={{ padding: '12px', fontWeight: 800, color: '#0F172A', borderRight: '1px solid #E2E8F0', borderBottom: row.isLastInBranch ? '2px solid rgba(100, 116, 139, 0.75)' : '1px solid #F1F5F9' }}>
                     {row.lopCount}
                   </td>
 
                   {/* Done Values */}
                   {ACT_TYPES_ORDER.map(item => (
-                    <td key={`done-${item.key}`} style={{ padding: '12px 8px', fontWeight: 800, color: row.done[item.key] > 0 ? '#15803D' : '#94A3B8', borderRight: '1px solid #E2E8F0', borderBottom: row.isLastInBranch ? '3px solid #64748B' : '1px solid #F1F5F9', background: row.done[item.key] > 0 ? 'rgba(240, 253, 244, 0.5)' : 'transparent' }}>
+                    <td key={`done-${item.key}`} style={{ padding: '12px 8px', fontWeight: 800, color: row.done[item.key] > 0 ? '#15803D' : '#94A3B8', borderRight: '1px solid #E2E8F0', borderBottom: row.isLastInBranch ? '2px solid rgba(100, 116, 139, 0.75)' : '1px solid #F1F5F9', background: row.done[item.key] > 0 ? 'rgba(240, 253, 244, 0.5)' : 'transparent' }}>
                       {row.done[item.key]}
                     </td>
                   ))}
 
                   {/* Not Yet Values */}
                   {ACT_TYPES_ORDER.map(item => (
-                    <td key={`notyet-${item.key}`} style={{ padding: '12px 8px', fontWeight: 700, color: row.notYet[item.key] > 0 ? '#B45309' : '#94A3B8', borderRight: '1px solid #E2E8F0', borderBottom: row.isLastInBranch ? '3px solid #64748B' : '1px solid #F1F5F9', background: row.notYet[item.key] > 0 ? 'rgba(254, 243, 199, 0.3)' : 'transparent' }}>
+                    <td key={`notyet-${item.key}`} style={{ padding: '12px 8px', fontWeight: 700, color: row.notYet[item.key] > 0 ? '#B45309' : '#94A3B8', borderRight: '1px solid #E2E8F0', borderBottom: row.isLastInBranch ? '2px solid rgba(100, 116, 139, 0.75)' : '1px solid #F1F5F9', background: row.notYet[item.key] > 0 ? 'rgba(254, 243, 199, 0.3)' : 'transparent' }}>
                       {row.notYet[item.key]}
                     </td>
                   ))}
 
                   {/* Progress Badge */}
-                  <td style={{ padding: '12px', fontWeight: 900, fontFamily: "'Outfit', sans-serif", borderBottom: row.isLastInBranch ? '3px solid #64748B' : '1px solid #F1F5F9' }}>
+                  <td style={{ padding: '12px', fontWeight: 900, fontFamily: "'Outfit', sans-serif", borderBottom: row.isLastInBranch ? '2px solid rgba(100, 116, 139, 0.75)' : '1px solid #F1F5F9' }}>
                     <span style={{
                       padding: '4px 10px',
                       borderRadius: '50px',
