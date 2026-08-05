@@ -241,7 +241,12 @@ const AdminPanel = memo(function AdminPanel({ token, branches = [], onUpdate, go
   const branchesWithFilteredProjects = useMemo(() => {
     const s = search.toLowerCase();
     return filteredBranches.map(b => {
-      let projs = (b.projects || []).filter(p => !s || p.name.toLowerCase().includes(s) || (p.wok && p.wok.toLowerCase().includes(s)));
+      let projs = (b.projects || []).filter(p => 
+        !s || 
+        p.name.toLowerCase().includes(s) || 
+        (p.wok && p.wok.toLowerCase().includes(s)) ||
+        (p.odps && p.odps.some(o => o.odp && o.odp.toLowerCase().includes(s)))
+      );
       
       // Apply status filter
       if (statusFilter === 'need_review') {
@@ -650,7 +655,7 @@ const AdminPanel = memo(function AdminPanel({ token, branches = [], onUpdate, go
             <div style={{ flex: 1, minWidth: '220px' }}>
               <input
                 type="text"
-                placeholder="Cari nama proyek atau WOK..."
+                placeholder="Cari nama proyek, WOK, atau ODP..."
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 style={{ width: '100%', boxSizing: 'border-box', padding: '10px 20px', borderRadius: '50px', border: '1px solid #E2E8F0', fontSize: '13px', background: '#FFFFFF', outline: 'none' }}

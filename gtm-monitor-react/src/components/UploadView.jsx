@@ -46,11 +46,16 @@ const UploadView = memo(function UploadView({ branches, initialBranch, updateAct
     return filteredBranches.reduce((s, b) => s + (b.projects?.length || 0), 0);
   }, [filteredBranches]);
 
-  // 3. Filter Projects within those branches based on search text
+  // 3. Filter Projects within those branches based on search text (bisa cari nama proyek, WOK, atau nama ODP)
   const branchesWithFilteredProjects = useMemo(() => {
     const s = search.toLowerCase();
     return filteredBranches.map(b => {
-      const projs = b.projects.filter(p => !s || p.name.toLowerCase().includes(s) || (p.wok && p.wok.toLowerCase().includes(s)));
+      const projs = b.projects.filter(p => 
+        !s || 
+        p.name.toLowerCase().includes(s) || 
+        (p.wok && p.wok.toLowerCase().includes(s)) ||
+        (p.odps && p.odps.some(o => o.odp && o.odp.toLowerCase().includes(s)))
+      );
       return { ...b, projects: projs };
     }).filter(b => b.projects.length > 0);
   }, [filteredBranches, search]);
@@ -253,7 +258,7 @@ const UploadView = memo(function UploadView({ branches, initialBranch, updateAct
           <input 
             type="text" 
             className="search-input-field"
-            placeholder="Cari nama proyek atau WOK..." 
+            placeholder="Cari nama proyek, WOK, atau ODP..." 
             value={search}
             onChange={e => setSearch(e.target.value)}
           />

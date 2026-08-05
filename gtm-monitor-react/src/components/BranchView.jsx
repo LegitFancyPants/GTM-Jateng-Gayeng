@@ -44,10 +44,15 @@ const BranchView = memo(function BranchView({
     return computeStats([priorityBranch]);
   }, [priorityBranch]);
 
-  // Filter projects by search
+  // Filter projects by search (bisa cari nama proyek, WOK, atau nama ODP)
   const filteredProjects = useMemo(() => {
     const s = search.toLowerCase();
-    return priorityProjects.filter(p => !s || p.name.toLowerCase().includes(s) || (p.wok && p.wok.toLowerCase().includes(s)));
+    return priorityProjects.filter(p => 
+      !s || 
+      p.name.toLowerCase().includes(s) || 
+      (p.wok && p.wok.toLowerCase().includes(s)) ||
+      (p.odps && p.odps.some(o => o.odp && o.odp.toLowerCase().includes(s)))
+    );
   }, [priorityProjects, search]);
 
   const openModal = (bName, pName) => setModalKey(`${bName}||${pName}`);
@@ -194,7 +199,7 @@ const BranchView = memo(function BranchView({
           <input
             type="text"
             className="search-input-field"
-            placeholder={`🔍 Cari proyek / WOK di branch ${formatBranch(branch.name)}...`}
+            placeholder={`🔍 Cari proyek / WOK / ODP di branch ${formatBranch(branch.name)}...`}
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
