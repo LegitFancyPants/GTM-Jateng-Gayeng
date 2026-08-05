@@ -55,8 +55,6 @@ const Dashboard = memo(function Dashboard({ branches, goBranch, kpi, importMeta,
   const safeKpi = kpi || { occRate: 0, totalUsed: 0, totalPort: 0, totalAvai: 0, odpCount: 0, actCompletionPct: 0, actVerified: 0, actUploaded: 0, actBelum: 0 };
   const safeStatusChips = statusChips || [];
   const safeRanking = ranking || [];
-  const safeMapBounds = mapBounds || [[-7.5, 109], [-6.5, 111]];
-  const safeMapPoints = mapPoints || [];
 
   return (
     <div style={{ animation: 'fadeIn 0.3s ease-in-out' }}>
