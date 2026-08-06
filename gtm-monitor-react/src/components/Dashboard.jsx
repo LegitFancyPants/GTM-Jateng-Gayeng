@@ -569,8 +569,8 @@ const Dashboard = memo(function Dashboard({ branches, goBranch, kpi, importMeta,
                   <div style={{ height: '100%', width: `${b.occRate}%`, background: b.color, borderRadius: '4px', transition: 'width 0.5s ease' }} />
                 </div>
                 <div style={{ fontSize: '14px', fontWeight: 800, color: '#0F172A', fontFamily: "'Outfit', sans-serif" }}>{b.occRate}%</div>
-                <div style={{ fontSize: '12.5px', fontWeight: 800, color: b.delta >= 0 ? '#16A34A' : '#DC2626' }}>
-                  {b.delta >= 0 ? `▲ +${b.delta}` : `▼ ${b.delta}`}%
+                <div style={{ fontSize: '12.5px', fontWeight: 800, color: b.delta > 0 ? '#16A34A' : b.delta < 0 ? '#DC2626' : '#64748B' }}>
+                  {b.delta > 0 ? `▲ +${b.delta}%` : b.delta < 0 ? `▼ ${b.delta}%` : `▲ +0%`}
                 </div>
                 <div style={{ fontSize: '12px', color: '#64748B', fontWeight: 600 }}>{b.projCount} proyek</div>
                 <div style={{ fontSize: '12px', color: '#64748B', fontWeight: 600 }}>{b.actPct}% GTM done</div>

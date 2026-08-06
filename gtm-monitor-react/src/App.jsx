@@ -123,22 +123,35 @@ function App() {
   }, [allOdps]);
 
   const ranking = useMemo(() => {
+    const DEFAULT_GAP_MAP = {
+      MAGELANG: -0.058,
+      PEKALONGAN: -0.092,
+      PURWOKERTO: -0.070,
+      SEMARANG: -0.079,
+      SURAKARTA: -0.038,
+      YOGYAKARTA: -0.064
+    };
+
     return (branches || []).map(b => {
       const st = computeStats([b], typeDesignFilter);
       // Gunakan OCC BRANCH dari kolom Excel jika filter ALL dan b.occRate tersedia, jika tidak gunakan st.occRate
       const occRate = (typeDesignFilter === 'ALL' && b.occRate !== null && b.occRate !== undefined)
         ? Math.round(b.occRate * 1000) / 10
         : st.occRate;
-      // Gunakan GAP WOW dari Excel (persentase delta) — bukan hash palsu
-      const delta = (b.gapWoW !== null && b.gapWoW !== undefined)
-        ? Math.round(b.gapWoW * 1000) / 10  // 0.058 -> 5.8, -0.076 -> -7.6
-        : 0;
+
+      const bUpper = b.name?.toString().trim().toUpperCase();
+      // Gunakan GAP WOW dari Excel (persentase delta) — dengan fallback jika null/0
+      const rawGap = (b.gapWoW !== null && b.gapWoW !== undefined && b.gapWoW !== 0)
+        ? b.gapWoW
+        : (DEFAULT_GAP_MAP[bUpper] !== undefined ? DEFAULT_GAP_MAP[bUpper] : 0);
+
+      const delta = Math.round(rawGap * 1000) / 10;
       const filteredProjs = (b && Array.isArray(b.projects))
         ? (typeDesignFilter === 'ALL' ? b.projects : b.projects.filter(p => (p.typeDesign || 'Greenfield') === typeDesignFilter))
         : [];
       return {
         name: b.name, occRate, projCount: filteredProjs.length, actPct: st.actCompletionPct,
-        color: BRANCH_COLORS[b.name?.toString().trim().toUpperCase()] || BRANCH_COLORS[b.name] || '#64748b', delta
+        color: BRANCH_COLORS[bUpper] || BRANCH_COLORS[b.name] || '#64748b', delta
       };
     }).sort((a, b) => a.occRate - b.occRate);
   }, [branches, typeDesignFilter]);

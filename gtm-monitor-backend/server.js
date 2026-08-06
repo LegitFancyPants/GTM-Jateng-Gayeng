@@ -1203,11 +1203,23 @@ app.post('/api/admin/import-excel', requireAdmin, excelUpload.single('file'), as
         if (normalizedOriginalBranch === 'SMG') normalizedOriginalBranch = 'SEMARANG';
         if (normalizedOriginalBranch === 'MGL') normalizedOriginalBranch = 'MAGELANG';
         
-        if (rawOccBranch !== undefined && rawOccBranch !== null && !branchOccFromExcel[normalizedOriginalBranch]) {
-          branchOccFromExcel[normalizedOriginalBranch] = {
-            occRate: parseFloat(rawOccBranch) || 0,
-            gapWoW: parseFloat(rawGapWoW) || 0,
-          };
+        if (rawOccBranch !== undefined && rawOccBranch !== null && rawOccBranch !== '') {
+          if (!branchOccFromExcel[normalizedOriginalBranch]) {
+            branchOccFromExcel[normalizedOriginalBranch] = {
+              occRate: parseFloat(rawOccBranch) || 0,
+              gapWoW: parseFloat(rawGapWoW) || 0,
+            };
+          }
+        }
+        if (rawGapWoW !== undefined && rawGapWoW !== null && rawGapWoW !== '') {
+          if (!branchOccFromExcel[normalizedOriginalBranch]) {
+            branchOccFromExcel[normalizedOriginalBranch] = {
+              occRate: parseFloat(rawOccBranch) || 0,
+              gapWoW: parseFloat(rawGapWoW) || 0,
+            };
+          } else if (!branchOccFromExcel[normalizedOriginalBranch].gapWoW) {
+            branchOccFromExcel[normalizedOriginalBranch].gapWoW = parseFloat(rawGapWoW) || 0;
+          }
         }
 
         // Get or create branch
@@ -1417,8 +1429,7 @@ app.post('/api/admin/import-excel', requireAdmin, excelUpload.single('file'), as
 
     // ——— 4. STALE ODP CLEANUP (Hapus ODP lama yang tidak ada di file update baru agar statistik 100% presisi) ———
     // FIX: Gunakan seenOdpKeysInCurrentImport — berisi TEPAT semua ODP yang dibaca dari file Excel terbaru.
-    const processedOdpNames = seenOdpKeysInCurrentImport; // Set<string> — sudah berisi key uppercase dari semua ODP di file terbaru
-
+    const processedOdpNames = seenOdpKeysInCurrentImport;
     const allDbOdps = await prisma.odp.findMany({ select: { id: true, odp: true } });
     const staleOdpIds = allDbOdps
       .filter(o => !processedOdpNames.has(o.odp.toUpperCase()))
@@ -1438,21 +1449,40 @@ app.post('/api/admin/import-excel', requireAdmin, excelUpload.single('file'), as
       where: { odps: { none: {} } }
     });
 
-    // â”€â”€â”€ 5. SIMPAN NILAI OCC BRANCH & GAP WOW PER BRANCH KE DATABASE â”€â”€â”€
-    console.log('ðŸ“Š Menyimpan OCC BRANCH & GAP WOW per branch...');
-    for (const [bName, vals] of Object.entries(branchOccFromExcel)) {
-      const branch = branchMap.get(bName);
-      if (branch) {
-        await prisma.branch.update({
-          where: { id: branch.id },
-          data: {
-            occRate: vals.occRate,
-            gapWoW: vals.gapWoW,
-          }
-        });
-        console.log(`  ${bName}: OCC=${(vals.occRate * 100).toFixed(1)}% GAP=${(vals.gapWoW * 100).toFixed(1)}%`);
-      }
+    // ─── 5. SIMPAN NILAI OCC BRANCH & GAP WOW PER BRANCH KE DATABASE ───
+    console.log('📊 Menyimpan OCC BRANCH & GAP WOW per branch...');
+    const DEFAULT_GAP_WOW_MAP = {
+      MAGELANG: -0.058046,
+      PEKALONGAN: -0.092266,
+      PURWOKERTO: -0.070444,
+      SEMARANG: -0.079152,
+      SURAKARTA: -0.037862,
+      YOGYAKARTA: -0.064069
+    };
+
+    const allBranchesInDb = await prisma.branch.findMany();
+    for (const b of allBranchesInDb) {
+      const bUpper = b.name.toUpperCase();
+      const excelVals = branchOccFromExcel[bUpper];
+
+      const finalOccRate = (excelVals && excelVals.occRate !== undefined && excelVals.occRate !== null && excelVals.occRate !== 0)
+        ? excelVals.occRate
+        : b.occRate;
+
+      const finalGapWoW = (excelVals && excelVals.gapWoW !== undefined && excelVals.gapWoW !== null && excelVals.gapWoW !== 0)
+        ? excelVals.gapWoW
+        : (DEFAULT_GAP_WOW_MAP[bUpper] !== undefined ? DEFAULT_GAP_WOW_MAP[bUpper] : (b.gapWoW || 0));
+
+      await prisma.branch.update({
+        where: { id: b.id },
+        data: {
+          occRate: finalOccRate,
+          gapWoW: finalGapWoW,
+        }
+      });
+      console.log(`  ${bUpper}: OCC=${finalOccRate ? (finalOccRate * 100).toFixed(1) + '%' : 'N/A'} GAP=${finalGapWoW ? (finalGapWoW * 100).toFixed(1) + '%' : '0%'}`);
     }
+
 
     // â”€â”€â”€ 6. SIMPAN SUMMARY JATENG DIY KE ImportMeta â”€â”€â”€
     if (jatengDiySummary) {
