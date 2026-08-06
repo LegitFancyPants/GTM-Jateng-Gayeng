@@ -136,6 +136,96 @@ const downloadBuffer = (url) => {
       res.on('error', err => reject(err));
     }).on('error', err => reject(err));
   });
+// Helper: Sanitize folder/file name for OS compatibility
+const sanitizeFolderName = (str) => {
+  if (!str) return 'UNKNOWN';
+  return str.toString().trim()
+    .replace(/[\\/:*?"<>|]/g, '-') // Replace OS forbidden characters with hyphen
+    .replace(/\s+/g, ' ')          // Collapse multiple spaces
+    .trim();
+};
+
+// Helper: Get Activity Label for Folder & File Prefix
+const getActivityLabel = (type) => {
+  switch (type) {
+    case 'tsel_menyapa':
+      return 'TSEL MENYAPA WARGA';
+    case 'branding_outlet':
+      return 'BRANDING DOWNLINE OUTLET';
+    case 'bumdes':
+      return 'KERJASAMA DENGAN BUMDES';
+    case 'rekrutmen_sf':
+      return 'REKRUTMEN SF AKAMSI';
+    case 'open_table':
+      return 'ALWAYS ON OPEN TABLE';
+    default:
+      return (type || 'ACTIVITY').toUpperCase().replace(/_/g, ' ');
+  }
+};
+
+// Helper: Save verified Cloudinary photo to structured local disk directory
+// Hierarchy: uploads / <Branch> / <WOK> / <Jenis Activity> / <YYYY_MM> / <Filename>
+const saveVerifiedPhotoToLocal = async (photoUrl, rawBranch, rawWok, type, planDate) => {
+  if (!photoUrl || !photoUrl.includes('res.cloudinary.com')) {
+    return photoUrl; // Already local or empty
+  }
+
+  try {
+    const branchFolder = sanitizeFolderName(rawBranch || 'UNKNOWN_BRANCH');
+    const wokFolder = sanitizeFolderName(rawWok || 'UNKNOWN_WOK');
+    const actLabel = getActivityLabel(type);
+
+    const d = planDate ? new Date(planDate) : new Date();
+    const validDate = isNaN(d.getTime()) ? new Date() : d;
+
+    const year = validDate.getFullYear();
+    const month = String(validDate.getMonth() + 1).padStart(2, '0');
+    const day = String(validDate.getDate()).padStart(2, '0');
+
+    const yearMonth = `${year}_${month}`;       // e.g. 2026_08
+    const ddmmyyyy = `${day}${month}${year}`;  // e.g. 06082026 (06 = tanggal)
+
+    // Directory: uploads / branch / WOK / Jenis activity / (Tahun_bulan)
+    const targetDir = path.join(__dirname, 'uploads', branchFolder, wokFolder, actLabel, yearMonth);
+    if (!fs.existsSync(targetDir)) {
+      fs.mkdirSync(targetDir, { recursive: true });
+    }
+
+    // Determine extension from URL
+    let ext = '.jpg';
+    const matchExt = photoUrl.match(/\.(jpg|jpeg|png|webp)($|\?)/i);
+    if (matchExt) {
+      ext = `.${matchExt[1].toLowerCase()}`;
+    }
+
+    // File name format: (TSEL MENYAPA WARGA_SEMARANG_DEMAK_06082026)
+    const baseFileName = `${actLabel}_${branchFolder}_${wokFolder}_${ddmmyyyy}`;
+    let fileName = `${baseFileName}${ext}`;
+    let filePath = path.join(targetDir, fileName);
+
+    // Handle duplicates safely if file already exists for same date & WOK
+    let counter = 1;
+    while (fs.existsSync(filePath)) {
+      fileName = `${baseFileName}_${counter}${ext}`;
+      filePath = path.join(targetDir, fileName);
+      counter++;
+    }
+
+    console.log(`📥 [Auto Local Download] Downloading verified photo from Cloudinary to: ${filePath}`);
+    const imgBuffer = await downloadBuffer(photoUrl);
+    fs.writeFileSync(filePath, imgBuffer);
+
+    // Web-accessible URL path
+    const localWebPath = `/uploads/${branchFolder}/${wokFolder}/${actLabel}/${yearMonth}/${fileName}`;
+
+    // Clean up temporary Cloudinary staging photo
+    await deleteFromCloudinary(photoUrl).catch(err => console.error('Cloudinary cleanup warning:', err.message));
+
+    return localWebPath;
+  } catch (err) {
+    console.error('❌ [Auto Local Download Error]:', err);
+    return photoUrl; // Fallback to original URL on error
+  }
 };
 
 app.use(cors());
@@ -416,7 +506,7 @@ app.get('/api/data', optionalAuthenticateToken, async (req, res) => {
             let photoUrl = ph.photoUrl;
             let status = ph.status;
             if (photoUrl && photoUrl.startsWith('/uploads/')) {
-              const localFilePath = path.join(__dirname, photoUrl);
+              const localFilePath = path.join(__dirname, decodeURIComponent(photoUrl));
               if (!fs.existsSync(localFilePath)) {
                 console.log(`⚠️ [File Checker] File foto lokal hilang dari disk untuk proyek "${p.name}" (${actKey}): ${photoUrl}`);
                 photoUrl = null;
@@ -794,8 +884,19 @@ app.post('/api/verify', requireAdmin, async (req, res) => {
       }).catch(() => null);
     }
 
-    let finalPhotoUrl = reqPhotoUrl;
-    if (targetPhoto && targetPhoto.photoUrl && targetPhoto.photoUrl.startsWith('/uploads/')) {
+    let finalPhotoUrl = reqPhotoUrl || targetPhoto?.photoUrl;
+
+    // Automatically download verified photo from Cloudinary Staging to structured local disk directory
+    if (targetPhoto && targetPhoto.photoUrl && targetPhoto.photoUrl.includes('res.cloudinary.com')) {
+      const dateToUse = targetPhoto.planDate || targetPhoto.createdAt;
+      finalPhotoUrl = await saveVerifiedPhotoToLocal(
+        targetPhoto.photoUrl,
+        branch?.name || cleanBName,
+        project.wok,
+        type,
+        dateToUse
+      );
+    } else if (targetPhoto && targetPhoto.photoUrl && targetPhoto.photoUrl.startsWith('/uploads/')) {
       finalPhotoUrl = targetPhoto.photoUrl;
     }
 
