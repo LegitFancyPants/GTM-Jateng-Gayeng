@@ -9,6 +9,44 @@ import { formatBranch, flatOdps, computeStats, BRANCH_COLORS } from './utils';
 import { API_BASE_URL } from './apiConfig';
 import './index.css';
 
+// ─── LOADING SCREEN (di-definisikan di level modul agar TIDAK di-remount setiap App re-render) ───
+function LoadingScreen() {
+  const [dotsCount, setDotsCount] = useState(3);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setDotsCount(prev => (prev % 3) + 1);
+    }, 450);
+    return () => clearInterval(interval);
+  }, []);
+
+  const dots = '.'.repeat(dotsCount);
+
+  return (
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#FFFFFF', color: '#64748B', gap: '18px' }}>
+      <div style={{
+        width: '56px',
+        height: '56px',
+        borderRadius: '50%',
+        background: 'linear-gradient(135deg, #C8102E 0%, #FF5E00 100%)',
+        color: '#ffffff',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontWeight: 900,
+        fontSize: '18px',
+        boxShadow: '0 8px 24px rgba(200, 16, 46, 0.35)',
+        letterSpacing: '-0.5px'
+      }}>
+        GTM
+      </div>
+      <div style={{ fontWeight: 700, fontSize: '15px', color: '#0F172A', fontFamily: "'Outfit', sans-serif" }}>
+        Memuat data dari server<span style={{ display: 'inline-block', width: '24px', textAlign: 'left' }}>{dots}</span>
+      </div>
+    </div>
+  );
+}
+
 function App() {
   const [branches, setBranches] = useState([]);
   const [importMeta, setImportMeta] = useState(null); // Jateng DIY summary dari ImportMeta
@@ -533,7 +571,7 @@ function App() {
   }, [token, branches, fetchData]);
 
   // Verify activity at PROJECT level (Admin only)
-  const verifyActivity = useCallback(async (branchName, projectName, actType, photoId) => {
+  const verifyActivity = useCallback(async (branchName, projectName, actType, photoId, projectId) => {
     if (!isAdmin) return;
 
     try {
@@ -547,7 +585,8 @@ function App() {
           branchName,
           projectName,
           type: actType,
-          photoId
+          photoId,
+          projectId
         })
       });
       if (res.ok) {
@@ -559,7 +598,7 @@ function App() {
   }, [isAdmin, token, fetchData]);
 
   // Reject activity verification at PROJECT level (Admin only)
-  const rejectActivity = useCallback(async (branchName, projectName, actType, photoId) => {
+  const rejectActivity = useCallback(async (branchName, projectName, actType, photoId, projectId) => {
     if (!isAdmin) return false;
 
     try {
@@ -573,7 +612,8 @@ function App() {
           branchName,
           projectName,
           type: actType,
-          photoId
+          photoId,
+          projectId
         })
       });
       const data = await res.json();
@@ -591,7 +631,7 @@ function App() {
     }
   }, [isAdmin, token, fetchData]);
 
-  const deletePhoto = useCallback(async (branchName, projectName, actType, photoId) => {
+  const deletePhoto = useCallback(async (branchName, projectName, actType, photoId, projectId) => {
     try {
       const res = await fetch(`${API_BASE_URL}/api/activities/delete-photo`, {
         method: 'POST',
@@ -599,7 +639,7 @@ function App() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ branchName, projectName, type: actType, photoId })
+        body: JSON.stringify({ branchName, projectName, type: actType, photoId, projectId })
       });
       const data = await res.json();
       if (res.ok && data.success) {
@@ -615,43 +655,6 @@ function App() {
       return false;
     }
   }, [token, fetchData]);
-
-function LoadingScreen() {
-  const [dotsCount, setDotsCount] = useState(3);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setDotsCount(prev => (prev % 3) + 1);
-    }, 450);
-    return () => clearInterval(interval);
-  }, []);
-
-  const dots = '.'.repeat(dotsCount);
-
-  return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#FFFFFF', color: '#64748B', gap: '18px' }}>
-      <div style={{
-        width: '56px',
-        height: '56px',
-        borderRadius: '50%',
-        background: 'linear-gradient(135deg, #C8102E 0%, #FF5E00 100%)',
-        color: '#ffffff',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontWeight: 900,
-        fontSize: '18px',
-        boxShadow: '0 8px 24px rgba(200, 16, 46, 0.35)',
-        letterSpacing: '-0.5px'
-      }}>
-        GTM
-      </div>
-      <div style={{ fontWeight: 700, fontSize: '15px', color: '#0F172A', fontFamily: "'Outfit', sans-serif" }}>
-        Memuat data dari server<span style={{ display: 'inline-block', width: '24px', textAlign: 'left' }}>{dots}</span>
-      </div>
-    </div>
-  );
-}
 
   // 1. Loading screen
   if (loading && branches.length === 0) {
@@ -1024,26 +1027,6 @@ function LoadingScreen() {
 
             {/* Action Items List */}
             <div style={{ paddingTop: '8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              {isAdmin && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowProfileModal(false);
-                    goAdmin();
-                  }}
-                  className="profile-menu-item"
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <circle cx="12" cy="12" r="3" />
-                      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06-.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06-.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
-                    </svg>
-                    <span>Admin Panel</span>
-                  </div>
-                  <span style={{ color: '#94a3b8', fontSize: '12px' }}>→</span>
-                </button>
-              )}
-
               {/* Log Out Item with Red Door Icon */}
               <button
                 type="button"

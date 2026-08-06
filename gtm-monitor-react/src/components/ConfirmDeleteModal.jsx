@@ -9,7 +9,7 @@ export default function ConfirmDeleteModal({ isOpen, data, onConfirm, onCancel, 
 
   return createPortal(
     <div
-      onClick={onCancel}
+      onClick={(e) => { e.stopPropagation(); onCancel(); }}
       style={{
         position: 'fixed',
         inset: 0,
@@ -95,7 +95,10 @@ export default function ConfirmDeleteModal({ isOpen, data, onConfirm, onCancel, 
             fontWeight: 500
           }}
         >
-          Apakah Anda yakin ingin menghapus data/foto kegiatan ini? Kegiatan yang terhapus akan terhapus permanen dari sistem.
+          {data.actKey === 'rekrutmen_sf'
+            ? 'Apakah Anda yakin ingin menghapus data kegiatan ini? Data Kode SF ini akan terhapus permanen dari sistem.'
+            : 'Apakah Anda yakin ingin menghapus data/foto kegiatan ini? Kegiatan yang terhapus akan terhapus permanen dari sistem.'
+          }
         </p>
 
         {/* Info Card */}
@@ -125,7 +128,7 @@ export default function ConfirmDeleteModal({ isOpen, data, onConfirm, onCancel, 
               <div>
                 <span style={{ color: '#64748B', fontWeight: 600 }}>Kegiatan:</span>{' '}
                 <strong style={{ color: '#0F172A', fontWeight: 700 }}>{actLabel}</strong>
-                {typeof photoIndex === 'number' && ` (Foto #${photoIndex + 1})`}
+                {typeof photoIndex === 'number' && data.actKey !== 'rekrutmen_sf' && ` (Foto #${photoIndex + 1})`}
               </div>
             )}
           </div>

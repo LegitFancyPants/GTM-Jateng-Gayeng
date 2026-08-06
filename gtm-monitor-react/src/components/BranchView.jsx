@@ -72,6 +72,7 @@ const BranchView = memo(function BranchView({
         bName: branch.name,
         pName: p.name,
         wok: p.wok,
+        projectId: p.id,
         odps,
         totalAvai,
         totalUsed,
@@ -101,7 +102,7 @@ const BranchView = memo(function BranchView({
   return (
     <div style={{ padding: '24px 32px', animation: 'fadeIn 0.3s ease-in-out' }}>
       {/* Header Title with Back Button */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
+      <div className="page-title-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
         <div>
           {goDashboard && (
             <button
@@ -166,7 +167,7 @@ const BranchView = memo(function BranchView({
 
         <button
           type="button"
-          className="branch-filter-capsule"
+          className="branch-filter-capsule control-btn-mobile"
           onClick={() => exportProjectsToExcel([branch], branch.name)}
           style={{
             cursor: 'pointer',
@@ -195,7 +196,7 @@ const BranchView = memo(function BranchView({
           <span>Export Excel</span>
         </button>
 
-        <div style={{ flex: 1, minWidth: 0 }}>
+        <div className="search-container-mobile" style={{ flex: 1, minWidth: 0 }}>
           <input
             type="text"
             className="search-input-field"

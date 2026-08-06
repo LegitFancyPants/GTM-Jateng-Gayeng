@@ -47,11 +47,11 @@ export function hash(str) {
 }
 
 export function occColor(status) {
-  return { GREEN: '#16a34a', YELLOW: '#d97706', BLACK: '#334155', RED: '#dc2626' }[status] || '#64748b';
+  return { GREEN: '#16a34a', YELLOW: '#d97706', ORANGE: '#f97316', BLACK: '#334155', RED: '#dc2626' }[status] || '#64748b';
 }
 
 export function occBg(status) {
-  return { GREEN: '#dcfce7', YELLOW: '#fef3c7', BLACK: '#e2e8f0', RED: '#fee2e2' }[status] || '#f1f5f9';
+  return { GREEN: '#dcfce7', YELLOW: '#fef3c7', ORANGE: '#ffedd5', BLACK: '#e2e8f0', RED: '#fee2e2' }[status] || '#f1f5f9';
 }
 
 export function actMeta(status) {

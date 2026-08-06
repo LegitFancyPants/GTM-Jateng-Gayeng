@@ -254,7 +254,7 @@ const Dashboard = memo(function Dashboard({ branches, goBranch, kpi, importMeta,
   return (
     <div style={{ animation: 'fadeIn 0.3s ease-in-out' }}>
       {/* ─── 1. TOP HEADER & FILTER BAR (STYLE HARMONIZED WITH OVERVIEW) ─── */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '28px', flexWrap: 'wrap', gap: '16px' }}>
+      <div className="page-title-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '28px', flexWrap: 'wrap', gap: '16px' }}>
         <div>
           <div style={{ textTransform: 'uppercase', fontSize: '11px', letterSpacing: '3px', color: '#FF5E00', fontWeight: 800, marginBottom: '4px' }}>
             MONITORING DASHBOARD

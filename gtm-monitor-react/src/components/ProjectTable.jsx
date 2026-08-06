@@ -829,12 +829,12 @@ export default function ProjectTable({ projects, branchName, onReview, updateAct
       )}
 
       {/* Pagination Footer */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderTop: '1px solid #e2e8f0', background: '#f8fafc', flexWrap: 'wrap', gap: '10px' }}>
+      <div className="table-pagination-footer">
         <div style={{ fontSize: '13px', color: '#64748b', fontWeight: 600 }}>
           Menampilkan <span style={{ color: '#0f172a', fontWeight: 700 }}>{displayProjects.length > 0 ? (currentPage - 1) * pageSize + 1 : 0}</span> - <span style={{ color: '#0f172a', fontWeight: 700 }}>{Math.min(currentPage * pageSize, displayProjects.length)}</span> dari <span style={{ color: '#0f172a', fontWeight: 700 }}>{displayProjects.length}</span> proyek
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+        <div className="table-pagination-controls">
           {/* Custom Capsule Dropup for Page Size */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#64748b', fontWeight: 600 }}>
             <span>Per halaman:</span>
@@ -918,7 +918,7 @@ export default function ProjectTable({ projects, branchName, onReview, updateAct
               </svg>
             </button>
 
-            <span style={{ padding: '0 4px', fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>
+            <span style={{ padding: '0 6px', fontSize: '13px', fontWeight: 700, color: '#0f172a', whiteSpace: 'nowrap' }}>
               {currentPage} / {totalPages}
             </span>
 

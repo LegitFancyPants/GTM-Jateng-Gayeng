@@ -10,6 +10,7 @@ export default function ReviewModal({ modalData, closeModal, verifyActivity, rej
   const [isRejecting, setIsRejecting] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [verifyingId, setVerifyingId] = useState(null);
 
   useEffect(() => {
     if (modalData?.activities) {
@@ -20,14 +21,21 @@ export default function ReviewModal({ modalData, closeModal, verifyActivity, rej
   if (!modalData) return null;
 
   const handleVerify = async (actKey, photoId) => {
-    if (verifyActivity) {
-      await verifyActivity(modalData.bName, modalData.pName, actKey, photoId);
-      setLocalActivities(prev => prev.map(a => {
-        if (a.type !== actKey) return a;
-        const updatedPhotos = (a.photos || []).map(ph => ph.id === photoId ? { ...ph, status: 'verified' } : ph);
-        const allVerified = updatedPhotos.length > 0 && updatedPhotos.every(ph => ph.status === 'verified');
-        return { ...a, status: allVerified ? 'verified' : 'upload', photos: updatedPhotos };
-      }));
+    if (verifyActivity && !verifyingId) {
+      setVerifyingId(photoId);
+      try {
+        await verifyActivity(modalData.bName, modalData.pName, actKey, photoId, modalData.projectId);
+        setLocalActivities(prev => prev.map(a => {
+          if (a.type !== actKey) return a;
+          const updatedPhotos = (a.photos || []).map(ph => ph.id === photoId ? { ...ph, status: 'verified' } : ph);
+          const allVerified = updatedPhotos.length > 0 && updatedPhotos.every(ph => ph.status === 'verified');
+          return { ...a, status: allVerified ? 'verified' : 'upload', photos: updatedPhotos };
+        }));
+      } catch (err) {
+        console.error('Error verifying activity:', err);
+      } finally {
+        setVerifyingId(null);
+      }
     }
   };
 
@@ -38,7 +46,8 @@ export default function ReviewModal({ modalData, closeModal, verifyActivity, rej
       actLabel,
       photoIndex,
       pName: modalData.pName,
-      bName: modalData.bName
+      bName: modalData.bName,
+      projectId: modalData.projectId
     });
   };
 
@@ -46,19 +55,20 @@ export default function ReviewModal({ modalData, closeModal, verifyActivity, rej
     if (!rejectTarget || !rejectActivity) return;
     setIsRejecting(true);
     try {
-      const { actKey, photoId } = rejectTarget;
-      const resOk = await rejectActivity(modalData.bName, modalData.pName, actKey, photoId);
+      const { actKey, photoId, bName, pName, projectId } = rejectTarget;
+      const resOk = await rejectActivity(bName, pName, actKey, photoId, projectId);
       if (resOk !== false) {
         setLocalActivities(prev => prev.map(a => {
           if (a.type !== actKey) return a;
-          const updatedPhotos = (a.photos || []).filter(ph => ph.id !== photoId);
-          const newStatus = updatedPhotos.some(ph => ph.status === 'upload') ? 'upload' : updatedPhotos.some(ph => ph.status === 'verified') ? 'verified' : 'belum';
-          const isCleared = updatedPhotos.length === 0;
           return {
             ...a,
-            status: newStatus,
-            photos: updatedPhotos,
-            ...(isCleared ? { keterangan: null, kodeSf: null, namaOutlet: null, planDate: null, photoUrl: null } : {})
+            status: 'belum',
+            photos: [],
+            keterangan: null,
+            kodeSf: null,
+            namaOutlet: null,
+            planDate: null,
+            photoUrl: null
           };
         }));
       }
@@ -77,7 +87,8 @@ export default function ReviewModal({ modalData, closeModal, verifyActivity, rej
       actLabel,
       photoIndex,
       pName: modalData.pName,
-      bName: modalData.bName
+      bName: modalData.bName,
+      projectId: modalData.projectId
     });
   };
 
@@ -85,23 +96,25 @@ export default function ReviewModal({ modalData, closeModal, verifyActivity, rej
     if (!deleteTarget) return;
     setIsDeleting(true);
     try {
-      const { actKey, photoId, bName, pName } = deleteTarget;
+      const { actKey, photoId, bName, pName, projectId } = deleteTarget;
       let resOk = false;
       if (deletePhoto) {
-        resOk = await deletePhoto(bName, pName, actKey, photoId);
+        resOk = await deletePhoto(bName, pName, actKey, photoId, projectId);
       } else if (rejectActivity) {
-        resOk = await rejectActivity(bName, pName, actKey, photoId);
+        resOk = await rejectActivity(bName, pName, actKey, photoId, projectId);
       }
       if (resOk !== false) {
         setLocalActivities(prev => prev.map(a => {
           if (a.type !== actKey) return a;
           const updatedPhotos = (a.photos || []).filter(ph => ph.id !== photoId);
-          const newStatus = updatedPhotos.some(ph => ph.status === 'upload') ? 'upload' : updatedPhotos.some(ph => ph.status === 'verified') ? 'verified' : 'belum';
+          const hasRemainingUpload = updatedPhotos.some(ph => ph.status === 'upload');
+          const hasRemainingVerified = updatedPhotos.some(ph => ph.status === 'verified');
+          const newStatus = hasRemainingUpload ? 'upload' : hasRemainingVerified ? 'verified' : 'belum';
           const isCleared = updatedPhotos.length === 0;
           return {
             ...a,
-            status: newStatus,
-            photos: updatedPhotos,
+            status: isCleared ? 'belum' : newStatus,
+            photos: isCleared ? [] : updatedPhotos,
             ...(isCleared ? { keterangan: null, kodeSf: null, namaOutlet: null, planDate: null, photoUrl: null } : {})
           };
         }));
@@ -244,10 +257,45 @@ export default function ReviewModal({ modalData, closeModal, verifyActivity, rej
                                 {verifyActivity && (
                                   <button
                                     type="button"
+                                    disabled={verifyingId === ph.id}
                                     onClick={() => handleVerify(actType.key, ph.id)}
-                                    style={{ padding: '6px 12px', borderRadius: '6px', border: 'none', background: '#16a34a', color: '#fff', fontSize: '11.5px', fontWeight: 700, cursor: 'pointer' }}
+                                    style={{
+                                      padding: '6px 14px',
+                                      borderRadius: '6px',
+                                      border: 'none',
+                                      background: verifyingId === ph.id ? '#15803d' : '#16a34a',
+                                      color: '#fff',
+                                      fontSize: '11.5px',
+                                      fontWeight: 700,
+                                      cursor: verifyingId === ph.id ? 'not-allowed' : 'pointer',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '6px',
+                                      boxShadow: '0 2px 6px rgba(22, 163, 74, 0.25)',
+                                      opacity: verifyingId === ph.id ? 0.85 : 1,
+                                      transition: 'all 0.15s ease'
+                                    }}
                                   >
-                                    Verifikasi
+                                    {verifyingId === ph.id ? (
+                                      <>
+                                        <svg
+                                          width="13"
+                                          height="13"
+                                          viewBox="0 0 24 24"
+                                          fill="none"
+                                          stroke="currentColor"
+                                          strokeWidth="2.8"
+                                          strokeLinecap="round"
+                                          strokeLinejoin="round"
+                                          style={{ animation: 'spin 0.75s linear infinite' }}
+                                        >
+                                          <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                                        </svg>
+                                        <span>Memverifikasi...</span>
+                                      </>
+                                    ) : (
+                                      <span>Verifikasi</span>
+                                    )}
                                   </button>
                                 )}
                               </>
@@ -270,7 +318,7 @@ export default function ReviewModal({ modalData, closeModal, verifyActivity, rej
                                   alignItems: 'center',
                                   gap: '4px'
                                 }}
-                                title="Hapus kegiatan ini"
+                                title="Hapus data / foto kegiatan ini"
                               >
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                                   <polyline points="3 6 5 6 21 6"></polyline>

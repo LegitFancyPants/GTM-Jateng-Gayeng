@@ -280,6 +280,7 @@ const AdminPanel = memo(function AdminPanel({ token, branches = [], onUpdate, go
 
       modalData = {
         bName, pName, wok: p.wok,
+        projectId: p.id,
         odps: p.odps,
         totalAvai, totalUsed, totalPort,
         odpCount: p.odps.length,
@@ -342,7 +343,7 @@ const AdminPanel = memo(function AdminPanel({ token, branches = [], onUpdate, go
   return (
     <div style={{ animation: 'fadeIn 0.3s ease-in-out' }}>
       {/* ─── 1. HEADER TITLE (MATCHING MONITORING & ACTIVITY PAGE STYLE) ─── */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
+      <div className="page-title-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
         <div>
           <div style={{ textTransform: 'uppercase', fontSize: '11px', letterSpacing: '3px', color: '#FF5E00', fontWeight: 800, marginBottom: '4px' }}>
             PANEL KONTROL SISTEM
@@ -620,7 +621,7 @@ const AdminPanel = memo(function AdminPanel({ token, branches = [], onUpdate, go
             </div>
 
             {/* Search Input */}
-            <div style={{ flex: 1, minWidth: '220px' }}>
+            <div className="search-container-mobile" style={{ flex: 1, minWidth: '220px' }}>
               <input
                 type="text"
                 placeholder="Cari nama proyek, WOK, atau ODP..."
