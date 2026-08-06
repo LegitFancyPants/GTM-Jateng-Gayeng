@@ -710,22 +710,6 @@ app.post('/api/activities/delete-photo', authenticateToken, async (req, res) => 
     const cleanBName = (branchName || '').trim();
     const cleanPName = (projectName || '').trim();
 
-    if (req.user && req.user.role === 'USER' && req.user.branchName && cleanBName) {
-      if (req.user.branchName.trim().toUpperCase() !== cleanBName.toUpperCase()) {
-        const userBranch = await prisma.branch.findFirst({
-          where: { name: { equals: req.user.branchName, mode: 'insensitive' } }
-        }).catch(() => null);
-        
-        const projInUserBranch = userBranch ? await prisma.project.findFirst({
-          where: { name: cleanPName, branchId: userBranch.id }
-        }).catch(() => null) : null;
-
-        if (!projInUserBranch) {
-          return res.status(403).json({ success: false, message: `Akses ditolak. Anda hanya berhak memodifikasi data di branch ${req.user.branchName}.` });
-        }
-      }
-    }
-
     let branch = await prisma.branch.findUnique({ where: { name: cleanBName } }).catch(() => null);
     if (!branch) {
       branch = await prisma.branch.findFirst({
@@ -756,6 +740,17 @@ app.post('/api/activities/delete-photo', authenticateToken, async (req, res) => 
     }
     if (!project) return res.status(404).json({ success: false, message: `Proyek "${projectName}" tidak ditemukan.` });
 
+    // User Branch Access Check (Validate against project.branchId)
+    if (req.user && req.user.role === 'USER' && req.user.branchName) {
+      const userBranch = await prisma.branch.findFirst({
+        where: { name: { equals: req.user.branchName, mode: 'insensitive' } }
+      }).catch(() => null);
+
+      if (userBranch && project.branchId !== userBranch.id) {
+        return res.status(403).json({ success: false, message: `Akses ditolak. Anda hanya berhak memodifikasi data di branch ${req.user.branchName}.` });
+      }
+    }
+
     let targetPhoto = null;
     if (photoId && typeof photoId === 'string' && photoId.length > 15) {
       targetPhoto = await prisma.projectActivityPhoto.findUnique({ where: { id: photoId } }).catch(() => null);
@@ -772,17 +767,13 @@ app.post('/api/activities/delete-photo', authenticateToken, async (req, res) => 
         if (targetPhoto.photoUrl.includes('res.cloudinary.com')) {
           await deleteFromCloudinary(targetPhoto.photoUrl).catch(err => console.error('Cloudinary error:', err.message));
         } else if (targetPhoto.photoUrl.startsWith('/uploads/')) {
-          const localP = path.join(__dirname, targetPhoto.photoUrl);
+          const localP = path.join(__dirname, decodeURIComponent(targetPhoto.photoUrl));
           if (fs.existsSync(localP)) {
             await fs.promises.unlink(localP).catch(err => console.error('Unlink error:', err.message));
           }
         }
       }
       await prisma.projectActivityPhoto.delete({ where: { id: targetPhoto.id } }).catch(() => null);
-    } else {
-      await prisma.projectActivityPhoto.deleteMany({
-        where: { projectId: project.id, type: type }
-      }).catch(() => null);
     }
 
     // Always check remaining photos
@@ -790,16 +781,43 @@ app.post('/api/activities/delete-photo', authenticateToken, async (req, res) => 
       where: { projectId: project.id, type: type }
     }).catch(() => []);
 
-    let newStatus = 'belum';
-    if (remainingPhotos.some(p => p.status === 'upload')) {
-      newStatus = 'upload';
-    } else if (remainingPhotos.some(p => p.status === 'verified')) {
-      newStatus = 'verified';
-    }
+    if (remainingPhotos.length > 0) {
+      let newStatus = 'belum';
+      if (remainingPhotos.some(p => p.status === 'upload')) {
+        newStatus = 'upload';
+      } else if (remainingPhotos.some(p => p.status === 'verified')) {
+        newStatus = 'verified';
+      }
 
-    const latest = remainingPhotos[remainingPhotos.length - 1];
+      const latest = remainingPhotos[remainingPhotos.length - 1];
+      await prisma.projectActivity.updateMany({
+        where: { projectId: project.id, type: type },
+        data: {
+          status: newStatus,
+          photoUrl: latest?.photoUrl || null,
+          planDate: latest?.planDate || null,
+          keterangan: latest?.keterangan || null,
+          namaOutlet: latest?.namaOutlet || null,
+          kodeSf: latest?.kodeSf || null
+        }
+      }).catch(() => null);
+    } else {
+      // Clear physical photo from ProjectActivity if legacy record
+      const legacyAct = await prisma.projectActivity.findFirst({
+        where: { projectId: project.id, type: type }
+      }).catch(() => null);
 
-    if (remainingPhotos.length === 0) {
+      if (legacyAct && legacyAct.photoUrl) {
+        if (legacyAct.photoUrl.includes('res.cloudinary.com')) {
+          await deleteFromCloudinary(legacyAct.photoUrl).catch(err => console.error('Cloudinary error:', err.message));
+        } else if (legacyAct.photoUrl.startsWith('/uploads/')) {
+          const localP = path.join(__dirname, decodeURIComponent(legacyAct.photoUrl));
+          if (fs.existsSync(localP)) {
+            await fs.promises.unlink(localP).catch(err => console.error('Unlink error:', err.message));
+          }
+        }
+      }
+
       await prisma.projectActivityPhoto.deleteMany({
         where: { projectId: project.id, type: type }
       }).catch(() => null);
@@ -813,18 +831,6 @@ app.post('/api/activities/delete-photo', authenticateToken, async (req, res) => 
           keterangan: null,
           namaOutlet: null,
           kodeSf: null
-        }
-      }).catch(() => null);
-    } else {
-      await prisma.projectActivity.updateMany({
-        where: { projectId: project.id, type: type },
-        data: {
-          status: newStatus,
-          photoUrl: latest?.photoUrl || null,
-          planDate: latest?.planDate || null,
-          keterangan: latest?.keterangan || null,
-          namaOutlet: latest?.namaOutlet || null,
-          kodeSf: latest?.kodeSf || null
         }
       }).catch(() => null);
     }
@@ -996,7 +1002,7 @@ app.post('/api/reject', requireAdmin, async (req, res) => {
         if (targetPhoto.photoUrl.includes('res.cloudinary.com')) {
           await deleteFromCloudinary(targetPhoto.photoUrl).catch(err => console.error('Cloudinary error:', err.message));
         } else if (targetPhoto.photoUrl.startsWith('/uploads/')) {
-          const localP = path.join(__dirname, targetPhoto.photoUrl);
+          const localP = path.join(__dirname, decodeURIComponent(targetPhoto.photoUrl));
           if (fs.existsSync(localP)) {
             await fs.promises.unlink(localP).catch(err => console.error('Unlink error on reject:', err.message));
           }
