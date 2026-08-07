@@ -1542,13 +1542,14 @@ app.post('/api/admin/import-excel', requireAdmin, excelUpload.single('file'), as
 
     // ─── 5. SIMPAN NILAI OCC BRANCH & GAP WOW PER BRANCH KE DATABASE ───
     console.log('📊 Menyimpan OCC BRANCH & GAP WOW per branch...');
-    const DEFAULT_GAP_WOW_MAP = {
-      MAGELANG: -0.058046,
-      PEKALONGAN: -0.092266,
-      PURWOKERTO: -0.070444,
-      SEMARANG: -0.079152,
-      SURAKARTA: -0.037862,
-      YOGYAKARTA: -0.064069
+    // Baseline raw gap dari Minggu Pertama (27 Juli) untuk pembandingan jika prevGap belum ada
+    const BASELINE_RAW_GAP_MAP = {
+      MAGELANG: -0.0564,
+      PEKALONGAN: -0.0923,
+      PURWOKERTO: -0.0704,
+      SEMARANG: -0.0792,
+      SURAKARTA: -0.0808,
+      YOGYAKARTA: -0.0656
     };
 
     const allBranchesInDb = await prisma.branch.findMany();
@@ -1560,23 +1561,37 @@ app.post('/api/admin/import-excel', requireAdmin, excelUpload.single('file'), as
         ? excelVals.occRate
         : b.occRate;
 
-      const finalGapWoW = (excelVals && excelVals.gapWoW !== undefined && excelVals.gapWoW !== null && excelVals.gapWoW !== 0)
+      // Ambil nilai raw GAP WOW dari file Excel yang baru saja di-upload
+      const newRawGap = (excelVals && excelVals.gapWoW !== undefined && excelVals.gapWoW !== null && excelVals.gapWoW !== 0)
         ? excelVals.gapWoW
-        : (DEFAULT_GAP_WOW_MAP[bUpper] !== undefined ? DEFAULT_GAP_WOW_MAP[bUpper] : (b.gapWoW || 0));
+        : null;
+
+      let finalGapWoWDelta = b.gapWoW; // Fallback jika tidak ada gap di excel
+
+      if (newRawGap !== null) {
+        // Ambil nilai baseline minggu sebelumnya (dari BASELINE_RAW_GAP_MAP)
+        const prevRawGap = BASELINE_RAW_GAP_MAP[bUpper] !== undefined ? BASELINE_RAW_GAP_MAP[bUpper] : 0;
+        
+        // Hitung selisih tren WoW: (Gap Minggu Terbaru) - (Gap Minggu Lalu)
+        finalGapWoWDelta = newRawGap - prevRawGap;
+      }
 
       await prisma.branch.update({
         where: { id: b.id },
         data: {
           occRate: finalOccRate,
-          gapWoW: finalGapWoW,
+          gapWoW: finalGapWoWDelta,
         }
       });
-      console.log(`  ${bUpper}: OCC=${finalOccRate ? (finalOccRate * 100).toFixed(1) + '%' : 'N/A'} GAP=${finalGapWoW ? (finalGapWoW * 100).toFixed(1) + '%' : '0%'}`);
+      console.log(`  ${bUpper}: OCC=${finalOccRate ? (finalOccRate * 100).toFixed(1) + '%' : 'N/A'} GAP_DELTA=${finalGapWoWDelta !== null ? (finalGapWoWDelta * 100).toFixed(2) + '%' : '0%'}`);
     }
 
-
-    // â”€â”€â”€ 6. SIMPAN SUMMARY JATENG DIY KE ImportMeta â”€â”€â”€
+    // ─── 6. SIMPAN SUMMARY JATENG DIY KE ImportMeta ───
     if (jatengDiySummary) {
+      const BASELINE_JATENG_GAP = -0.0760; // Baseline Minggu 1 Jateng DIY (-7.60%)
+      const newJatengGap = jatengDiySummary.gapWoW;
+      const jatengGapDelta = newJatengGap !== null ? (newJatengGap - BASELINE_JATENG_GAP) : null;
+
       await prisma.importMeta.upsert({
         where: { key: 'jateng_diy_summary' },
         update: {

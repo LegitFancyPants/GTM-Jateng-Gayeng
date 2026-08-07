@@ -162,12 +162,12 @@ function App() {
 
   const ranking = useMemo(() => {
     const DEFAULT_GAP_MAP = {
-      MAGELANG: -0.058,
-      PEKALONGAN: -0.092,
-      PURWOKERTO: -0.070,
-      SEMARANG: -0.079,
-      SURAKARTA: -0.038,
-      YOGYAKARTA: -0.064
+      MAGELANG: 0.0096,   // +0.96% (▲ +1.0%)
+      PEKALONGAN: 0.0030, // +0.30% (▲ +0.3%)
+      PURWOKERTO: 0.0219, // +2.19% (▲ +2.2%)
+      SEMARANG: -0.0004,  // -0.04% (▼ -0.0%)
+      SURAKARTA: -0.0739, // -7.39% (▼ -7.4%)
+      YOGYAKARTA: -0.0232 // -2.32% (▼ -2.3%)
     };
 
     return (branches || []).map(b => {
