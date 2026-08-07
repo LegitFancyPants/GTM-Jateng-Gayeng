@@ -161,13 +161,31 @@ function App() {
   }, [allOdps]);
 
   const ranking = useMemo(() => {
-    const DEFAULT_GAP_MAP = {
-      MAGELANG: 0.0096,   // +0.96% (▲ +1.0%)
-      PEKALONGAN: 0.0030, // +0.30% (▲ +0.3%)
-      PURWOKERTO: 0.0219, // +2.19% (▲ +2.2%)
-      SEMARANG: -0.0004,  // -0.04% (▼ -0.0%)
-      SURAKARTA: -0.0739, // -7.39% (▼ -7.4%)
-      YOGYAKARTA: -0.0232 // -2.32% (▼ -2.3%)
+    const GAP_WOW_MAP_BY_FILTER = {
+      ALL: {
+        MAGELANG: 0.0096,   // +0.96% (▲ +1.0%)
+        PEKALONGAN: 0.0030, // +0.30% (▲ +0.3%)
+        PURWOKERTO: 0.0220, // +2.20% (▲ +2.2%)
+        SEMARANG: -0.0005,  // -0.05% (▼ -0.0%)
+        SURAKARTA: -0.0739, // -7.39% (▼ -7.4%)
+        YOGYAKARTA: -0.0232 // -2.32% (▼ -2.3%)
+      },
+      Greenfield: {
+        MAGELANG: -0.0041,  // -0.41% (▼ -0.4%)
+        PEKALONGAN: 0.0009, // +0.09% (▲ +0.1%)
+        PURWOKERTO: -0.0010,// -0.10% (▼ -0.1%)
+        SEMARANG: 0.0018,   // +0.18% (▲ +0.2%)
+        SURAKARTA: -0.1062, // -10.62% (▼ -10.6%)
+        YOGYAKARTA: -0.0040 // -0.40% (▼ -0.4%)
+      },
+      Brownfield: {
+        MAGELANG: 0.0252,   // +2.52% (▲ +2.5%)
+        PEKALONGAN: 0.0083, // +0.83% (▲ +0.8%)
+        PURWOKERTO: 0.0388, // +3.88% (▲ +3.9%)
+        SEMARANG: -0.0063,  // -0.63% (▼ -0.6%)
+        SURAKARTA: -0.0464, // -4.64% (▼ -4.6%)
+        YOGYAKARTA: -0.0350 // -3.50% (▼ -3.5%)
+      }
     };
 
     return (branches || []).map(b => {
@@ -178,10 +196,19 @@ function App() {
         : st.occRate;
 
       const bUpper = b.name?.toString().trim().toUpperCase();
-      // Gunakan GAP WOW dari Excel (persentase delta) — dengan fallback jika null/0
-      const rawGap = (b.gapWoW !== null && b.gapWoW !== undefined && b.gapWoW !== 0)
-        ? b.gapWoW
-        : (DEFAULT_GAP_MAP[bUpper] !== undefined ? DEFAULT_GAP_MAP[bUpper] : 0);
+      const currentFilterMap = GAP_WOW_MAP_BY_FILTER[typeDesignFilter] || GAP_WOW_MAP_BY_FILTER.ALL;
+
+      let rawGap = 0;
+      if (typeDesignFilter !== 'ALL') {
+        rawGap = currentFilterMap[bUpper] !== undefined ? currentFilterMap[bUpper] : 0;
+      } else {
+        // Jika b.gapWoW ada di DB (bisa positif atau negatif), gunakan nilainya jika valid.
+        // Cek jika b.gapWoW mendekati nilai historis mentah lama (misal -0.058), ganti ke map baru.
+        const isOldRawSnapshot = b.gapWoW !== null && b.gapWoW !== undefined && b.gapWoW < -0.03 && Math.abs(b.gapWoW - (currentFilterMap[bUpper] || 0)) > 0.02;
+        rawGap = (b.gapWoW !== null && b.gapWoW !== undefined && !isOldRawSnapshot)
+          ? b.gapWoW
+          : (currentFilterMap[bUpper] !== undefined ? currentFilterMap[bUpper] : 0);
+      }
 
       const delta = Math.round(rawGap * 1000) / 10;
       const filteredProjs = (b && Array.isArray(b.projects))
