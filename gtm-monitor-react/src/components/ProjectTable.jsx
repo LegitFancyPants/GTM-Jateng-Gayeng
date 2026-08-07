@@ -390,13 +390,19 @@ const ProjectRow = memo(({ p, branchName, isExpanded, toggleProject, onReview, o
                   type="button"
                   onClick={() => onReview && onReview(bName, p.name)}
                   style={{
-                    padding: '5px 10px', borderRadius: '8px', border: '1px solid #fde68a',
-                    background: '#fef3c7', color: '#b45309', fontSize: '11px', fontWeight: 700,
-                    cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px'
+                    padding: '6px 12px', borderRadius: '8px', border: 'none',
+                    background: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)',
+                    color: '#FFFFFF', fontSize: '11px', fontWeight: 800, cursor: 'pointer',
+                    boxShadow: '0 2px 8px rgba(217, 119, 6, 0.25)', display: 'flex', alignItems: 'center', gap: '4px',
+                    whiteSpace: 'nowrap'
                   }}
-                  title="Foto sedang menunggu verifikasi Admin. Klik Review untuk detail."
+                  title="Foto sedang menunggu verifikasi Admin. Klik untuk mengecek status & detail."
                 >
-                  <span>Menunggu Verifikasi</span>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                  </svg>
+                  <span>Cek Status</span>
                 </button>
               ) : isVerified ? (
                 <button
