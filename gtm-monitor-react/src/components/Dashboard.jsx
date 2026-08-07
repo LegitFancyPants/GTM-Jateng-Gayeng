@@ -630,7 +630,7 @@ const Dashboard = memo(function Dashboard({ branches, goBranch, kpi, importMeta,
 
                   {/* Sub-Rows untuk WOK di bawah Branch */}
                   {isExpanded && hasWoks && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', paddingLeft: '20px', marginLeft: '12px', borderLeft: '2px dashed rgba(200, 16, 46, 0.3)', animation: 'fadeIn 0.2s ease-in-out' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '2px', animation: 'fadeIn 0.2s ease-in-out' }}>
                       {b.woks.map((w) => (
                         <div
                           key={w.name}
@@ -640,10 +640,10 @@ const Dashboard = memo(function Dashboard({ branches, goBranch, kpi, importMeta,
                           }}
                           style={{
                             display: 'grid',
-                            gridTemplateColumns: '150px 1fr 70px 85px 100px 110px',
+                            gridTemplateColumns: '170px 1fr 70px 85px 100px 110px',
                             alignItems: 'center',
                             gap: '16px',
-                            padding: '10px 16px',
+                            padding: '10px 18px',
                             borderRadius: '10px',
                             background: '#F8FAFC',
                             border: '1px solid #E2E8F0',
@@ -651,7 +651,7 @@ const Dashboard = memo(function Dashboard({ branches, goBranch, kpi, importMeta,
                             transition: 'all 0.2s ease'
                           }}
                           onMouseEnter={(e) => {
-                            e.currentTarget.style.borderColor = '#FF5E00';
+                            e.currentTarget.style.borderColor = b.color;
                             e.currentTarget.style.background = '#FFFFFF';
                             e.currentTarget.style.transform = 'translateX(2px)';
                           }}
@@ -661,12 +661,11 @@ const Dashboard = memo(function Dashboard({ branches, goBranch, kpi, importMeta,
                             e.currentTarget.style.transform = 'translateX(0px)';
                           }}
                         >
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700, fontSize: '12px', color: '#334155' }}>
-                            <span style={{ color: '#FF5E00', fontWeight: 800, fontSize: '13px' }}>├─</span>
+                          <div style={{ display: 'flex', alignItems: 'center', paddingLeft: '30px', fontWeight: 700, fontSize: '12px', color: '#334155' }}>
                             <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={w.name}>{w.name}</span>
                           </div>
                           <div style={{ height: '7px', background: '#E2E8F0', borderRadius: '4px', overflow: 'hidden' }}>
-                            <div style={{ height: '100%', width: `${w.occRate}%`, background: 'linear-gradient(90deg, #FF5E00 0%, #C8102E 100%)', borderRadius: '4px', transition: 'width 0.5s ease' }} />
+                            <div style={{ height: '100%', width: `${w.occRate}%`, background: b.color, borderRadius: '4px', transition: 'width 0.5s ease' }} />
                           </div>
                           <div style={{ fontSize: '13px', fontWeight: 800, color: '#0F172A', fontFamily: "'Outfit', sans-serif" }}>{w.occRate}%</div>
                           <div style={{ fontSize: '12px', fontWeight: 800, color: w.delta > 0 ? '#16A34A' : w.delta < 0 ? '#DC2626' : '#64748B' }}>
