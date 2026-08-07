@@ -374,23 +374,15 @@ const ProjectRow = memo(({ p, branchName, isExpanded, toggleProject, onReview, o
           const pendingPhotos = photos.filter(ph => ph.status === 'upload');
           const hasPending = status === 'upload' || pendingPhotos.length > 0;
           const isVerified = status === 'verified' || verifiedPhotos.length > 0;
+          const verifiedCount = verifiedPhotos.length > 0 ? verifiedPhotos.length : (status === 'verified' ? 1 : 0);
+
+          const badgeLabel = isVerified ? `Terverifikasi (${verifiedCount})` : meta.label;
 
           return (
             <div key={actType.key} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '6px 0', alignSelf: 'center' }}>
               <div style={{ fontSize: '11px', fontWeight: 700, padding: '3px 10px', borderRadius: '6px', backgroundColor: meta.bg, color: meta.color, border: meta.border, display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap' }}>
-                {meta.label}
+                {badgeLabel}
               </div>
-
-              {/* Counter Badge (Opsi A) jika ada foto terverifikasi */}
-              {verifiedPhotos.length > 0 && (
-                <div
-                  onClick={() => onReview && onReview(bName, p.name)}
-                  style={{ fontSize: '10px', fontWeight: 800, color: '#16a34a', background: '#dcfce7', padding: '2px 8px', borderRadius: '10px', cursor: 'pointer', border: '1px solid #bbf7d0', display: 'flex', alignItems: 'center', gap: '3px' }}
-                  title="Klik Review untuk melihat riwayat foto"
-                >
-                  📷 {verifiedPhotos.length} Foto Terverifikasi
-                </div>
-              )}
 
               {/* Action Buttons / Status text */}
               {hasPending ? (
@@ -404,7 +396,7 @@ const ProjectRow = memo(({ p, branchName, isExpanded, toggleProject, onReview, o
                   }}
                   title="Foto sedang menunggu verifikasi Admin. Klik Review untuk detail."
                 >
-                  <span>⏳ Menunggu Verifikasi</span>
+                  <span>Menunggu Verifikasi</span>
                 </button>
               ) : isVerified ? (
                 <button
