@@ -1,5 +1,5 @@
 import { useState, useMemo, memo, useCallback } from 'react';
-import * as XLSX from 'xlsx';
+import XLSX from 'xlsx-js-style';
 import ProjectTable from './ProjectTable';
 import ReviewModal from './ReviewModal';
 import { formatBranch, computeStats, exportProjectsToExcel } from '../utils';
@@ -120,7 +120,7 @@ const AdminPanel = memo(function AdminPanel({ token, branches = [], onUpdate, go
       worksheet['!autofilter'] = { ref: `A4:N${3 + dataRows.length}` };
     }
 
-    // Styling background abu-abu & bold untuk baris header A4:N4
+    // Styling background Telkomsel Red (#C8102E) & bold putih untuk baris header A4:N4
     const headerCols = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N'];
     headerCols.forEach(col => {
       const cellRef = `${col}4`;
@@ -128,13 +128,13 @@ const AdminPanel = memo(function AdminPanel({ token, branches = [], onUpdate, go
         worksheet[cellRef].s = {
           fill: {
             patternType: "solid",
-            fgColor: { rgb: "D9D9D9" } // Background abu-abu khas Excel (#D9D9D9)
+            fgColor: { rgb: "C8102E" } // Telkomsel Red (#C8102E)
           },
           font: {
             name: "Calibri",
             sz: 11,
             bold: true,
-            color: { rgb: "000000" }
+            color: { rgb: "FFFFFF" } // White text
           },
           alignment: {
             horizontal: "center",
