@@ -557,7 +557,7 @@ const Dashboard = memo(function Dashboard({ branches, goBranch, kpi, importMeta,
                     }}
                     style={{
                       display: 'grid',
-                      gridTemplateColumns: '170px 1fr 70px 85px 100px 110px',
+                      gridTemplateColumns: '180px 1fr 70px 85px 100px 110px',
                       alignItems: 'center',
                       gap: '16px',
                       padding: '14px 18px',
@@ -583,7 +583,7 @@ const Dashboard = memo(function Dashboard({ branches, goBranch, kpi, importMeta,
                       }
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 800, fontSize: '13.5px', color: '#0F172A', letterSpacing: '0.5px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 800, fontSize: '13.5px', color: '#0F172A', letterSpacing: '0.5px', minWidth: 0, overflow: 'hidden' }}>
                       {hasWoks && (
                         <div
                           onClick={(e) => toggleBranchExpand(b.name, e)}
@@ -615,7 +615,7 @@ const Dashboard = memo(function Dashboard({ branches, goBranch, kpi, importMeta,
                           </svg>
                         </div>
                       )}
-                      <span>{b.name}</span>
+                      <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={b.name}>{b.name}</span>
                     </div>
                     <div style={{ height: '8px', background: '#E2E8F0', borderRadius: '4px', overflow: 'hidden' }}>
                       <div style={{ height: '100%', width: `${b.occRate}%`, background: b.color, borderRadius: '4px', transition: 'width 0.5s ease' }} />
@@ -640,7 +640,7 @@ const Dashboard = memo(function Dashboard({ branches, goBranch, kpi, importMeta,
                           }}
                           style={{
                             display: 'grid',
-                            gridTemplateColumns: '170px 1fr 70px 85px 100px 110px',
+                            gridTemplateColumns: '180px 1fr 70px 85px 100px 110px',
                             alignItems: 'center',
                             gap: '16px',
                             padding: '10px 18px',
@@ -661,7 +661,7 @@ const Dashboard = memo(function Dashboard({ branches, goBranch, kpi, importMeta,
                             e.currentTarget.style.transform = 'translateX(0px)';
                           }}
                         >
-                          <div style={{ display: 'flex', alignItems: 'center', paddingLeft: '30px', fontWeight: 700, fontSize: '12px', color: '#334155' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', paddingLeft: '30px', fontWeight: 700, fontSize: '12px', color: '#334155', minWidth: 0, overflow: 'hidden' }}>
                             <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={w.name}>{w.name}</span>
                           </div>
                           <div style={{ height: '7px', background: '#E2E8F0', borderRadius: '4px', overflow: 'hidden' }}>
