@@ -324,14 +324,14 @@ function App() {
     window.history.replaceState({ view: targetView, activeBranch: null }, '');
   }, []);
 
-  // ─── OPTIMIZED 5-MINUTE INACTIVITY AUTO-LOGOUT EFFECT (ALL ROLES: ADMIN & USER) ───
+  // ─── OPTIMIZED 15-MINUTE INACTIVITY AUTO-LOGOUT EFFECT (ALL ROLES: ADMIN & USER) ───
   useEffect(() => {
     if (!token || !user) return;
 
     // Reset timestamp aktivitas saat useEffect sesi diaktifkan untuk akun yang baru login
     lastActivityRef.current = Date.now();
 
-    const INACTIVITY_LIMIT = 5 * 60 * 1000; // 5 menit = 300.000 ms
+    const INACTIVITY_LIMIT = 15 * 60 * 1000; // 15 menit = 900.000 ms
 
     const updateActivity = () => {
       lastActivityRef.current = Date.now();
